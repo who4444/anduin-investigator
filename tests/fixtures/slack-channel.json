@@ -1,0 +1,38 @@
+[
+  {
+    "type": "message",
+    "user": "U1",
+    "text": "Kicking off the MER-101 investigation.",
+    "ts": "1727136000.000100",
+    "thread_ts": "1727136000.000100"
+  },
+  {
+    "type": "message",
+    "user": "U2",
+    "text": "Any update on the invoice totals?",
+    "ts": "1727222400.000200",
+    "thread_ts": "1727136000.000100"
+  },
+  {
+    "type": "message",
+    "user": "U1",
+    "text": "Patch is in review.",
+    "ts": "1727308800.000300",
+    "thread_ts": "1727136000.000100"
+  },
+  {
+    "type": "message",
+    "subtype": "channel_join",
+    "user": "U3",
+    "text": "<@U1> has joined the channel",
+    "ts": "1727395200.000400"
+  },
+  {
+    "type": "message",
+    "subtype": "bot_message",
+    "bot_id": "B1",
+    "username": "alertbot",
+    "text": "Build 42 failed for MER-102.",
+    "ts": "1727481600.000500"
+  }
+]
