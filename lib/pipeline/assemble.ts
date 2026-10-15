@@ -59,7 +59,7 @@ function currentPass(stages: Stage[]): number {
   return investigatorPasses.length > 0 ? Math.max(...investigatorPasses) : 1;
 }
 
-export async function assemble(investigationId: string): Promise<AssembleOutcome> {
+export async function buildResult(investigationId: string): Promise<AssembleOutcome> {
   const investigation = await getInvestigation(investigationId);
   if (!investigation) {
     throw new Error(`No investigation with id ${investigationId}.`);
@@ -100,12 +100,6 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
   const pass = currentPass(stages);
   const needsRetry = missing.length > 0 && pass < MAX_RETRY_PASS;
 
-  await appendStageLog(investigationId, "assemble", pass, {
-    needsRetry,
-    missing,
-    stats,
-  });
-
   return {
     investigation,
     timeline,
@@ -126,4 +120,16 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
     missing,
     pass,
   };
+}
+
+export async function assemble(investigationId: string): Promise<AssembleOutcome> {
+  const result = await buildResult(investigationId);
+
+  await appendStageLog(investigationId, "assemble", result.pass, {
+    needsRetry: result.needsRetry,
+    missing: result.missing,
+    stats: result.stats,
+  });
+
+  return result;
 }
