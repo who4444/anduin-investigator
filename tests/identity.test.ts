@@ -192,7 +192,11 @@ describe("resolveIdentities", () => {
   });
 
   it("degrades gracefully when the LLM call fails", async () => {
-    const events = [event("l.chen@northwind.com"), event("L. Chen"), event("Lin Chen")];
+    const events = [
+      event("l.chen@northwind.com"),
+      event("Lin Chen <l.chen@northwind.com>"),
+      event("Marcus Webb"),
+    ];
     const { store } = makeStore();
     const client: LlmClient = {
       chat: vi.fn(async () => {
@@ -202,6 +206,9 @@ describe("resolveIdentities", () => {
 
     const out = await resolveIdentities(events, client, store);
 
-    expect(out.map((e) => e.actor)).toEqual(["l.chen@northwind.com", "L. Chen", "Lin Chen"]);
+    expect(out.map((e) => e.actor)).toEqual(["Lin Chen", "Lin Chen", "Marcus Webb"]);
+    expect(store.upsertIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({ alias: "l.chen@northwind.com", canonical: "Lin Chen" }),
+    );
   });
 });

@@ -303,6 +303,18 @@ export async function applyLlmMerges(
     }
   }
 
+  for (const suggestion of byAlias.values()) {
+    if (recorded.has(suggestion.alias)) continue;
+    recorded.add(suggestion.alias);
+    await store.upsertIdentity({
+      alias: suggestion.alias,
+      canonical: suggestion.canonical,
+      method: "llm",
+      confidence: suggestion.confidence,
+      applied: false,
+    });
+  }
+
   return out;
 }
 
