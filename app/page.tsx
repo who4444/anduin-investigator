@@ -1,19 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
 
-const STAGE_LABELS: Record<string, string> = {
-  plan: "Analyst writes the investigation plan",
-  root_cause: "Investigator · root cause",
-  commitments: "Investigator · commitments",
-  ownership: "Investigator · decisions & ownership",
-  skeptic: "Skeptic challenges the findings",
-  verify: "Code verifier checks every quote",
-  assemble: "Assemble timeline, ledger and gaps",
-};
+const STAGE_ROWS: { key: string; label: string }[] = [
+  { key: "plan", label: "Analyst writes the investigation plan" },
+  { key: "root_cause", label: "Investigator · root cause" },
+  { key: "commitments", label: "Investigator · commitments" },
+  { key: "ownership", label: "Investigator · decisions & ownership" },
+  { key: "skeptic", label: "Skeptic challenges the findings" },
+  { key: "verify", label: "Code verifier checks every quote" },
+  { key: "assemble", label: "Assemble timeline, ledger and gaps" },
+];
 
 type StageState = { status: string; error?: string | null; pass: number };
 
@@ -39,6 +39,7 @@ export default function Home() {
   const directoryInput = useRef<HTMLInputElement | null>(null);
   const [escalation, setEscalation] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -46,18 +47,19 @@ export default function Home() {
   const [stages, setStages] = useState<Record<string, StageState>>({});
   const [serverLogs, setServerLogs] = useState<Record<string, unknown[]>>({});
   const [eventCount, setEventCount] = useState<number | null>(null);
+  const [run, setRun] = useState<{ id: string; synthetic: boolean } | null>(null);
 
   useEffect(() => {
     directoryInput.current?.setAttribute("webkitdirectory", "");
     directoryInput.current?.setAttribute("directory", "");
   }, []);
 
-  const applyStage = (update: StageUpdate) => {
+  const applyStage = useCallback((update: StageUpdate) => {
     setStages((current) => ({
       ...current,
       [update.stage]: { status: update.status, error: update.error ?? null, pass: update.pass },
     }));
-  };
+  }, []);
 
   const resultsHref = (id: string, flags: { synthetic: boolean; cached: boolean }) => {
     const query = new URLSearchParams();
@@ -67,43 +69,20 @@ export default function Home() {
     return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
   };
 
-  async function submit(uploadFiles: File[], isSynthetic: boolean) {
-    setBusy(true);
-    setError(null);
-    setStages({});
-    setServerLogs({});
-    setWarnings([]);
-    setEventCount(null);
-    setSynthetic(isSynthetic);
+  const collectLogs = (stages: ServerStage[]): Record<string, unknown[]> => {
+    const logs: Record<string, unknown[]> = {};
+    for (const stage of stages) {
+      if (stage.log.length > 0) logs[stage.stage] = stage.log;
+    }
+    return logs;
+  };
+
+  async function drivePipeline(investigationId: string, isSynthetic: boolean) {
     let poller: ReturnType<typeof setInterval> | null = null;
-
     try {
-      const form = new FormData();
-      for (const file of uploadFiles) {
-        // Directory uploads expose their relative path; preserve it so the Slack
-        // export keeps its per-channel folder structure server-side.
-        form.append("files", file, file.webkitRelativePath || file.name);
-      }
-      form.append("escalation", escalation);
-
-      const response = await fetch("/api/investigations", { method: "POST", body: form });
-      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & { error?: string };
-      if (!response.ok || !payload.investigationId) {
-        throw new Error(payload.error ?? "Upload failed.");
-      }
-
-      setEventCount(payload.eventCount ?? 0);
-      setWarnings(payload.warnings ?? []);
-
-      if (payload.cached) {
-        setStages({ assemble: { status: "done", pass: 1 } });
-        router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: true }));
-        return;
-      }
-
       poller = setInterval(async () => {
         try {
-          const response = await fetch(`/api/investigations/${payload.investigationId}/status`);
+          const response = await fetch(`/api/investigations/${investigationId}/status`);
           const body = (await response.json().catch(() => ({}))) as { stages?: ServerStage[] };
           setServerLogs(collectLogs(body.stages ?? []));
         } catch {
@@ -111,35 +90,80 @@ export default function Home() {
         }
       }, LOG_POLL_MS);
 
-      const outcome = await runPipeline(payload.investigationId, { onStage: applyStage });
-
+      const outcome = await runPipeline(investigationId, { onStage: applyStage });
       if (!outcome.ok) {
         throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
       }
 
       try {
-        const status = await fetch(`/api/investigations/${payload.investigationId}/status`);
-        const statusPayload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
-        setServerLogs(collectLogs(statusPayload.stages ?? []));
+        const status = await fetch(`/api/investigations/${investigationId}/status`);
+        const payload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
+        setServerLogs(collectLogs(payload.stages ?? []));
       } catch {
-        // The final log refresh is cosmetic; the run itself already succeeded.
+        // Cosmetic refresh only.
       }
 
-      router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: false }));
+      router.push(resultsHref(investigationId, { synthetic: isSynthetic, cached: false }));
+    } finally {
+      if (poller) clearInterval(poller);
+    }
+  }
+
+  async function upload(uploadFiles: File[], isSynthetic: boolean) {
+    setBusy(true);
+    setError(null);
+    setStages({});
+    setServerLogs({});
+    setWarnings([]);
+    setEventCount(null);
+    setSynthetic(isSynthetic);
+    setRun(null);
+
+    try {
+      const form = new FormData();
+      for (const file of uploadFiles) {
+        form.append("files", file, file.webkitRelativePath || file.name);
+      }
+      form.append("escalation", escalation);
+
+      const response = await fetch("/api/investigations", { method: "POST", body: form });
+      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
+        error?: string;
+      };
+      if (!response.ok || !payload.investigationId) {
+        throw new Error(payload.error ?? "Upload failed.");
+      }
+
+      setEventCount(payload.eventCount ?? 0);
+      setWarnings(payload.warnings ?? []);
+      setRun({ id: payload.investigationId, synthetic: isSynthetic });
+
+      if (payload.cached) {
+        setStages({ assemble: { status: "done", pass: 1 } });
+        router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: true }));
+        return;
+      }
+
+      await drivePipeline(payload.investigationId, isSynthetic);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
-      if (poller) clearInterval(poller);
       setBusy(false);
     }
   }
 
-  function collectLogs(stages: ServerStage[]): Record<string, unknown[]> {
-    const logs: Record<string, unknown[]> = {};
-    for (const stage of stages) {
-      if (stage.log.length > 0) logs[stage.stage] = stage.log;
+  async function retry() {
+    if (!run) return;
+    setBusy(true);
+    setError(null);
+    setStages({});
+    try {
+      await drivePipeline(run.id, run.synthetic);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
     }
-    return logs;
   }
 
   async function loadDemo() {
@@ -155,122 +179,217 @@ export default function Home() {
           const response = await fetch(`/demo/${name}`);
           if (!response.ok) throw new Error(`Missing demo file: ${name}`);
           const blob = await response.blob();
-          // Keep the manifest path as the file name so Slack's per-channel
-          // folder structure survives into the ingest route.
+          // Keep the manifest path so Slack's per-channel folders survive ingest.
           return new File([blob], name, { type: blob.type });
         }),
       );
-      await submit(loaded, true);
+      await upload(loaded, true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setBusy(false);
     }
   }
 
-  return (
-    <main className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-8 px-6 py-12">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Anduin Investigator</h1>
-        <p className="text-sm text-neutral-600">
-          Upload a project&apos;s Jira, email and Slack exports. The tool builds one event store and
-          produces a source-backed timeline, commitments ledger and gaps list.
-        </p>
-      </header>
+  const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    if (busy) return;
+    const dropped = Array.from(event.dataTransfer.files);
+    if (dropped.length > 0) setFiles(dropped);
+  };
 
-      <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-5">
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Escalation (optional)</span>
+  const doneCount = STAGE_ROWS.filter((row) => stages[row.key]?.status === "done").length;
+  const started = Object.keys(stages).length > 0;
+  const progress = Math.round((doneCount / STAGE_ROWS.length) * 100);
+
+  return (
+    <div className="shell flex flex-col gap-8">
+      <section className="flex flex-col gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Reconstruct what actually happened
+        </h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted">
+          Drop in a project&apos;s Jira, email and Slack exports. The tool builds one event store,
+          runs investigators over it, verifies every claim against its source quote, and gives you a
+          timeline, a commitments ledger and the gaps in the record.
+        </p>
+      </section>
+
+      <section className="card flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <label className="field-label" htmlFor="escalation">
+            Escalation <span className="font-normal text-muted">(optional)</span>
+          </label>
           <textarea
-            className="min-h-24 rounded border border-neutral-300 p-2 text-sm"
+            id="escalation"
+            className="input min-h-24"
             placeholder="Paste the client escalation. Leave blank and the analyst will infer it from the records."
             value={escalation}
             onChange={(event) => setEscalation(event.target.value)}
             disabled={busy}
           />
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Exports</span>
-          <input
-            type="file"
-            multiple
-            className="text-sm"
-            onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
-            disabled={busy}
-          />
-          <input
-            ref={directoryInput}
-            type="file"
-            multiple
-            className="text-sm"
-            onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
-            disabled={busy}
-          />
-          <span className="text-xs text-neutral-500">
-            Jira JSON, .mbox/.eml email, a Slack export folder (pick the folder above, or a .zip of
-            it). Up to 8 MB.
-          </span>
-        </label>
+        <div
+          className={`flex flex-col gap-3 rounded-xl border-2 border-dashed p-4 transition-colors ${
+            dragging ? "border-accent bg-surface-2" : "border-line"
+          }`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+        >
+          <p className="text-sm font-medium">
+            Exports <span className="font-normal text-muted">— drag files here, or choose them</span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="btn btn-secondary cursor-pointer">
+              Choose files
+              <input
+                type="file"
+                multiple
+                className="sr-only"
+                onChange={(event) =>
+                  setFiles(event.target.files ? Array.from(event.target.files) : [])
+                }
+                disabled={busy}
+              />
+            </label>
+            <label className="btn btn-secondary cursor-pointer">
+              Choose Slack folder
+              <input
+                ref={directoryInput}
+                type="file"
+                multiple
+                className="sr-only"
+                onChange={(event) =>
+                  setFiles(event.target.files ? Array.from(event.target.files) : [])
+                }
+                disabled={busy}
+              />
+            </label>
+            {files.length > 0 && (
+              <button type="button" className="btn btn-ghost" onClick={() => setFiles([])} disabled={busy}>
+                clear
+              </button>
+            )}
+          </div>
+          <p className="hint">
+            Jira JSON · <span className="font-mono">.mbox</span>/{" "}
+            <span className="font-mono">.eml</span> email · a Slack export folder or a{" "}
+            <span className="font-mono">.zip</span> of it. Up to 8&nbsp;MB.
+          </p>
+          {files.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5">
+              {files.map((file) => (
+                <li key={`${file.webkitRelativePath || file.name}-${file.size}`} className="pill pill-neutral font-mono">
+                  {file.webkitRelativePath || file.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="btn btn-primary"
             disabled={busy || files.length === 0}
-            onClick={() => submit(files, false)}
+            onClick={() => upload(files, false)}
           >
-            Run investigation
+            {busy ? "Running…" : "Run investigation"}
           </button>
-          <button
-            type="button"
-            className="rounded border border-neutral-300 px-4 py-2 text-sm disabled:opacity-50"
-            disabled={busy}
-            onClick={loadDemo}
-          >
+          <button type="button" className="btn btn-secondary" disabled={busy} onClick={loadDemo}>
             Load built-in demo exports
           </button>
         </div>
 
         {synthetic && (
-          <p className="text-xs font-medium text-amber-700">Synthetic demo data (Northwind / Meridian).</p>
+          <p className="callout callout-warn">
+            <span aria-hidden>◆</span>
+            Synthetic demo data (Northwind / Meridian) — generated exports, not a real project.
+          </p>
         )}
-        {eventCount !== null && (
-          <p className="text-xs text-neutral-500">{eventCount} events ingested.</p>
+        {eventCount !== null && !busy && (
+          <p className="hint">{eventCount} events ingested.</p>
         )}
         {warnings.length > 0 && (
-          <ul className="list-disc pl-5 text-xs text-neutral-500">
+          <ul className="flex flex-col gap-1">
             {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
+              <li key={warning} className="callout callout-info">
+                <span aria-hidden>•</span>
+                {warning}
+              </li>
             ))}
           </ul>
         )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <div className="callout callout-bad">
+            <span aria-hidden>✗</span>
+            <div className="flex flex-col gap-2">
+              <span>{error}</span>
+              {run && (
+                <div className="flex gap-2">
+                  <button type="button" className="btn btn-secondary" onClick={retry} disabled={busy}>
+                    Retry run
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setError(null);
+                      setStages({});
+                      setRun(null);
+                    }}
+                  >
+                    Start over
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">Progress</h2>
-        <ul className="flex flex-col gap-1 text-sm">
-          {Object.entries(STAGE_LABELS).map(([stage, label]) => {
-            const state = stages[stage];
+      <section className="card flex flex-col gap-4" aria-live="polite">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">Progress</h2>
+          <span className="hint">
+            {doneCount}/{STAGE_ROWS.length} stages
+          </span>
+        </div>
+
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-500"
+            style={{ width: `${started ? progress : 0}%` }}
+          />
+        </div>
+
+        <ul className="flex flex-col gap-2">
+          {STAGE_ROWS.map((row) => {
+            const state = stages[row.key];
             const status = state?.status ?? "pending";
-            const icon = status === "done" ? "✓" : status === "running" ? "…" : status === "error" ? "✗" : "•";
+            const logs = serverLogs[row.key];
             return (
-              <li key={stage} className="flex flex-col gap-1">
-                <div className="flex items-start gap-2">
-                  <span className="w-4 text-center">{icon}</span>
-                  <span className="flex-1">{label}</span>
+              <li key={row.key} className="flex flex-col gap-1">
+                <div className="flex items-start gap-2 text-sm">
+                  <StageIcon status={status} />
+                  <span className={status === "pending" ? "text-muted" : "text-ink"}>{row.label}</span>
                   {state?.pass && state.pass > 1 && (
-                    <span className="text-xs text-neutral-500">retry pass {state.pass}</span>
+                    <span className="pill pill-info">retry pass {state.pass}</span>
                   )}
-                  {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+                  {state?.error && <span className="text-xs text-bad-fg">{state.error}</span>}
                 </div>
-                {serverLogs[stage] && serverLogs[stage].length > 0 && (
-                  <details className="ml-6 text-xs text-neutral-500">
-                    <summary className="cursor-pointer">
-                      tool log ({serverLogs[stage].length} entries)
+                {logs && logs.length > 0 && (
+                  <details className="ml-6 text-xs text-muted">
+                    <summary className="cursor-pointer hover:text-ink">
+                      tool log ({logs.length} entries)
                     </summary>
-                    <pre className="mt-1 max-h-40 overflow-auto rounded bg-neutral-50 p-2">
-                      {serverLogs[stage].map((entry) => JSON.stringify(entry)).join("\n")}
+                    <pre className="mt-1 max-h-40 overflow-auto rounded-lg border border-line bg-surface-2 p-2">
+                      {logs.map((entry) => JSON.stringify(entry)).join("\n")}
                     </pre>
                   </details>
                 )}
@@ -279,6 +398,35 @@ export default function Home() {
           })}
         </ul>
       </section>
-    </main>
+    </div>
+  );
+}
+
+function StageIcon({ status }: { status: string }) {
+  if (status === "done") {
+    return (
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ok-bg text-[11px] text-ok-fg" aria-label="done">
+        ✓
+      </span>
+    );
+  }
+  if (status === "running") {
+    return (
+      <span className="grid h-5 w-5 shrink-0 place-items-center" aria-label="running">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" />
+      </span>
+    );
+  }
+  if (status === "error") {
+    return (
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-bad-bg text-[11px] text-bad-fg" aria-label="failed">
+        ✗
+      </span>
+    );
+  }
+  return (
+    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-line text-[10px] text-muted" aria-label="pending">
+      ○
+    </span>
   );
 }

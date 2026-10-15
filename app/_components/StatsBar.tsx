@@ -11,36 +11,38 @@ interface StatsBarProps {
 export function StatsBar({ stats, eventCount, synthetic, cached, identities }: StatsBarProps) {
   const applied = identities.filter((identity) => identity.applied);
   const proposed = identities.filter((identity) => !identity.applied);
+  const verifiedPct = stats.total > 0 ? Math.round((stats.kept / stats.total) * 100) : 0;
 
   return (
-    <section className="flex flex-col gap-2 rounded border border-neutral-200 p-3 text-xs">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded bg-neutral-100 px-2 py-0.5">
-          {stats.kept}/{stats.total} claims verified
+    <section className="sticky top-0 z-10 flex flex-col gap-2 rounded-xl border border-line bg-surface/95 p-3 text-xs shadow-sm backdrop-blur">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`pill ${stats.kept === stats.total && stats.total > 0 ? "pill-ok" : "pill-neutral"}`}>
+          {stats.kept}/{stats.total} claims verified ({verifiedPct}%)
         </span>
-        <span className={`rounded px-2 py-0.5 ${stats.excluded > 0 ? "bg-red-100 text-red-800" : "bg-neutral-100"}`}>
+        <span className={`pill ${stats.excluded > 0 ? "pill-bad" : "pill-neutral"}`}>
           {stats.excluded} excluded
         </span>
-        <span
-          className={`rounded px-2 py-0.5 ${stats.flagged > 0 ? "bg-amber-100 text-amber-800" : "bg-neutral-100"}`}
-        >
+        <span className={`pill ${stats.flagged > 0 ? "pill-warn" : "pill-neutral"}`}>
           {stats.flagged} flagged by skeptic
         </span>
-        <span className="text-neutral-500">{eventCount} events in the timeline</span>
-        {synthetic && <span className="rounded bg-amber-200 px-2 py-0.5 text-amber-900">synthetic demo data</span>}
-        {cached && <span className="rounded bg-neutral-200 px-2 py-0.5">cached run</span>}
+        <span className="pill pill-neutral">{eventCount} events</span>
+        {synthetic && <span className="pill pill-warn">synthetic demo data</span>}
+        {cached && <span className="pill pill-info">cached run</span>}
       </div>
 
       {identities.length > 0 && (
-        <details className="text-neutral-600">
-          <summary className="cursor-pointer">
-            identity resolution ({applied.length} applied, {proposed.length} proposed)
+        <details className="text-muted">
+          <summary className="cursor-pointer hover:text-ink">
+            identity resolution — {applied.length} applied, {proposed.length} suggested but not applied
           </summary>
-          <ul className="mt-1 flex flex-col gap-0.5 font-mono">
+          <ul className="mt-2 flex flex-col gap-1 font-mono text-[11px]">
             {identities.map((identity, index) => (
               <li key={`${identity.alias}->${identity.canonical}-${index}`}>
-                {identity.alias} → {identity.canonical} [{identity.method}
-                {identity.applied ? "" : ", not applied"}]
+                {identity.alias} → {identity.canonical}{" "}
+                <span className={identity.applied ? "text-ok-fg" : "text-warn-fg"}>
+                  [{identity.method}
+                  {identity.applied ? "" : ", not applied"}]
+                </span>
               </li>
             ))}
           </ul>

@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { buildResult } from "@/lib/pipeline/assemble";
 import { CommitmentsTable } from "@/app/_components/CommitmentsTable";
 import { GapsPanel } from "@/app/_components/GapsPanel";
 import { StatsBar } from "@/app/_components/StatsBar";
 import { Timeline } from "@/app/_components/Timeline";
+import { buildResult } from "@/lib/pipeline/assemble";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +27,23 @@ export default async function InvestigationPage({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">{result.investigation.title}</h1>
+    <div className="shell flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <Link href="/" className="text-xs text-muted hover:text-ink">
+          ← New investigation
+        </Link>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            {result.investigation.title}
+          </h1>
+          <p className="hint font-mono">{result.investigation.id}</p>
+        </div>
         {result.investigation.escalationText && (
-          <p className="max-w-3xl text-sm text-neutral-600">{result.investigation.escalationText}</p>
+          <blockquote className="border-l-2 border-line-strong pl-3 text-sm leading-relaxed text-muted">
+            {result.investigation.escalationText}
+          </blockquote>
         )}
-      </header>
+      </div>
 
       <StatsBar
         stats={result.stats}
@@ -42,20 +53,29 @@ export default async function InvestigationPage({
         identities={result.identities}
       />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">Timeline</h2>
+      <section className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">Timeline</h2>
+          <span className="hint">chronological, all sources</span>
+        </div>
         <Timeline timeline={result.timeline} claims={result.claims} />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">Commitments ledger</h2>
+      <section className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">Commitments ledger</h2>
+          <span className="hint">promised vs delivered</span>
+        </div>
         <CommitmentsTable ledger={result.ledger} />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">What we could not determine</h2>
+      <section className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">What we could not determine</h2>
+          <span className="hint">never guessed</span>
+        </div>
         <GapsPanel gaps={result.gaps} notes={result.skepticNotes} />
       </section>
-    </main>
+    </div>
   );
 }
