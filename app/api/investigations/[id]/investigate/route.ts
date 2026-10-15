@@ -9,7 +9,6 @@ import {
   readPass,
   runStage,
 } from "@/lib/api/pipeline";
-import { getInvestigation } from "@/lib/store";
 
 export const maxDuration = 60;
 
@@ -33,14 +32,13 @@ export async function POST(
   const plan = found.investigation.plan ?? "";
 
   return runStage(id, kind as InvestigatorKind, pass, async () => {
-    const investigation = await getInvestigation(id);
     const result = await runInvestigator(id, kind as InvestigatorKind, plan, pass);
     return {
       kind,
       pass,
       claimCount: result.claims.length,
       toolCalls: result.log.map((entry) => entry.name),
-      title: investigation?.title ?? null,
+      title: found.investigation.title,
     };
   });
 }

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { json, readId, readInvestigationOrDefault } from "@/lib/api/pipeline";
+import { json, readId, readInvestigationOrDefault, tailLog } from "@/lib/api/pipeline";
 import { getStages } from "@/lib/store";
 
 export const maxDuration = 60;
@@ -17,6 +17,6 @@ export async function GET(
 
   return json({
     investigation: found.investigation,
-    stages,
+    stages: tailLog(found.investigation, stages),
   });
 }

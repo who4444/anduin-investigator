@@ -133,6 +133,21 @@ describeDb("pipeline routes", () => {
     expect(response.status).toBe(404);
   });
 
+  it("400s a malformed investigation id instead of leaking a database error", async () => {
+    const { POST } = await import("../app/api/investigations/[id]/plan/route");
+    const { GET: resultRoute } = await import("../app/api/investigations/[id]/result/route");
+
+    const planResponse = await POST(post("http://localhost/plan"), context("not-a-uuid"));
+    expect(planResponse.status).toBe(400);
+
+    const resultResponse = await resultRoute(
+      new NextRequest("http://localhost/result"),
+      context("not-a-uuid"),
+    );
+    expect(resultResponse.status).toBe(400);
+    expect((await resultResponse.json()).error).toMatch(/valid identifier/i);
+  });
+
   it("verifies and assembles, then serves the result without re-logging the assemble stage", async () => {
     const { POST: verify } = await import("../app/api/investigations/[id]/verify/route");
     const { POST: assembleRoute } = await import("../app/api/investigations/[id]/assemble/route");

@@ -1,4 +1,4 @@
-import type { Investigation, StageName } from "../types";
+import type { Investigation, Stage, StageName } from "../types";
 import { getInvestigation, upsertStage } from "../store";
 
 export function json(body: unknown, status = 200): Response {
@@ -9,13 +9,16 @@ export function errorResponse(message: string, status: number): Response {
   return json({ error: message }, status);
 }
 
+const LOG_TAIL = 20;
+
 export async function readInvestigationOrDefault(
   id: string,
 ): Promise<{ investigation: Investigation } | { response: Response }> {
   let investigation: Investigation | null = null;
   try {
     investigation = await getInvestigation(id);
-  } catch {
+  } catch (error) {
+    if (!isUuidSyntaxError(error)) throw error;
     return { response: errorResponse("Investigation id is not a valid identifier.", 400) };
   }
 
@@ -23,6 +26,15 @@ export async function readInvestigationOrDefault(
     return { response: errorResponse(`No investigation with id ${id}.`, 404) };
   }
   return { investigation };
+}
+
+function isUuidSyntaxError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /invalid input syntax for type uuid/i.test(message);
+}
+
+export function tailLog(investigation: Investigation, stages: Stage[]): Stage[] {
+  return stages.map((stage) => ({ ...stage, log: stage.log.slice(-LOG_TAIL) }));
 }
 
 export function readPass(body: unknown, fallback = 1): number {
