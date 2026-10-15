@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
@@ -26,8 +26,9 @@ interface UploadResult {
 
 export default function Home() {
   const router = useRouter();
+  const directoryInput = useRef<HTMLInputElement | null>(null);
   const [escalation, setEscalation] = useState("");
-  const [files, setFiles] = useState<FileList | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -35,11 +36,24 @@ export default function Home() {
   const [stages, setStages] = useState<Record<string, StageState>>({});
   const [eventCount, setEventCount] = useState<number | null>(null);
 
+  useEffect(() => {
+    directoryInput.current?.setAttribute("webkitdirectory", "");
+    directoryInput.current?.setAttribute("directory", "");
+  }, []);
+
   const applyStage = (update: StageUpdate) => {
     setStages((current) => ({
       ...current,
       [update.stage]: { status: update.status, error: update.error ?? null, pass: update.pass },
     }));
+  };
+
+  const resultsHref = (id: string, flags: { synthetic: boolean; cached: boolean }) => {
+    const query = new URLSearchParams();
+    if (flags.synthetic) query.set("synthetic", "1");
+    if (flags.cached) query.set("cached", "1");
+    const suffix = query.toString();
+    return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
   };
 
   async function submit(uploadFiles: File[], isSynthetic: boolean) {
@@ -66,7 +80,7 @@ export default function Home() {
 
       if (payload.cached) {
         setStages({ assemble: { status: "done", pass: 1 } });
-        router.push(`/investigations/${payload.investigationId}`);
+        router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: true }));
         return;
       }
 
@@ -75,7 +89,7 @@ export default function Home() {
         throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
       }
 
-      router.push(`/investigations/${payload.investigationId}`);
+      router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: false }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -84,6 +98,7 @@ export default function Home() {
   }
 
   async function loadDemo() {
+    setBusy(true);
     setError(null);
     try {
       const manifestResponse = await fetch("/demo/manifest.json");
@@ -133,11 +148,20 @@ export default function Home() {
             type="file"
             multiple
             className="text-sm"
-            onChange={(event) => setFiles(event.target.files)}
+            onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
+            disabled={busy}
+          />
+          <input
+            ref={directoryInput}
+            type="file"
+            multiple
+            className="text-sm"
+            onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
             disabled={busy}
           />
           <span className="text-xs text-neutral-500">
-            Jira JSON, .mbox/.eml email, a Slack export folder (or a .zip of it). Up to 8 MB.
+            Jira JSON, .mbox/.eml email, a Slack export folder (pick the folder above, or a .zip of
+            it). Up to 8 MB.
           </span>
         </label>
 
@@ -145,8 +169,8 @@ export default function Home() {
           <button
             type="button"
             className="rounded bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-            disabled={busy || !files || files.length === 0}
-            onClick={() => files && submit(Array.from(files), false)}
+            disabled={busy || files.length === 0}
+            onClick={() => submit(files, false)}
           >
             Run investigation
           </button>

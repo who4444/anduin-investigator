@@ -53,11 +53,16 @@ export async function runPipeline(
     notifyName: string = stage,
   ) => {
     notify(notifyName as StageName, pass, "running");
-    const response = await fetchImpl(`${base}/${stage}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ pass, ...body }),
-    });
+    let response: Response;
+    try {
+      response = await fetchImpl(`${base}/${stage}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pass, ...body }),
+      });
+    } catch (error) {
+      throw new StageError(notifyName, pass, error instanceof Error ? error.message : String(error));
+    }
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
       const message = typeof payload.error === "string" ? payload.error : `Stage ${stage} failed.`;
@@ -65,6 +70,28 @@ export async function runPipeline(
     }
     notify(notifyName as StageName, pass, "done");
     return payload;
+  };
+
+  const reportedErrors = new Set<string>();
+  const reportError = (error: unknown) => {
+    const stageError = error instanceof StageError ? error : undefined;
+    const key = `${stageError?.stage ?? "unknown"}:${stageError?.pass ?? 1}`;
+    if (reportedErrors.has(key)) return;
+    reportedErrors.add(key);
+    if (stageError) {
+      notify(stageError.stage as StageName, stageError.pass, "error", stageError.message);
+    }
+  };
+
+  const runInvestigators = async (kinds: readonly InvestigatorKindName[], pass: number) => {
+    const results = await Promise.allSettled(
+      kinds.map((kind) => callStage("investigate", pass, { kind }, kind)),
+    );
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    for (const failure of failures) reportError(failure.reason);
+    if (failures.length > 0) throw failures[0].reason;
   };
 
   let retries = 0;
@@ -76,9 +103,7 @@ export async function runPipeline(
       const pass = 1 + retries;
 
       if (retries === 0) {
-        await Promise.all(
-          INVESTIGATOR_KINDS.map((kind) => callStage("investigate", pass, { kind }, kind)),
-        );
+        await runInvestigators(INVESTIGATOR_KINDS, pass);
       }
 
       try {
@@ -100,26 +125,24 @@ export async function runPipeline(
         return { ok: true, retries };
       }
 
+      const retryKinds = missing.filter((kind): kind is InvestigatorKindName =>
+        (INVESTIGATOR_KINDS as readonly string[]).includes(kind),
+      );
+      if (retryKinds.length === 0) {
+        return { ok: true, retries };
+      }
+
       retries += 1;
       const retryPass = 1 + retries;
       options.onMissingRetry?.(missing, retryPass);
-      await Promise.all(
-        missing
-          .filter((kind): kind is InvestigatorKindName =>
-            (INVESTIGATOR_KINDS as readonly string[]).includes(kind),
-          )
-          .map((kind) => callStage("investigate", retryPass, { kind }, kind)),
-      );
+      await runInvestigators(retryKinds, retryPass);
     }
   } catch (error) {
+    reportError(error);
     const stageError = error instanceof StageError ? error : undefined;
-    const message = error instanceof Error ? error.message : String(error);
-    if (stageError) {
-      notify(stageError.stage as StageName, stageError.pass, "error", message);
-    }
     return {
       ok: false,
-      error: message,
+      error: error instanceof Error ? error.message : String(error),
       stage: stageError?.stage ?? "unknown",
       pass: stageError?.pass ?? 1,
     };
