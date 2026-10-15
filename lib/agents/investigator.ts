@@ -168,7 +168,7 @@ export async function runInvestigator(
 
   await appendStageLog(investigationId, kind, pass, {
     rounds: toolLog.length,
-    toolCalls: toolLog.map((entry) => entry.name),
+    toolCalls: toolLog,
     notes: notes.length,
   });
 
