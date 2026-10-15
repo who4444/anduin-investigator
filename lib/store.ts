@@ -7,12 +7,15 @@ import type {
   ClaimStatus,
   Event,
   EventInput,
+  Gap,
   GapInput,
   IdentityResolution,
   IdentityResolutionInput,
   Investigation,
   NewInvestigation,
+  SkepticNote,
   SkepticNoteInput,
+  SkepticNoteKind,
   SourceKind,
   Stage,
   StageName,
@@ -119,8 +122,45 @@ function mapClaim(row: ClaimRow): Claim {
   };
 }
 
-interface StageRow {
-  stage: string;
+interface GapRow {
+  id: string;
+  investigation_id: string;
+  question: string;
+  note: string;
+  event_ids: string[] | null;
+}
+
+function mapGap(row: GapRow): Gap {
+  return {
+    id: row.id,
+    investigationId: row.investigation_id,
+    question: row.question,
+    note: row.note,
+    eventIds: row.event_ids ?? [],
+  };
+}
+
+interface SkepticNoteRow {
+  id: string;
+  investigation_id: string;
+  claim_id: string | null;
+  kind: string;
+  text: string;
+  event_ids: string[] | null;
+}
+
+function mapSkepticNote(row: SkepticNoteRow): SkepticNote {
+  return {
+    id: row.id,
+    investigationId: row.investigation_id,
+    claimId: row.claim_id ?? undefined,
+    kind: row.kind as SkepticNoteKind,
+    text: row.text,
+    eventIds: row.event_ids ?? [],
+  };
+}
+
+interface StageRow {  stage: string;
   pass: number;
   status: string;
   error: string | null;
@@ -362,6 +402,28 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     event_ids: sql.array(gap.eventIds, 25),
   }));
   await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids")}`;
+}
+
+export async function getGaps(investigationId: string): Promise<Gap[]> {
+  const sql = getPool();
+  const rows = await sql<GapRow[]>`
+    select id, investigation_id, question, note, event_ids
+    from gaps
+    where investigation_id = ${investigationId}
+    order by seq asc
+  `;
+  return rows.map(mapGap);
+}
+
+export async function getSkepticNotes(investigationId: string): Promise<SkepticNote[]> {
+  const sql = getPool();
+  const rows = await sql<SkepticNoteRow[]>`
+    select id, investigation_id, claim_id, kind, text, event_ids
+    from skeptic_notes
+    where investigation_id = ${investigationId}
+    order by seq asc
+  `;
+  return rows.map(mapSkepticNote);
 }
 
 export async function upsertStage(

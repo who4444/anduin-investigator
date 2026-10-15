@@ -101,7 +101,24 @@ export interface SkepticNoteInput {
   eventIds: string[];
 }
 
+export interface SkepticNote {
+  id: string;
+  investigationId: string;
+  claimId?: string;
+  kind: SkepticNoteKind;
+  text: string;
+  eventIds: string[];
+}
+
 export interface GapInput {
+  question: string;
+  note: string;
+  eventIds: string[];
+}
+
+export interface Gap {
+  id: string;
+  investigationId: string;
   question: string;
   note: string;
   eventIds: string[];
