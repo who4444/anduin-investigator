@@ -1,0 +1,36 @@
+{
+  "name": "anduin-investigator",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "tsx lib/db/migrate.ts",
+    "db:up": "docker compose up -d",
+    "demo:gen": "tsx scripts/gen-demo.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "16.4.1",
+    "postgres": "^3.4.5",
+    "postal-mime": "^2.4.3",
+    "fflate": "^0.8.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.2",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  }
+}
