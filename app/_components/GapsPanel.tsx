@@ -8,8 +8,6 @@ const KIND_STYLES: Record<string, string> = {
 };
 
 export function GapsPanel({ gaps, notes }: { gaps: Gap[]; notes: SkepticNote[] }) {
-  const skepticOnly = notes.filter((note) => note.kind === "contradiction" || note.kind === "unsupported");
-
   return (
     <div className="flex flex-col gap-4 text-xs">
       <section className="flex flex-col gap-2">
@@ -30,14 +28,17 @@ export function GapsPanel({ gaps, notes }: { gaps: Gap[]; notes: SkepticNote[] }
 
       <section className="flex flex-col gap-2">
         <h3 className="font-semibold text-neutral-600">Skeptic findings</h3>
-        {skepticOnly.length === 0 && (
-          <p className="text-neutral-500">The skeptic raised no contradictions or unsupported claims.</p>
+        {notes.length === 0 && (
+          <p className="text-neutral-500">The skeptic raised no contradictions, unsupported claims or silences.</p>
         )}
         <ul className="flex flex-col gap-2">
-          {skepticOnly.map((note) => (
+          {notes.map((note) => (
             <li key={note.id} className="rounded border border-neutral-200 p-3">
               <span className={`rounded px-1 ${KIND_STYLES[note.kind] ?? "bg-neutral-100"}`}>{note.kind}</span>
               <p className="mt-1 text-neutral-700">{note.text}</p>
+              {note.eventIds.length > 0 && (
+                <p className="mt-1 font-mono text-neutral-400">{note.eventIds.join(", ")}</p>
+              )}
             </li>
           ))}
         </ul>

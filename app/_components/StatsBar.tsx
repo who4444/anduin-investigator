@@ -18,12 +18,14 @@ export function StatsBar({ stats, eventCount, synthetic, cached, identities }: S
         <span className="rounded bg-neutral-100 px-2 py-0.5">
           {stats.kept}/{stats.total} claims verified
         </span>
-        {stats.excluded > 0 && (
-          <span className="rounded bg-red-100 px-2 py-0.5 text-red-800">{stats.excluded} excluded</span>
-        )}
-        {stats.flagged > 0 && (
-          <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-800">{stats.flagged} flagged by skeptic</span>
-        )}
+        <span className={`rounded px-2 py-0.5 ${stats.excluded > 0 ? "bg-red-100 text-red-800" : "bg-neutral-100"}`}>
+          {stats.excluded} excluded
+        </span>
+        <span
+          className={`rounded px-2 py-0.5 ${stats.flagged > 0 ? "bg-amber-100 text-amber-800" : "bg-neutral-100"}`}
+        >
+          {stats.flagged} flagged by skeptic
+        </span>
         <span className="text-neutral-500">{eventCount} events in the timeline</span>
         {synthetic && <span className="rounded bg-amber-200 px-2 py-0.5 text-amber-900">synthetic demo data</span>}
         {cached && <span className="rounded bg-neutral-200 px-2 py-0.5">cached run</span>}
@@ -35,8 +37,8 @@ export function StatsBar({ stats, eventCount, synthetic, cached, identities }: S
             identity resolution ({applied.length} applied, {proposed.length} proposed)
           </summary>
           <ul className="mt-1 flex flex-col gap-0.5 font-mono">
-            {identities.map((identity) => (
-              <li key={`${identity.alias}->${identity.canonical}`}>
+            {identities.map((identity, index) => (
+              <li key={`${identity.alias}->${identity.canonical}-${index}`}>
                 {identity.alias} → {identity.canonical} [{identity.method}
                 {identity.applied ? "" : ", not applied"}]
               </li>

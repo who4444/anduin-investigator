@@ -30,7 +30,12 @@ export function Timeline({ timeline, claims }: TimelineProps) {
   const sources = useMemo(() => Array.from(new Set(timeline.map((event) => event.source))).sort(), [timeline]);
 
   const committedEventIds = useMemo(
-    () => new Set(claims.filter((claim) => claim.type === "commitment").map((claim) => claim.eventId)),
+    () =>
+      new Set(
+        claims
+          .filter((claim) => claim.type === "commitment" && claim.verifyStatus !== "excluded")
+          .map((claim) => claim.eventId),
+      ),
     [claims],
   );
 
@@ -93,7 +98,7 @@ export function Timeline({ timeline, claims }: TimelineProps) {
 
       <ul className="flex flex-col divide-y divide-neutral-200 rounded border border-neutral-200">
         {visible.map((event) => (
-          <li key={event.id}>
+          <li key={event.id} id={`event-${event.id}`} className="scroll-mt-4">
             <button
               type="button"
               className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-neutral-50"
@@ -108,7 +113,8 @@ export function Timeline({ timeline, claims }: TimelineProps) {
               >
                 {event.source}
               </span>
-              <span className="flex-1 text-xs text-neutral-700">{compactEvent(event, 140).text}</span>
+              <span className="w-28 shrink-0 truncate text-xs text-neutral-500">{event.channel}</span>
+              <span className="flex-1 text-xs text-neutral-700">{compactEvent(event, 120).text}</span>
             </button>
           </li>
         ))}
