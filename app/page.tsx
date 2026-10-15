@@ -114,7 +114,9 @@ export default function Home() {
           const response = await fetch(`/demo/${name}`);
           if (!response.ok) throw new Error(`Missing demo file: ${name}`);
           const blob = await response.blob();
-          return new File([blob], name.split("/").pop() ?? name, { type: blob.type });
+          // Keep the manifest path as the file name so Slack's per-channel
+          // folder structure survives into the ingest route.
+          return new File([blob], name, { type: blob.type });
         }),
       );
       await submit(loaded, true);

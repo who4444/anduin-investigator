@@ -48,8 +48,17 @@ async function ingestDemo(): Promise<EventInput[]> {
 describe("demo scenario round-trip", () => {
   it("parses every generated export without throwing", async () => {
     const events = await ingestDemo();
-    expect(events.length).toBeGreaterThanOrEqual(35);
-    expect(events.length).toBeLessThanOrEqual(60);
+    expect(events.length).toBeGreaterThanOrEqual(40);
+    expect(events.length).toBeLessThanOrEqual(50);
+  });
+
+  it("keeps the Slack export's per-channel structure", async () => {
+    const events = await ingestDemo();
+    const slackChannels = new Set(
+      events.filter((event) => event.source === "slack").map((event) => event.channel),
+    );
+
+    expect(slackChannels).toEqual(new Set(["meridian-billing", "general"]));
   });
 
   it("covers all three sources with mixed timestamp formats normalised to UTC", async () => {
