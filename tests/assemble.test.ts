@@ -46,7 +46,7 @@ describeDb("verify + assemble", () => {
     // root_cause: one claim that verifies, one whose quote is wrong (excluded).
     // commitments: one verifying commitment.
     // ownership: none — so it is "missing" and can trigger a retry.
-    const inserted = await insertClaims(investigationId, [
+    await insertClaims(investigationId, [
       {
         agent: "root_cause",
         type: "root_cause",
@@ -77,12 +77,6 @@ describeDb("verify + assemble", () => {
         confidence: 0.8,
       },
     ]);
-
-    const { setClaimVerification } = await import("../lib/store");
-    // Simulate the excluded claim's verification state indirectly through runClaimVerification below.
-    void inserted;
-    void setClaimVerification;
-    void investigationId;
   });
 
   afterAll(async () => {
