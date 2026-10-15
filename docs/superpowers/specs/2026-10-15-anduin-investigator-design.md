@@ -29,6 +29,17 @@ answer an upset client now. Success metric: time to a trustworthy answer.
 - Optional only if time remains: live Jira/Slack sandbox pull behind a Source interface; client-reply draft grounded only in verified claims; time scrubber.
 - Anti-goals: hardcoded demo outputs; invented content for events with no record; model-judged "verification".
 
+## Architecture: agents retrieve, code verifies
+
+Agents do the retrieval. They call source tools to find and read items. The tool
+layer, not the agent, is the system of record: every item a source tool returns
+is normalized and saved to the Evidence Registry automatically, with source,
+item ID, UTC timestamp, author, full raw text and URL. Agents cite an item ID
+plus an exact quote. A deterministic verifier checks that quote against the
+stored raw text. Trust never depends on what an agent claims it saw.
+(In code the registry rows are the `events` table / `Event` type; "item" is the
+user-facing name for the same thing.)
+
 ## Non-negotiable rules
 
 - No hardcoded outputs. Everything shown is produced live from the input files. The demo answer key lives in README only, never in app runtime.
@@ -38,6 +49,7 @@ answer an upset client now. Success metric: time to a trustworthy answer.
 - Never invent content for events with no record; list unknowns in the gaps panel.
 - Must work on judge-supplied exports, not just the built-in scenario.
 - Label synthetic data as synthetic. Label any cached fallback run as cached.
+- Report coverage honestly: which sources and queries were actually searched.
 
 ## Pipeline
 
@@ -49,8 +61,8 @@ answer an upset client now. Success metric: time to a trustworthy answer.
    - Root cause: what went wrong technically, when it first appeared, failed fixes
    - Commitments: promises and whether they were kept
    - Decisions & ownership: who decided/owned what, handoffs, escalations
-4. Skeptic (runs after the others): finds contradictions, unsupported claims, suspicious silences, unanswered questions. Feeds the "could not determine" list.
-5. Verifier is CODE, not a model: every claim carries exact quote + event_id; verifier checks (whitespace-normalized) that the quote appears verbatim in that event. Failed claims are flagged and excluded from the timeline. If key questions remain unanswered, allow one retry pass (max 1–2 iterations).
+4. Skeptic (runs after the others): finds contradictions, unsupported claims, suspicious silences, unanswered questions, and sources or angles that were never searched. Feeds the "could not determine" list.
+5. Verifier is CODE, not a model: every claim carries exact quote + event_id; verifier checks (whitespace-normalized) that the quote appears verbatim in that event. Failed claims are flagged and excluded from the timeline. If key questions remain unanswered, allow one retry pass (max 2 iterations total).
 6. Assemble: timeline, commitments ledger, gaps, and stats (claims verified/total).
 
 ## Schemas
@@ -59,7 +71,11 @@ Event: `{id, source, ts (UTC ISO), actor, channel, text, url}`
 
 Claim (all agents): `{type, text (one sentence), actor, quote (exact substring), event_id, ts, status (kept|broken|unclear|n/a), confidence}`
 
-Agent tools (backed by the event store): `search_events(query, filters)`, `get_event(id)`, `get_thread(id)`, `list_events(actor, from, to)`, `verify_quote(event_id, quote)`, `submit_claim(...)`.
+Source tools (agents call these): `search_jira(jql_or_text)`, `get_issue(key)`,
+`search_slack(query, channel?, date range?)`, `get_slack_thread(channel, ts)`,
+`search_email(query, from?, date range?)`, `get_email_thread(id)`.
+Registry tools: `verify_quote(item_id, quote)`, `submit_claim(...)`.
+Each source tool sits behind the Source interface (live + export-upload fallback).
 
 ## UI (three screens)
 
@@ -96,7 +112,8 @@ Builder's calls (settled, veto-able):
 - Pipeline stages run as separate server calls (Vercel function timeout constraint): ingest → plan → (3 investigators in parallel) → skeptic → verify+assemble, with the client polling stage status.
 - Dataset cap: keep to a few hundred events per investigation.
 - Budget per investigation: target ≤ ~5 minutes wall clock; investigators capped at ~8 tool-call rounds each; stage functions sized to finish inside 60s.
-- Retry policy: after skeptic+verify, assemble DETERMINISTICALLY checks whether any core question (root cause / commitments / decisions-ownership) has zero kept claims; if so, re-run only the deficient investigators once with skeptic feedback. Max 2 retry passes total.
+- Retry policy: after skeptic+verify, assemble DETERMINISTICALLY checks whether any core question (root cause / commitments / decisions-ownership) has zero kept claims; if so, re-run only the deficient investigators once with the queries already tried. ONE retry pass (max 2 iterations total), then finish with the gaps listed.
+- Coverage: the tool layer records which sources were available (items in the registry), which were actually searched, and the queries run (from investigator tool calls). Assemble exposes coverage; the skeptic receives the never-searched list; the results UI shows it. Never claim a source was searched when it was not.
 - Skeptic semantics: the skeptic emits issue records — it may flag another agent's claim (claim stays visible, marked "flagged") and/or write a gaps entry. Verification failure remains the only reason a claim is fully excluded from the timeline. `status` applies to commitments (kept/broken/unclear/n/a); `confidence` is 0–1 from the claiming agent, displayed as High/Med/Low.
 - Timeline composition: ALL ingested events form the chronological timeline (filterable by person/channel/source); claims annotate it and the commitments ledger is separate. Noise events stay visible so nothing is hidden.
 - Cached fallback: each completed run is cached in Postgres keyed by upload content hash; re-uploading identical files offers the cached result, clearly labeled "cached". No canned/hardcoded answers ever.

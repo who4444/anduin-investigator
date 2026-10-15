@@ -1,29 +1,36 @@
 # Anduin Investigator
 
 A client escalates a billing problem; the answer is scattered across Jira, email
-and Slack. Anduin Investigator ingests those exports, builds one event store,
-runs parallel LLM investigators over it, verifies every claim's quote in code,
-and produces a timeline, a commitments ledger and a gaps list — so a manager can
-answer the escalation in minutes instead of days.
+and Slack. Anduin Investigator investigates that scattered history and produces a
+clear, ordered, source-backed account of what happened — so a manager can answer
+the escalation in minutes instead of days.
+
+The architecture is **agents retrieve, code verifies**: agents call source tools
+to find and read items; the tool layer, not the agent, is the system of record
+(every retrieved item is normalised into the Evidence Registry with source, item
+id, UTC timestamp, author, full text and URL); agents cite an item id plus an
+exact quote; and a deterministic verifier checks that quote against the stored
+text. Trust never depends on what an agent claims it saw.
 
 ## How it works
 
 ```
-upload ─► ingest (parse + normalise + identity resolution)
-       ─► analyst (investigation plan)
+intake (escalation + sources)
+       ─► ingest (parse + normalise + identity resolution into the registry)
+       ─► analyst (investigation plan naming sources and search angles)
        ─► investigators in parallel, split by QUESTION
             · root cause   · commitments   · decisions & ownership
-       ─► skeptic (contradictions, unsupported claims, silences)
+       ─► skeptic (contradictions, weak support, silences, angles never searched)
        ─► verifier (CODE: whitespace-normalised verbatim quote check)
-       ─► assemble (timeline, commitments ledger, gaps, stats)
-       ─► one retry pass when a question group has no verified claim (max 2)
+       ─► assemble (timeline, commitments ledger, gaps, coverage, stats)
+       ─► one retry pass when a question group has no verified claim (max 2 iterations)
 ```
 
 Non-negotiables enforced in code:
 
-- Everything shown is produced live from the uploaded files. The answer key
+- Everything shown is produced live from the retrieved items. The answer key
   below exists only in this README and is never imported by the app.
-- Every claim links to an `event_id` and an exact quote; verification is
+- Every claim links to a stored item and an exact quote; verification is
   deterministic (whitespace-normalised substring check), never a model.
 - A claim whose quote fails verification is flagged and excluded from the
   timeline and ledger.
@@ -31,6 +38,8 @@ Non-negotiables enforced in code:
   panel.
 - Judge-supplied exports work too, not just the built-in scenario.
 - Synthetic data is labelled synthetic; cached runs are labelled cached.
+- Coverage is reported honestly: which sources and queries were actually
+  searched (and which available sources never were).
 
 ## Setup (local)
 
@@ -175,13 +184,18 @@ Expected picture:
 ## Architecture notes
 
 - `lib/ingest/*` — parsers (never throw; malformed input degrades to fewer
-  events), timestamp normalisation, ticket-ref extraction, identity resolution.
-- `lib/agents/*` — analyst, investigators, skeptic, plus the event-store tools
-  they call (`search_events`, `get_event`, `get_thread`, `list_events`,
-  `verify_quote`, `submit_claim`).
-- `lib/pipeline/*` — deterministic claim verification and assembly (including
-  the retry decision).
-- `lib/store.ts` + `migrations/` — the Postgres schema (events, claims,
-  skeptic notes, gaps, stage runs, identity resolutions).
-- `app/api/investigations/**` — one route per pipeline stage; the client
-  orchestrates them (`lib/orchestrator.ts`) and streams progress on screen 1.
+  events), timestamp normalisation, ticket-ref extraction, identity resolution,
+  and the shared ingest flow used by uploads and live pulls.
+- `lib/sources/*` — live read-only adapters (Jira Cloud, Slack, Gmail) behind the
+  Source interface; export upload is the fallback implementation.
+- `lib/agents/*` — analyst, investigators, skeptic, plus the source tools they
+  call (`search_jira`, `get_issue`, `search_slack`, `get_slack_thread`,
+  `search_email`, `get_email_thread`) and the registry tools
+  (`verify_quote`, `submit_claim`).
+- `lib/pipeline/*` — deterministic claim verification, coverage (sources/queries
+  actually searched) and assembly (including the retry decision).
+- `lib/store.ts` + `migrations/` — the Postgres Evidence Registry (events,
+  claims, skeptic notes, gaps, stage runs, identity resolutions).
+- `app/api/investigations/**` — one route per pipeline stage; `app/api/sources/**`
+  serves live-pull configuration and pulls; the client orchestrates everything
+  (`lib/orchestrator.ts`) and shows progress on screen 1.
