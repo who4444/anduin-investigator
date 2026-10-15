@@ -16,13 +16,8 @@ export function eventId(
 }
 
 export function isoFromEpoch(sec: number | string): string {
-  const raw = typeof sec === "number" ? sec.toString() : sec.trim();
-  const dot = raw.indexOf(".");
-  const wholePart = dot === -1 ? raw : raw.slice(0, dot);
-  const fracPart = dot === -1 ? "" : raw.slice(dot + 1);
-  const wholeMs = Number(wholePart) * 1000;
-  const fracMs = fracPart.length > 0 ? Number(fracPart) : 0;
-  return new Date(wholeMs + fracMs).toISOString();
+  const seconds = typeof sec === "number" ? sec : Number(sec.trim());
+  return new Date(Math.round(seconds * 1000)).toISOString();
 }
 
 const TRUNCATION_MARKER = "…[truncated]";

@@ -115,7 +115,7 @@ getIdentities(invId): Promise<IdentityResolution[]>
 
 ```ts
 eventId(source: SourceKind, ts: string, actor: string, channel: string, text: string): string // `e_` + sha1(...).slice(0,16)
-isoFromEpoch(sec: number | string): string          // Slack ts "1727136000.000100" → "2024-09-24T00:00:00.100Z"
+isoFromEpoch(sec: number | string): string          // Slack ts "1727136000.000100" → "2024-09-24T00:00:00.000Z" (fraction = fractional SECONDS, parse the whole value as a float; ms precision)
 capText(s: string, max = 4000): string               // appends "…[truncated]"
 dedupeEvents(events: EventInput[]): EventInput[]     // identical (source,ts,actor,channel,text) collapse
 extractTicketRefs(text: string): string[]            // /\b[A-Z][A-Z0-9]{1,9}-\d+\b/, uppercase, deduped

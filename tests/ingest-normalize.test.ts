@@ -26,12 +26,20 @@ describe("eventId", () => {
 });
 
 describe("isoFromEpoch", () => {
-  it("converts a Slack epoch string preserving the fractional millisecond", () => {
-    expect(isoFromEpoch("1727136000.000100")).toBe("2024-09-24T00:00:00.100Z");
+  it("treats the Slack ts fraction as fractional seconds (sub-ms rounds to ms)", () => {
+    expect(isoFromEpoch("1727136000.000100")).toBe("2024-09-24T00:00:00.000Z");
+  });
+
+  it("preserves half-second fractions", () => {
+    expect(isoFromEpoch("1727136000.5")).toBe("2024-09-24T00:00:00.500Z");
   });
 
   it("converts a whole-number epoch to a UTC ISO string", () => {
     expect(isoFromEpoch(1727136000)).toBe("2024-09-24T00:00:00.000Z");
+  });
+
+  it("converts a fractional number epoch to millisecond precision", () => {
+    expect(isoFromEpoch(1727136000.25)).toBe("2024-09-24T00:00:00.250Z");
   });
 });
 
