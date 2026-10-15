@@ -1,0 +1,25 @@
+{
+  "id": "10003",
+  "key": "MER-103",
+  "self": "https://northwind.atlassian.net/rest/api/2/issue/10003",
+  "fields": {
+    "summary": "Export button does nothing",
+    "created": "2024-09-15T13:20:00.000+0000",
+    "reporter": {
+      "displayName": "Lin Chen"
+    },
+    "description": "Clicking export produces no file."
+  },
+  "comment": {
+    "comments": [
+      {
+        "id": "c1",
+        "author": {
+          "displayName": "Lin Chen"
+        },
+        "created": "2024-09-15T13:25:00.000+0000",
+        "body": "<div>Reproduced on Chrome.</div>"
+      }
+    ]
+  }
+}

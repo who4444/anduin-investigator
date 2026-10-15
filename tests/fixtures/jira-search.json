@@ -1,0 +1,104 @@
+{
+  "expand": "schema,names",
+  "startAt": 0,
+  "maxResults": 50,
+  "total": 2,
+  "issues": [
+    {
+      "id": "10001",
+      "key": "MER-101",
+      "self": "https://northwind.atlassian.net/rest/api/2/issue/10001",
+      "fields": {
+        "summary": "Invoice totals wrong for Q3",
+        "created": "2024-09-10T08:15:00.000+0000",
+        "reporter": {
+          "displayName": "Dana Okafor",
+          "emailAddress": "dana@northwind.example"
+        },
+        "assignee": {
+          "displayName": "Priya Nair",
+          "emailAddress": "priya@northwind.example"
+        },
+        "resolution": {
+          "name": "Fixed"
+        },
+        "description": "<p>Client reports the Q3 invoice totals are off by <b>12%</b>.</p><p>See SUP-2231 for the escalation.</p>",
+        "comment": {
+          "comments": [
+            {
+              "id": "c1",
+              "author": {
+                "displayName": "Dana Okafor"
+              },
+              "created": "2024-09-10T10:30:00.000+0000",
+              "body": "<p>Can you confirm the fix date?</p>"
+            },
+            {
+              "id": "c2",
+              "author": {
+                "displayName": "Priya Nair"
+              },
+              "created": "2024-09-12T11:05:00.000+0000",
+              "body": "Working on it now."
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "histories": [
+          {
+            "id": "h1",
+            "author": {
+              "displayName": "Priya Nair"
+            },
+            "created": "2024-09-11T09:00:00.000+0000",
+            "items": [
+              {
+                "field": "status",
+                "fromString": "Open",
+                "toString": "In Progress"
+              }
+            ]
+          },
+          {
+            "id": "h2",
+            "author": {
+              "displayName": "Priya Nair"
+            },
+            "created": "2024-09-14T16:45:00.000+0000",
+            "items": [
+              {
+                "field": "status",
+                "fromString": "In Progress",
+                "toString": "Resolved"
+              },
+              {
+                "field": "assignee",
+                "fromString": "Priya Nair",
+                "toString": "Sam Reed"
+              },
+              {
+                "field": "resolution",
+                "fromString": null,
+                "toString": "Fixed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "10002",
+      "key": "MER-102",
+      "self": "https://northwind.atlassian.net/rest/api/2/issue/10002",
+      "fields": {
+        "summary": "Login page CSS glitch",
+        "created": "2024-09-09T07:00:00.000+0000",
+        "reporter": {
+          "displayName": "Sam Reed"
+        },
+        "description": "Minor styling issue on the login page."
+      }
+    }
+  ]
+}
