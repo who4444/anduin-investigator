@@ -150,9 +150,13 @@ describe("runToolLoop", () => {
     const secondRequest = bodyOf(fetchMock, 1).messages as Array<Record<string, unknown>>;
     expect(secondRequest[0]).toMatchObject({ role: "system", content: "You investigate." });
     expect(secondRequest[1]).toMatchObject({ role: "user", content: "What happened?" });
-    expect(secondRequest[2]).toMatchObject({
-      role: "assistant",
-      tool_calls: [{ id: "call_1", type: "function", function: { name: "search_events" } }],
+    expect(secondRequest[2]).toMatchObject({ role: "assistant" });
+    const assistantCalls = (secondRequest[2] as { tool_calls: Array<Record<string, unknown>> }).tool_calls;
+    expect(assistantCalls).toHaveLength(2);
+    expect(assistantCalls[0]).toMatchObject({
+      id: "call_1",
+      type: "function",
+      function: { name: "search_events" },
     });
     expect(secondRequest[3]).toMatchObject({
       role: "tool",

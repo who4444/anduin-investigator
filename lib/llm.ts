@@ -216,7 +216,7 @@ export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoop
   const log: ToolLoopLogEntry[] = [];
   let content = "";
 
-  for (let round = 0; round < maxRounds; round++) {
+  for (let round = 1; round <= maxRounds; round++) {
     const chatOpts: ChatOptions = { tools };
     if (typeof options.temperature === "number") {
       chatOpts.temperature = options.temperature;
@@ -245,7 +245,12 @@ export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoop
 
     for (const call of toolCalls) {
       const args = call.args ?? {};
-      const result = await exec(call.name, args);
+      let result: string;
+      try {
+        result = await exec(call.name, args);
+      } catch (error) {
+        result = `Error: ${error instanceof Error ? error.message : String(error)}`;
+      }
       log.push({
         round,
         name: call.name,
@@ -268,7 +273,7 @@ export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoop
 let defaultClient: LlmClient | null = null;
 let testClient: LlmClient | null = null;
 
-export function getDefaultLlmClient(): LlmClient {
+export function getLlmClient(): LlmClient {
   if (testClient) {
     return testClient;
   }
@@ -277,6 +282,8 @@ export function getDefaultLlmClient(): LlmClient {
   }
   return defaultClient;
 }
+
+export const getDefaultLlmClient = getLlmClient;
 
 export function setLlmClientForTests(client: LlmClient | null): void {
   testClient = client;
