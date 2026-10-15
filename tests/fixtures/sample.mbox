@@ -1,0 +1,31 @@
+From dana@northwind.example Tue Sep 24 09:30:00 2024
+From: Dana Okafor <dana@northwind.example>
+To: support@meridian.example
+Subject: Invoice totals off for Q3
+Date: Tue, 24 Sep 2024 09:30:00 +0800
+Message-ID: <root-1@northwind.example>
+Content-Type: text/plain; charset=utf-8
+
+Hi team,
+
+The Q3 invoice totals are off by 12%. Please take a look.
+From priya@northwind.example Tue Sep 24 11:00:00 2024
+From: Priya Nair <priya@northwind.example>
+To: dana@northwind.example
+Subject: Re: Invoice totals off for Q3
+Date: Tue, 24 Sep 2024 11:00:00 +0800
+Message-ID: <reply-2@northwind.example>
+In-Reply-To: <root-1@northwind.example>
+References: <root-1@northwind.example>
+Content-Type: text/plain; charset=utf-8
+
+On it. Patch going out today.
+From sam@meridian.example Wed Sep 25 14:15:00 2024
+From: Sam Reed <sam@meridian.example>
+To: support@northwind.example
+Subject: re SUP-2231
+Date: Wed, 25 Sep 2024 14:15:00 +0800
+Message-ID: <html-3@meridian.example>
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Escalating SUP-2231.</p><p>Client needs an ETA&nbsp;&amp; a fix.</p></body></html>
