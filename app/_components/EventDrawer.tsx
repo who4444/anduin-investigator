@@ -64,6 +64,17 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
           </a>
         )}
 
+        {event.refs && event.refs.length > 0 && (
+          <p className="flex flex-wrap items-center gap-1 text-xs text-neutral-500">
+            references:
+            {event.refs.map((ref) => (
+              <span key={ref} className="rounded bg-neutral-100 px-1 font-mono">
+                {ref}
+              </span>
+            ))}
+          </p>
+        )}
+
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold">Claims citing this event</h3>
           {claims.length === 0 && <p className="text-xs text-neutral-500">No claims cite this event.</p>}

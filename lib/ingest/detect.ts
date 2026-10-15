@@ -142,9 +142,11 @@ export function expandArchives(files: IngestFile[], options: ExpandOptions = {})
     let entries: Record<string, Uint8Array>;
     try {
       let oversized = false;
+      let totalBytes = 0;
       entries = unzipSync(file.bytes, {
         filter: (member) => {
-          if (member.originalSize > maxDecompressedBytes) {
+          totalBytes += member.originalSize;
+          if (totalBytes > maxDecompressedBytes) {
             oversized = true;
             return false;
           }
@@ -153,7 +155,7 @@ export function expandArchives(files: IngestFile[], options: ExpandOptions = {})
       });
       if (oversized) {
         warnings.push(
-          `Archive ${file.name} contains a member larger than ${maxDecompressedBytes} bytes; skipped.`,
+          `Archive ${file.name} expands beyond ${maxDecompressedBytes} bytes; skipped.`,
         );
         continue;
       }

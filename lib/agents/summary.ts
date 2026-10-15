@@ -9,10 +9,11 @@ export interface CompactEvent {
   actor: string;
   channel: string;
   text: string;
+  refs?: string[];
 }
 
 export function compactEvent(event: Event, limit = DEFAULT_PREVIEW): CompactEvent {
-  return {
+  const compact: CompactEvent = {
     id: event.id,
     source: event.source,
     ts: event.ts,
@@ -20,6 +21,8 @@ export function compactEvent(event: Event, limit = DEFAULT_PREVIEW): CompactEven
     channel: event.channel,
     text: event.text.slice(0, limit),
   };
+  if (event.refs && event.refs.length > 0) compact.refs = event.refs;
+  return compact;
 }
 
 export function summarizeEvents(events: Event[]): string {

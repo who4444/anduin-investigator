@@ -90,10 +90,27 @@ describe("expandArchives", () => {
 
     const expanded = expandArchives([{ name: "bomb.zip", bytes: zipped }], {
       warnings,
-      maxDecompressedBytes: 16,
+      maxDecompressedBytes: 1024,
     });
 
     expect(expanded).toHaveLength(0);
-    expect(warnings[0]).toMatch(/larger than 16 bytes/);
+    expect(warnings[0]).toMatch(/expands beyond 1024 bytes/);
+  });
+
+  it("stops when many small members together exceed the budget", () => {
+    const members: Record<string, Uint8Array> = {};
+    for (let index = 0; index < 20; index += 1) {
+      members[`part-${index}.json`] = encode("x".repeat(500));
+    }
+    const zipped = zipSync(members);
+    const warnings: string[] = [];
+
+    const expanded = expandArchives([{ name: "many.zip", bytes: zipped }], {
+      warnings,
+      maxDecompressedBytes: 4096,
+    });
+
+    expect(expanded).toHaveLength(0);
+    expect(warnings).toHaveLength(1);
   });
 });

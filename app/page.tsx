@@ -17,12 +17,22 @@ const STAGE_LABELS: Record<string, string> = {
 
 type StageState = { status: string; error?: string | null; pass: number };
 
+interface ServerStage {
+  stage: string;
+  pass: number;
+  status: string;
+  error?: string | null;
+  log: unknown[];
+}
+
 interface UploadResult {
   investigationId: string;
   eventCount: number;
   cached: boolean;
   warnings: string[];
 }
+
+const LOG_POLL_MS = 3000;
 
 export default function Home() {
   const router = useRouter();
@@ -34,6 +44,7 @@ export default function Home() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [synthetic, setSynthetic] = useState(false);
   const [stages, setStages] = useState<Record<string, StageState>>({});
+  const [serverLogs, setServerLogs] = useState<Record<string, unknown[]>>({});
   const [eventCount, setEventCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -60,9 +71,11 @@ export default function Home() {
     setBusy(true);
     setError(null);
     setStages({});
+    setServerLogs({});
     setWarnings([]);
     setEventCount(null);
     setSynthetic(isSynthetic);
+    let poller: ReturnType<typeof setInterval> | null = null;
 
     try {
       const form = new FormData();
@@ -88,7 +101,22 @@ export default function Home() {
         return;
       }
 
+      poller = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/investigations/${payload.investigationId}/status`);
+          const body = (await response.json().catch(() => ({}))) as { stages?: ServerStage[] };
+          setServerLogs(collectLogs(body.stages ?? []));
+        } catch {
+          // Polling is best-effort; the pipeline result is authoritative.
+        }
+      }, LOG_POLL_MS);
+
       const outcome = await runPipeline(payload.investigationId, { onStage: applyStage });
+
+      const status = await fetch(`/api/investigations/${payload.investigationId}/status`);
+      const statusPayload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
+      setServerLogs(collectLogs(statusPayload.stages ?? []));
+
       if (!outcome.ok) {
         throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
       }
@@ -97,8 +125,17 @@ export default function Home() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
+      if (poller) clearInterval(poller);
       setBusy(false);
     }
+  }
+
+  function collectLogs(stages: ServerStage[]): Record<string, unknown[]> {
+    const logs: Record<string, unknown[]> = {};
+    for (const stage of stages) {
+      if (stage.log.length > 0) logs[stage.stage] = stage.log;
+    }
+    return logs;
   }
 
   async function loadDemo() {
@@ -214,13 +251,25 @@ export default function Home() {
             const status = state?.status ?? "pending";
             const icon = status === "done" ? "✓" : status === "running" ? "…" : status === "error" ? "✗" : "•";
             return (
-              <li key={stage} className="flex items-start gap-2">
-                <span className="w-4 text-center">{icon}</span>
-                <span className="flex-1">{label}</span>
-                {state?.pass && state.pass > 1 && (
-                  <span className="text-xs text-neutral-500">retry pass {state.pass}</span>
+              <li key={stage} className="flex flex-col gap-1">
+                <div className="flex items-start gap-2">
+                  <span className="w-4 text-center">{icon}</span>
+                  <span className="flex-1">{label}</span>
+                  {state?.pass && state.pass > 1 && (
+                    <span className="text-xs text-neutral-500">retry pass {state.pass}</span>
+                  )}
+                  {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+                </div>
+                {serverLogs[stage] && serverLogs[stage].length > 0 && (
+                  <details className="ml-6 text-xs text-neutral-500">
+                    <summary className="cursor-pointer">
+                      tool log ({serverLogs[stage].length} entries)
+                    </summary>
+                    <pre className="mt-1 max-h-40 overflow-auto rounded bg-neutral-50 p-2">
+                      {serverLogs[stage].map((entry) => JSON.stringify(entry)).join("\n")}
+                    </pre>
+                  </details>
                 )}
-                {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
               </li>
             );
           })}
