@@ -1,3 +1,4 @@
+import { extractJson } from "../json";
 import type { LlmClient } from "../llm";
 import type { EventInput, IdentityResolutionInput } from "../types";
 
@@ -178,29 +179,6 @@ function parseSuggestions(content: string): LlmMergeSuggestion[] {
   }
 
   return suggestions;
-}
-
-function extractJson(content: string): unknown {
-  const direct = tryParse(content);
-  if (direct !== undefined) return direct;
-
-  const start = content.indexOf("{");
-  const arrayStart = content.indexOf("[");
-  const from = start === -1 ? arrayStart : arrayStart === -1 ? start : Math.min(start, arrayStart);
-  if (from === -1) return undefined;
-
-  const end = Math.max(content.lastIndexOf("}"), content.lastIndexOf("]"));
-  if (end <= from) return undefined;
-
-  return tryParse(content.slice(from, end + 1));
-}
-
-function tryParse(value: string): unknown {
-  try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return undefined;
-  }
 }
 
 function signalTokens(actor: string): Set<string> {
