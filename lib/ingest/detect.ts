@@ -141,7 +141,22 @@ export function expandArchives(files: IngestFile[], options: ExpandOptions = {})
 
     let entries: Record<string, Uint8Array>;
     try {
-      entries = unzipSync(file.bytes);
+      let oversized = false;
+      entries = unzipSync(file.bytes, {
+        filter: (member) => {
+          if (member.originalSize > maxDecompressedBytes) {
+            oversized = true;
+            return false;
+          }
+          return true;
+        },
+      });
+      if (oversized) {
+        warnings.push(
+          `Archive ${file.name} contains a member larger than ${maxDecompressedBytes} bytes; skipped.`,
+        );
+        continue;
+      }
     } catch {
       warnings.push(`Unreadable archive: ${file.name}`);
       continue;

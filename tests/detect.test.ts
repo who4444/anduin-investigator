@@ -94,6 +94,6 @@ describe("expandArchives", () => {
     });
 
     expect(expanded).toHaveLength(0);
-    expect(warnings[0]).toMatch(/expands to 4096 bytes/);
+    expect(warnings[0]).toMatch(/larger than 16 bytes/);
   });
 });
