@@ -118,16 +118,16 @@ describeDb("verify + assemble", () => {
     expect(result.coverage.neverSearched).toEqual(["jira", "slack"]);
   });
 
-  it("stops retrying at pass 3", async () => {
+  it("stops retrying after one retry pass (max 2 iterations)", async () => {
     const { assemble } = await import("../lib/pipeline/assemble");
     const { upsertStage } = await import("../lib/store");
 
-    await upsertStage(investigationId, "ownership", 3, "done");
-    await upsertStage(investigationId, "root_cause", 3, "done");
+    await upsertStage(investigationId, "ownership", 2, "done");
+    await upsertStage(investigationId, "root_cause", 2, "done");
 
     const result = await assemble(investigationId);
 
-    expect(result.pass).toBe(3);
+    expect(result.pass).toBe(2);
     expect(result.missing).toEqual(["ownership"]);
     expect(result.needsRetry).toBe(false);
   });

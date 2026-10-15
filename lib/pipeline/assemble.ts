@@ -14,7 +14,7 @@ import { buildCoverage, type CoverageReport } from "./coverage";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const LEDGER_TYPES = new Set(["commitment", "decision"]);
-const MAX_RETRY_PASS = 3;
+const MAX_RETRY_PASS = 2;
 
 export interface AssembledStats {
   total: number;

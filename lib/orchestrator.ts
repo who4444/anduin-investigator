@@ -32,7 +32,7 @@ class StageError extends Error {
   }
 }
 
-const DEFAULT_MAX_RETRY_PASSES = 2;
+const DEFAULT_MAX_RETRY_PASSES = 1;
 
 export async function runPipeline(
   investigationId: string,
