@@ -1,31 +1,31 @@
 # AGENTS.md
 
 ## Project
-Anduin Investigator: ingests a project's scattered history (Jira JSON, email .mbox/.eml, Slack export), builds one unified event store, and produces a source-backed timeline, commitments ledger, and gaps list so a manager can answer a client escalation in minutes instead of days.
+Anduin Investigator: ingests a project's scattered history (Jira JSON, email .mbox/.eml, Slack export), builds one unified event store, and produces a source-backed timeline, commitments ledger, and gaps list so a manager can answer a client escalation in minutes.
 
-Status: greenfield — not scaffolded yet. Once tooling exists, replace this note with exact build/test/lint commands and directory layout.
+## Commands
+- `npm run db:up` then `npm run db:migrate` — required before anything that touches Postgres (local docker postgres:16, anduin/anduin/anduin on 5432). Migrations are `migrations/*.sql`, applied by `lib/db/migrate.ts` (idempotent, tracked in `schema_migrations`).
+- `npx vitest run` — full suite. DB-backed suites skip cleanly when `DATABASE_URL` is unset; with it set, Postgres must be up and migrated or they fail.
+- `npm run lint`, `npm run typecheck`, `npm run build` — build must stay green; Next requires `export const maxDuration = 60` as a LITERAL in every route (an imported constant breaks the build).
+- `npm run demo:gen` — regenerates the synthetic exports into `public/demo/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-demo.ts`.
+- `npm run dev` — local app. `.env.local` (never committed) supplies `DATABASE_URL` and `DEEPSEEK_API_KEY`/`DEEPSEEK_BASE_URL`/`DEEPSEEK_MODEL`; `lib/db/env.ts` loads it for scripts and tests.
 
-## Non-negotiables
-- No hardcoded outputs: everything shown must come live from the input files. The demo answer key lives in README only, never in app runtime.
-- Every claim shown links to an event_id and an exact quote; verification is deterministic code (whitespace-normalized verbatim substring check), never a model.
-- Failed verification → flag the claim and exclude it from the timeline.
-- Never invent content for events with no record; unknowns go in the gaps panel.
-- Must work on judge-supplied exports, not just the built-in scenario.
-- Label synthetic data as synthetic; label any cached fallback run as cached.
+## Non-negotiables (enforced in code, not by prompt)
+- No hardcoded outputs: everything shown comes live from the uploaded files. The demo answer key lives in README only — never import it or restate findings in runtime code.
+- Every claim links an `event_id` + an exact quote; verification is deterministic code (`lib/verify.ts`, whitespace-normalized verbatim substring), never a model.
+- Failed verification → claim flagged and excluded from timeline/ledger (it stays visible only as explicitly failed).
+- Never invent content for events with no record → gaps panel. Parsers never throw on malformed exports; they yield fewer events and push a warning.
+- Must work on judge-supplied exports, not just the built-in scenario. Label synthetic data synthetic and cached runs cached.
 
-## Pipeline & schemas
-- ingest → issue analyst (writes investigation plan) → investigators in parallel split by QUESTION (root cause / commitments / decisions & ownership), each reading the whole event store → skeptic (contradictions, unsupported claims, suspicious silences) → code verifier → assemble (timeline, commitments, gaps, stats).
-- If key questions remain unanswered after verification, allow 1–2 retry passes max.
-- Event schema: `{id, source, ts (UTC ISO), actor, channel, text, url}`. Normalize Jira UTC / email offsets / Slack epoch; resolve cross-tool identities (alias map + LLM-suggested merges) and cross-source references (e.g. an email mentioning SUP-2231).
-- Claim schema (all agents): `{type, text (one sentence), actor, quote, event_id, ts, status (kept|broken|unclear|n/a), confidence}`.
-- Agent tools: search_events, get_event, get_thread, list_events, verify_quote, submit_claim.
+## Layout & wiring
+- `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`).
+- `lib/agents/*`: `tools.ts` (event-store tools + `submit_claim`), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
+- `lib/pipeline/*`: `verify-claims.ts` (code verifier), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero verified claims and pass < 3).
+- `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
+- `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → 3 investigators in parallel → skeptic → verify → assemble, then retry only the missing kinds). Stage progress is client-driven; there is no server-side poller.
+- UI: `app/page.tsx` (upload + live progress, optional escalation textarea, built-in demo loader) and `app/investigations/[id]/page.tsx` (timeline + drawer with highlighted quotes, commitments table, gaps panel, stats).
 
-## Stack constraints
-- Next.js App Router on Vercel (demo deployed on Hobby plan: ≤60s per stage function, uploads ≤ ~4MB); runtime LLM is DeepSeek via its OpenAI-compatible endpoint — env-configurable `DEEPSEEK_BASE_URL` (default https://api.deepseek.com), `DEEPSEEK_MODEL` (default deepseek-chat), key in env vars only.
-- Postgres for events/claims (Docker Compose locally, hosted `DATABASE_URL` on Vercel).
-
-## Out of scope
-Continuous sync, real-time ingestion, multi-project management, auth, client-safe vs internal views. Optional only if time remains: live Jira/Slack pull behind a Source interface, client-reply draft grounded only in verified claims, time scrubber.
-
-## Demo scenario (synthetic)
-Northwind Logistics vs Meridian Billing: ~45 events across Jira/email/Slack with planted traps the pipeline must handle — mismatched identities, mixed timestamp formats, a 13-day Jira silence, a premature "Resolved" contradicting Slack, an undocumented client call, ~30% noise.
+## Testing quirks
+- Never call the real LLM in tests: inject a fake via `setLlmClientForTests` (lib/llm.ts) or mock global `fetch`. `tests/demo-roundtrip.test.ts` proves the generated exports parse through the real parsers.
+- Test outputs must be pristine (no lint warnings) — unused vars fail the gate even as warnings.
+- Email sender actors keep the address (`Name <addr>`) on purpose: it is what lets identity resolution link email senders to Jira/Slack people.
