@@ -254,8 +254,9 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
       case "get_email_thread": {
         const id = asString(args.id);
         if (!id) return JSON.stringify({ error: "id is required." });
-        const needle = normalizeThreadRef(id);
         const email = await sourceItems("email");
+        const byItem = email.find((event) => event.id === id);
+        const needle = normalizeThreadRef(byItem?.threadId ?? id);
         let items = email.filter((event) => event.threadId === needle);
         if (items.length === 0) items = email.filter((event) => event.threadId?.includes(needle));
         if (items.length === 0) return JSON.stringify({ error: `No stored thread for ${id}.` });

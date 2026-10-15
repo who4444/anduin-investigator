@@ -38,7 +38,8 @@ plus an exact quote. A deterministic verifier checks that quote against the
 stored raw text. Trust never depends on what an agent claims it saw.
 
 (In code the registry rows are the `events` table and the `Event` type; "item"
-is the user-facing name for the same thing.)
+is the user-facing name for the same thing. Agent tools take `item_id`; the
+stored claim field is `eventId` and both spellings are accepted on input.)
 
 ### Pipeline
 1. Escalation intake: the manager pastes the client's escalation message and

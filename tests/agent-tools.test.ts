@@ -171,14 +171,19 @@ describeDb("agent tools", () => {
     expect(byText.items.map((item) => item.id)).toEqual([mailId]);
   });
 
-  it("get_email_thread reads the thread by message id", async () => {
+  it("get_email_thread reads the thread by message id or by any item id in it", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
-    const result = JSON.parse(
+
+    const byMessageId = JSON.parse(
       await tools.exec("get_email_thread", { id: "<msg-root@northwind.example>" }),
     ) as { count: number; items: { id: string }[] };
+    expect(byMessageId.count).toBe(2);
+    expect(byMessageId.items.map((item) => item.id)).toEqual([mailId, replyMailId]);
 
-    expect(result.count).toBe(2);
-    expect(result.items.map((item) => item.id)).toEqual([mailId, replyMailId]);
+    const byItemId = JSON.parse(await tools.exec("get_email_thread", { id: replyMailId })) as {
+      count: number;
+    };
+    expect(byItemId.count).toBe(2);
   });
 
   it("verify_quote reports ok for a real substring and an error otherwise", async () => {
