@@ -1,3 +1,4 @@
+import { asNumber, asString } from "../json";
 import type { ToolSpec } from "../llm";
 import { getEvent, getEvents, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event } from "../types";
@@ -12,15 +13,6 @@ const CLAIM_STATUSES: ClaimStatus[] = ["kept", "broken", "unclear", "n/a"];
 export interface AgentTools {
   specs: ToolSpec[];
   exec(name: string, args: Record<string, unknown>): Promise<string>;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
-function asNumber(value: unknown): number | undefined {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function compact(event: Event, limit?: number): CompactEvent {
