@@ -105,8 +105,8 @@ export async function runInvestigator(
   const system = [
     `You are the ${KIND_LABELS[kind]} investigator on an incident investigation.`,
     KIND_MISSIONS[kind],
-    "Work only from the event store: every finding must be backed by an event you have read.",
-    "Use search_events / list_events / get_event / get_thread to read widely, then call verify_quote to confirm a quote before submitting a claim.",
+    "Work only from the Evidence Registry: every finding must be backed by an item you have read.",
+    "Read widely with the source tools — search_jira, get_issue, search_slack, get_slack_thread, search_email, get_email_thread — then call verify_quote to confirm a quote before submitting a claim.",
     "Call submit_claim for each finding. Quote the original text verbatim (copy it exactly; whitespace differences are fine, wording changes are not).",
     "Never invent events, people, dates, or messages. If something cannot be established from the records, put it in notes instead of claiming it.",
   ].join("\n");
@@ -115,10 +115,10 @@ export async function runInvestigator(
     "Investigation plan:",
     plan,
     "",
-    "Event store summary:",
+    "Evidence Registry summary:",
     summarizeEvents(events),
     "",
-    "Evenly spaced sample of events (use the tools for the rest):",
+    "Evenly spaced sample of items (use the tools for the rest):",
     JSON.stringify(sampleEvents(events, 10)),
     "",
     "Submit each finding with submit_claim (quote must be an exact substring of the cited event).",

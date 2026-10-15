@@ -13,8 +13,14 @@ describeDb("agent tools", () => {
   let buildAgentTools: typeof import("../lib/agents/tools").buildAgentTools;
   const created: string[] = [];
 
-  const jiraId = "e_test_jira_0001";
+  const issueId = "e_test_jira_0001";
+  const commentId = "e_test_jira_0002";
   const slackId = "e_test_slack_0001";
+  const replyId = "e_test_slack_0002";
+  const mailId = "e_test_email_0001";
+  const replyMailId = "e_test_email_0002";
+  const slackThread = "slack:meridian-billing:1727251200.000100";
+  const emailThread = "msg-root@northwind.example";
 
   beforeAll(async () => {
     const { createInvestigation, insertEvents } = await import("../lib/store");
@@ -29,31 +35,58 @@ describeDb("agent tools", () => {
 
     await insertEvents(investigationId, [
       {
-        id: jiraId,
+        id: issueId,
         source: "jira",
         ts: "2024-09-10T03:00:00.000Z",
         actor: "Lin Chen",
         channel: "MER-101",
-        text: "Timezone change merged in release 4.12 caused invoice totals to be wrong.",
+        text: "Timezone change merged for release 4.12.",
+        threadId: "MER-101",
+      },
+      {
+        id: commentId,
+        source: "jira",
+        ts: "2024-09-23T04:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "MER-101",
+        text: "Fix scheduled for the Sep 24 release.",
         threadId: "MER-101",
       },
       {
         id: slackId,
         source: "slack",
-        ts: "2024-09-25T09:00:00.000Z",
-        actor: "Lin Chen",
-        channel: "meridian-billing",
-        text: "QA still failing on the Sep 24 build; not shipped.",
-        threadId: "slack:meridian-billing:1727000000.000100",
-      },
-      {
-        id: "e_test_slack_0002",
-        source: "slack",
-        ts: "2024-09-25T09:05:00.000Z",
+        ts: "2024-09-24T16:00:00.000Z",
         actor: "Marcus Webb",
         channel: "meridian-billing",
-        text: "Let us keep this open until the fix ships.",
-        threadId: "slack:meridian-billing:1727000000.000100",
+        text: "Sep 24 release is cut; invoice fix included.",
+        threadId: slackThread,
+      },
+      {
+        id: replyId,
+        source: "slack",
+        ts: "2024-09-25T09:00:00.000Z",
+        actor: "Dana Okoro",
+        channel: "meridian-billing",
+        text: "QA is still failing on the Sep 24 build.",
+        threadId: slackThread,
+      },
+      {
+        id: mailId,
+        source: "email",
+        ts: "2024-09-20T05:00:00.000Z",
+        actor: "L. Chen <l.chen@northwind.example>",
+        channel: "email",
+        text: "We will ship the fix in the Sep 24 release.",
+        threadId: emailThread,
+      },
+      {
+        id: replyMailId,
+        source: "email",
+        ts: "2024-09-27T03:05:00.000Z",
+        actor: "Priya Nair <priya.nair@northwind.example>",
+        channel: "email",
+        text: "Totals are still wrong this morning.",
+        threadId: emailThread,
       },
     ]);
   });
@@ -65,104 +98,137 @@ describeDb("agent tools", () => {
     }
   });
 
-  it("search_events filters by query and returns compact events", async () => {
-    const tools = buildAgentTools(investigationId, "root_cause");
-    const result = JSON.parse(
-      await tools.exec("search_events", { query: "timezone" }),
-    ) as { count: number; events: { id: string; text: string }[] };
-
-    expect(result.count).toBe(1);
-    expect(result.events[0].id).toBe(jiraId);
-  });
-
-  it("search_events filters by actor and source", async () => {
-    const tools = buildAgentTools(investigationId, "root_cause");
-    const result = JSON.parse(
-      await tools.exec("search_events", { query: "", actor: "Marcus", source: "slack" }),
-    ) as { count: number; events: { actor: string }[] };
-
-    expect(result.count).toBe(1);
-    expect(result.events[0].actor).toBe("Marcus Webb");
-  });
-
-  it("get_event returns the full text and get_thread returns the conversation", async () => {
+  it("search_jira finds issue items by text and can bound by date", async () => {
     const tools = buildAgentTools(investigationId, "root_cause");
 
-    const event = JSON.parse(await tools.exec("get_event", { id: slackId })) as { text: string };
-    expect(event.text).toContain("QA still failing");
-
-    const thread = JSON.parse(await tools.exec("get_thread", { id: slackId })) as {
-      events: { id: string }[];
+    const text = JSON.parse(await tools.exec("search_jira", { query: "Sep 24 release" })) as {
+      count: number;
+      items: { id: string }[];
     };
-    expect(thread.events.map((entry) => entry.id)).toEqual([slackId, "e_test_slack_0002"]);
+    expect(text.count).toBe(1);
+    expect(text.items[0].id).toBe(commentId);
+
+    const windowed = JSON.parse(
+      await tools.exec("search_jira", { query: "release", from: "2024-09-20T00:00:00.000Z" }),
+    ) as { items: { id: string }[] };
+    expect(windowed.items.map((item) => item.id)).toEqual([commentId]);
+  });
+
+  it("get_issue reads the whole issue in order", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(await tools.exec("get_issue", { key: "MER-101" })) as {
+      count: number;
+      items: { id: string; text: string }[];
+    };
+
+    expect(result.count).toBe(2);
+    expect(result.items.map((item) => item.id)).toEqual([issueId, commentId]);
+
+    const missing = JSON.parse(await tools.exec("get_issue", { key: "MER-999" })) as { error?: string };
+    expect(missing.error).toMatch(/No stored issue/);
+  });
+
+  it("search_slack searches text and channel", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+
+    const all = JSON.parse(await tools.exec("search_slack", { query: "release" })) as {
+      items: { id: string }[];
+    };
+    expect(all.items.map((item) => item.id)).toEqual([slackId]);
+
+    const byChannel = JSON.parse(
+      await tools.exec("search_slack", { query: "", channel: "meridian-billing" }),
+    ) as { count: number };
+    expect(byChannel.count).toBe(2);
+
+    const otherChannel = JSON.parse(await tools.exec("search_slack", { channel: "general" })) as {
+      count: number;
+    };
+    expect(otherChannel.count).toBe(0);
+  });
+
+  it("get_slack_thread reads the thread's items", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(
+      await tools.exec("get_slack_thread", { channel: "meridian-billing", ts: "1727251200.000100" }),
+    ) as { count: number; items: { id: string }[] };
+
+    expect(result.count).toBe(2);
+    expect(result.items.map((item) => item.id)).toEqual([slackId, replyId]);
+  });
+
+  it("search_email searches text and sender", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+
+    const bySender = JSON.parse(await tools.exec("search_email", { sender: "priya" })) as {
+      items: { id: string }[];
+    };
+    expect(bySender.items.map((item) => item.id)).toEqual([replyMailId]);
+
+    const byText = JSON.parse(await tools.exec("search_email", { query: "Sep 24 release" })) as {
+      items: { id: string }[];
+    };
+    expect(byText.items.map((item) => item.id)).toEqual([mailId]);
+  });
+
+  it("get_email_thread reads the thread by message id", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+    const result = JSON.parse(
+      await tools.exec("get_email_thread", { id: "<msg-root@northwind.example>" }),
+    ) as { count: number; items: { id: string }[] };
+
+    expect(result.count).toBe(2);
+    expect(result.items.map((item) => item.id)).toEqual([mailId, replyMailId]);
   });
 
   it("verify_quote reports ok for a real substring and an error otherwise", async () => {
     const tools = buildAgentTools(investigationId, "root_cause");
 
     const ok = JSON.parse(
-      await tools.exec("verify_quote", { event_id: jiraId, quote: "release 4.12" }),
+      await tools.exec("verify_quote", { item_id: issueId, quote: "release 4.12" }),
     ) as { ok: boolean };
     expect(ok.ok).toBe(true);
 
     const bad = JSON.parse(
-      await tools.exec("verify_quote", { event_id: jiraId, quote: "release 9.99" }),
+      await tools.exec("verify_quote", { item_id: issueId, quote: "release 9.99" }),
     ) as { ok: boolean; error?: string };
     expect(bad.ok).toBe(false);
     expect(bad.error).toBe("quote_not_found");
 
     const missing = JSON.parse(
-      await tools.exec("verify_quote", { event_id: "e_nope", quote: "x" }),
+      await tools.exec("verify_quote", { item_id: "e_nope", quote: "x" }),
     ) as { ok: boolean; error?: string };
-    expect(missing.error).toBe("event_not_found");
+    expect(missing.error).toBe("item_not_found");
   });
 
-  it("submit_claim persists a claim for the agent", async () => {
+  it("submit_claim persists a claim and treats a repeat as the same claim", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
-    const response = JSON.parse(
-      await tools.exec("submit_claim", {
-        type: "commitment",
-        text: "Fix was promised for the Sep 24 release.",
-        quote: "not shipped",
-        event_id: slackId,
-        ts: "2024-09-25T09:00:00.000Z",
-        status: "broken",
-        confidence: 0.9,
-      }),
-    ) as { claimId?: string };
-
-    expect(response.claimId).toMatch(/^[0-9a-f-]{36}$/);
-
-    const { getClaims } = await import("../lib/store");
-    const claims = await getClaims(investigationId);
-    expect(claims.some((claim) => claim.agent === "commitments" && claim.status === "broken")).toBe(true);
-  });
-
-  it("treats a repeated submit_claim as the same claim", async () => {
-    const tools = buildAgentTools(investigationId, "root_cause");
     const args = {
-      type: "root_cause",
-      text: "A retry-friendly claim.",
-      quote: "release 4.12",
-      event_id: jiraId,
-      status: "n/a",
-      confidence: 0.7,
+      type: "commitment",
+      text: "A fix was promised for the Sep 24 release.",
+      quote: "ship the fix in the Sep 24 release",
+      item_id: mailId,
+      ts: "2024-09-20T05:00:00.000Z",
+      status: "broken",
+      confidence: 0.9,
     };
 
     const first = JSON.parse(await tools.exec("submit_claim", args)) as { claimId: string };
+    expect(first.claimId).toMatch(/^[0-9a-f-]{36}$/);
+
     const second = JSON.parse(await tools.exec("submit_claim", args)) as {
       claimId: string;
       duplicate?: boolean;
     };
-
     expect(second.claimId).toBe(first.claimId);
     expect(second.duplicate).toBe(true);
 
     const { getClaims } = await import("../lib/store");
-    const matches = (await getClaims(investigationId)).filter(
-      (claim) => claim.text === "A retry-friendly claim.",
-    );
-    expect(matches).toHaveLength(1);
+    const claims = await getClaims(investigationId);
+    expect(
+      claims.filter((claim) => claim.text === "A fix was promised for the Sep 24 release."),
+    ).toHaveLength(1);
+    expect(claims.find((claim) => claim.id === first.claimId)?.eventId).toBe(mailId);
   });
 
   it("rejects a submit_claim without a valid status", async () => {
@@ -171,8 +237,8 @@ describeDb("agent tools", () => {
       await tools.exec("submit_claim", {
         type: "commitment",
         text: "x",
-        quote: "not shipped",
-        event_id: slackId,
+        quote: "Sep 24 release",
+        item_id: mailId,
         status: "maybe",
         confidence: 0.5,
       }),
