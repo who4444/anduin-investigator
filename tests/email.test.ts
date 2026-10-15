@@ -67,4 +67,13 @@ describe("parseEml", () => {
     await expect(parseMbox(garbage)).resolves.toMatchObject({ events: [] });
     expect((await parseMbox(new Uint8Array(0))).events).toEqual([]);
   });
+
+  it("keeps the event when an HTML body contains an out-of-range numeric entity", async () => {
+    const raw = new TextEncoder().encode(
+      "From: A <a@x.com>\nDate: Tue, 24 Sep 2024 09:30:00 +0800\nSubject: x\nContent-Type: text/html; charset=utf-8\n\n<p>bad &#99999999; entity</p>\n",
+    );
+    const { events } = await parseEml(raw);
+    expect(events).toHaveLength(1);
+    expect(events[0].text).toBe("bad entity");
+  });
 });
