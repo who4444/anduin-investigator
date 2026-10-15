@@ -51,7 +51,8 @@ export function summarizeEvents(events: Event[]): string {
 
 export function sampleEvents(events: Event[], count: number): CompactEvent[] {
   if (events.length === 0) return [];
-  if (count <= 1) return [compactEvent(events[0])];
+  if (count <= 0) return [];
+  if (count === 1) return [compactEvent(events[0])];
   if (events.length <= count) return events.map((event) => compactEvent(event));
 
   const step = (events.length - 1) / (count - 1);

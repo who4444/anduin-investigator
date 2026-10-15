@@ -129,4 +129,55 @@ describeDb("verify + assemble", () => {
     expect(result.missing).toEqual(["ownership"]);
     expect(result.needsRetry).toBe(false);
   });
+
+  it("keeps failed-verification commitments out of the ledger", async () => {
+    const { createInvestigation, insertEvents, insertClaims } = await import("../lib/store");
+    const { runClaimVerification } = await import("../lib/pipeline/verify-claims");
+    const { assemble } = await import("../lib/pipeline/assemble");
+
+    const id = await createInvestigation({
+      title: `Ledger ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+
+    await insertEvents(id, [
+      {
+        id: "e_ledger_0000001",
+        source: "email",
+        ts: "2024-09-20T09:00:00.000Z",
+        actor: "Priya Nair",
+        channel: "email",
+        text: "You promised the fix for the Sep 24 release.",
+      },
+    ]);
+    await insertClaims(id, [
+      {
+        agent: "commitments",
+        type: "commitment",
+        text: "A fix was promised for the Sep 24 release.",
+        quote: "promised the fix for the Sep 24 release",
+        eventId: "e_ledger_0000001",
+        status: "broken",
+        confidence: 0.9,
+      },
+      {
+        agent: "commitments",
+        type: "commitment",
+        text: "A promise worded so its quote cannot be found.",
+        quote: "a sentence that never appears anywhere",
+        eventId: "e_ledger_0000001",
+        status: "broken",
+        confidence: 0.9,
+      },
+    ]);
+
+    await runClaimVerification(id);
+    const result = await assemble(id);
+
+    expect(result.stats).toMatchObject({ total: 2, kept: 1, excluded: 1 });
+    expect(result.ledger).toHaveLength(1);
+    expect(result.ledger[0].quote).toBe("promised the fix for the Sep 24 release");
+  });
 });

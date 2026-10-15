@@ -79,7 +79,11 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
 
   const ledger = visibleClaims
     .filter((claim) => LEDGER_TYPES.has(claim.type))
-    .sort((a, b) => (a.ts ?? "") < (b.ts ?? "") ? -1 : 1);
+    .sort((a, b) => {
+      const left = a.ts ?? "";
+      const right = b.ts ?? "";
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
 
   const stats: AssembledStats = {
     total: claims.length,
