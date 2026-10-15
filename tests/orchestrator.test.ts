@@ -167,4 +167,58 @@ describe("runPipeline notifications", () => {
     expect(outcome.ok).toBe(false);
     expect(seen).toEqual(["plan:running:", "plan:error:no events"]);
   });
+
+  it("reports a rejected fetch as a stage error instead of an unknown stage", async () => {
+    const seen: string[] = [];
+    const fetchImpl = vi.fn(async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      onStage: (update) => seen.push(`${update.stage}:${update.status}:${update.error ?? ""}`),
+    });
+
+    expect(outcome).toEqual({ ok: false, error: "network down", stage: "plan", pass: 1 });
+    expect(seen).toEqual(["plan:running:", "plan:error:network down"]);
+  });
+
+  it("reports every failed investigator when several fail in parallel", async () => {
+    const seen: string[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const body = init?.body ? (JSON.parse(String(init.body)) as { kind?: string }) : {};
+      if (url.endsWith("/investigate")) {
+        return jsonResponse({ error: `cannot run ${body.kind}` }, 500);
+      }
+      return jsonResponse({ ok: true });
+    }) as unknown as typeof fetch;
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      onStage: (update) =>
+        update.status === "error" ? seen.push(`${update.stage}:${update.error ?? ""}`) : undefined,
+    });
+
+    expect(outcome.ok).toBe(false);
+    expect(seen.sort()).toEqual([
+      "commitments:cannot run commitments",
+      "ownership:cannot run ownership",
+      "root_cause:cannot run root_cause",
+    ]);
+  });
+
+  it("skips a retry pass when the missing list names no known investigator", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") {
+        return jsonResponse({ needsRetry: true, missing: ["something_else"] });
+      }
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.filter((call) => call.stage === "assemble")).toHaveLength(1);
+  });
 });

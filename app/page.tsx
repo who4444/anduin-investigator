@@ -66,7 +66,11 @@ export default function Home() {
 
     try {
       const form = new FormData();
-      for (const file of uploadFiles) form.append("files", file);
+      for (const file of uploadFiles) {
+        // Directory uploads expose their relative path; preserve it so the Slack
+        // export keeps its per-channel folder structure server-side.
+        form.append("files", file, file.webkitRelativePath || file.name);
+      }
       form.append("escalation", escalation);
 
       const response = await fetch("/api/investigations", { method: "POST", body: form });
