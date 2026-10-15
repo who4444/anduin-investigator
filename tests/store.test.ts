@@ -225,4 +225,31 @@ describeDb("event store", () => {
     expect(matches[0].method).toBe("email+llm");
     expect(matches[0].confidence).toBeCloseTo(0.99, 5);
   });
+
+  it("deleteInvestigation cascades to events and stages", async () => {
+    const { createInvestigation, deleteInvestigation, getEvents, getStages, insertEvents, upsertStage } =
+      await import("../lib/store");
+
+    const disposable = await createInvestigation({
+      title: `Disposable ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    await insertEvents(disposable, [
+      {
+        id: "e_disposable00001",
+        source: "slack",
+        ts: ts1,
+        actor: "Lin Chen",
+        channel: "general",
+        text: "temporary",
+      },
+    ]);
+    await upsertStage(disposable, "ingest", 1, "done");
+
+    await deleteInvestigation(disposable);
+
+    expect(await getEvents(disposable)).toEqual([]);
+    expect(await getStages(disposable)).toEqual([]);
+  });
 });

@@ -20,6 +20,14 @@ describe("detectFile", () => {
     expect(detected.json).toBeDefined();
   });
 
+  it("classifies an id-shaped Jira issue without misrouting it to Slack", () => {
+    const jira = file(
+      "issue.json",
+      JSON.stringify({ id: "10001", fields: { summary: "Totals wrong", name: "billing" } }),
+    );
+    expect(detectFile(jira).kind).toBe("jira");
+  });
+
   it("classifies Slack user maps by content and by name", () => {
     const users = JSON.stringify({ U1: { real_name: "Lin Chen" } });
     expect(detectFile(file("users.json", users)).kind).toBe("slack-users");
@@ -64,5 +72,28 @@ describe("expandArchives", () => {
   it("falls back to the original file when the zip cannot be read", () => {
     const expanded = expandArchives([{ name: "broken.zip", bytes: new Uint8Array([1, 2, 3]) }]);
     expect(expanded).toHaveLength(0);
+  });
+
+  it("warns and skips an unreadable archive", () => {
+    const warnings: string[] = [];
+    const expanded = expandArchives([{ name: "broken.zip", bytes: new Uint8Array([1, 2, 3]) }], {
+      warnings,
+    });
+
+    expect(expanded).toHaveLength(0);
+    expect(warnings).toEqual(["Unreadable archive: broken.zip"]);
+  });
+
+  it("warns and skips an archive that inflates past the budget", () => {
+    const zipped = zipSync({ "big.json": encode("[]".padEnd(4096, " ")) });
+    const warnings: string[] = [];
+
+    const expanded = expandArchives([{ name: "bomb.zip", bytes: zipped }], {
+      warnings,
+      maxDecompressedBytes: 16,
+    });
+
+    expect(expanded).toHaveLength(0);
+    expect(warnings[0]).toMatch(/expands to 4096 bytes/);
   });
 });

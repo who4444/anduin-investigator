@@ -12,6 +12,7 @@ import { parseSlackFiles, type SlackFile } from "@/lib/ingest/slack";
 import { getLlmClient } from "@/lib/llm";
 import {
   createInvestigation,
+  deleteInvestigation,
   findInvestigationByHash,
   getStages,
   insertEvents,
@@ -34,16 +35,12 @@ function json(body: unknown, status = 200): Response {
 
 function toUtcIso(ts: string): string {
   const parsed = new Date(ts);
-  return Number.isNaN(parsed.getTime()) ? ts : parsed.toISOString();
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }
 
 function withRefs(event: EventInput): EventInput {
   const refs = new Set([...(event.refs ?? []), ...extractTicketRefs(event.text)]);
   return refs.size > 0 ? { ...event, refs: [...refs] } : event;
-}
-
-function normalizeEvent(event: EventInput): EventInput {
-  return withRefs({ ...event, ts: toUtcIso(event.ts), text: capText(event.text) });
 }
 
 function contentHash(files: IngestFile[]): string {
@@ -67,16 +64,22 @@ async function readFiles(form: FormData): Promise<IngestFile[]> {
   );
 }
 
-async function collectEvents(files: IngestFile[], warnings: string[]): Promise<EventInput[]> {
+async function collectEvents(
+  files: IngestFile[],
+  warnings: string[],
+): Promise<EventInput[]> {
   const events: EventInput[] = [];
   const slackFiles: SlackFile[] = [];
   const emails: { name: string; bytes: Uint8Array; eml: boolean }[] = [];
+  const kinds = new Map<string, number>();
 
   for (const file of files) {
     const { kind, json } = detectFile(file);
+    kinds.set(kind, (kinds.get(kind) ?? 0) + 1);
     switch (kind) {
       case "jira": {
         const { events: jiraEvents } = parseJira(json);
+        if (jiraEvents.length === 0) warnings.push(`No events parsed from ${file.name}`);
         events.push(...jiraEvents);
         break;
       }
@@ -102,10 +105,27 @@ async function collectEvents(files: IngestFile[], warnings: string[]): Promise<E
 
   if (slackFiles.length > 0) {
     const { events: slackEvents } = parseSlackFiles(slackFiles);
+    if (slackEvents.length === 0 && (kinds.get("slack-messages") ?? 0) > 0) {
+      warnings.push("No Slack messages parsed from the uploaded export.");
+    }
     events.push(...slackEvents);
   }
 
-  return events.map(normalizeEvent);
+  const normalized: EventInput[] = [];
+  let invalidTs = 0;
+  for (const event of events) {
+    const ts = toUtcIso(event.ts);
+    if (!ts) {
+      invalidTs += 1;
+      continue;
+    }
+    normalized.push(withRefs({ ...event, ts, text: capText(event.text) }));
+  }
+  if (invalidTs > 0) {
+    warnings.push(`${invalidTs} event(s) had unusable timestamps and were skipped.`);
+  }
+
+  return normalized;
 }
 
 function resolveTitle(form: FormData, events: EventInput[], escalation: string): string {
@@ -152,7 +172,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const warnings: string[] = [];
-    const expanded = expandArchives(uploads);
+    const expanded = expandArchives(uploads, { warnings });
     if (expanded.length === 0) {
       return json({ error: "Archive contained no readable files." }, 400);
     }
@@ -165,35 +185,46 @@ export async function POST(request: NextRequest): Promise<Response> {
       );
     }
 
+    const dedupedUpload = dedupeEvents(collected);
+
     const investigationId = await createInvestigation({
-      title: resolveTitle(form, collected, escalation),
+      title: resolveTitle(form, dedupedUpload, escalation),
       escalationText: escalation,
       contentHash: hash,
     });
 
-    const resolved = await resolveIdentities(collected, getLlmClient(), {
-      upsertIdentity: (row) => upsertIdentity(investigationId, row),
-    });
+    let storedCount: number;
+    try {
+      const resolved = await resolveIdentities(dedupedUpload, getLlmClient(), {
+        upsertIdentity: (row) => upsertIdentity(investigationId, row),
+      });
 
-    const perInvestigationDedupe = dedupeEvents(resolved);
-    const withIds = perInvestigationDedupe.map((event) => ({
-      ...event,
-      id: eventId(event.source, event.ts, event.actor, event.channel, event.text),
-    }));
+      const finalEvents = dedupeEvents(resolved);
+      const withIds = finalEvents.map((event) => ({
+        ...event,
+        id: eventId(event.source, event.ts, event.actor, event.channel, event.text),
+      }));
 
-    if (withIds.length > MAX_EVENT_COUNT) {
-      warnings.push(
-        `Parsed ${withIds.length} events; only the first ${MAX_EVENT_COUNT} are stored.`,
-      );
+      if (withIds.length > MAX_EVENT_COUNT) {
+        warnings.push(
+          `Parsed ${withIds.length} events; only the first ${MAX_EVENT_COUNT} are stored.`,
+        );
+      }
+
+      storedCount = Math.min(withIds.length, MAX_EVENT_COUNT);
+      await insertEvents(investigationId, withIds.slice(0, MAX_EVENT_COUNT));
+      await upsertStage(investigationId, "ingest", 1, "done");
+    } catch (error) {
+      await deleteInvestigation(investigationId).catch(() => {
+        // Best-effort cleanup; the original failure is reported below.
+      });
+      throw error;
     }
-
-    await insertEvents(investigationId, withIds.slice(0, MAX_EVENT_COUNT));
-    await upsertStage(investigationId, "ingest", 1, "done");
 
     return json(
       {
         investigationId,
-        eventCount: Math.min(withIds.length, MAX_EVENT_COUNT),
+        eventCount: storedCount,
         cached: false,
         warnings,
       },

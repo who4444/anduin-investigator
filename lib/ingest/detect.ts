@@ -21,6 +21,13 @@ export interface DetectedFile {
 }
 
 const MAX_ZIP_DEPTH = 2;
+const MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024;
+
+export interface ExpandOptions {
+  warnings?: string[];
+  depth?: number;
+  maxDecompressedBytes?: number;
+}
 
 function basename(name: string): string {
   const parts = name.split(/[\\/]/).filter((part) => part && part !== ".");
@@ -38,15 +45,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function looksLikeJiraIssue(value: unknown): boolean {
-  return isObject(value) && typeof value.key === "string" && isObject(value.fields);
+  return (
+    isObject(value) &&
+    typeof value.key === "string" &&
+    isObject(value.fields)
+  ) || (
+    isObject(value) &&
+    typeof value.id === "string" &&
+    isObject(value.fields) &&
+    typeof value.fields.summary === "string"
+  );
 }
 
 function looksLikeUsers(value: unknown): boolean {
   if (!isObject(value)) return false;
-  const values = Object.values(value).filter(isObject);
-  if (values.length === 0) return false;
-  return values.some(
-    (entry) => "real_name" in entry || "profile" in entry || "name" in entry || "display_name" in entry,
+  const entries = Object.entries(value);
+  if (entries.length === 0) return false;
+  return entries.every(
+    ([key, entry]) =>
+      /^[A-Z][A-Z0-9]{1,}$/.test(key) &&
+      isObject(entry) &&
+      ("real_name" in entry || "profile" in entry || "name" in entry || "display_name" in entry),
   );
 }
 
@@ -95,9 +114,9 @@ export function detectFile(file: IngestFile): DetectedFile {
     if (looksLikeJiraIssue(json)) return { kind: "jira", json };
 
     const base = basename(file.name).toLowerCase();
-    if (base === "users.json" || looksLikeUsers(json)) return { kind: "slack-users", json };
-    if (base === "channels.json" || looksLikeChannels(json)) return { kind: "slack-channels", json };
     if (looksLikeSlackMessages(json)) return { kind: "slack-messages", json };
+    if (base === "channels.json" || looksLikeChannels(json)) return { kind: "slack-channels", json };
+    if (base === "users.json" || looksLikeUsers(json)) return { kind: "slack-users", json };
 
     return { kind: "unknown" };
   }
@@ -105,7 +124,12 @@ export function detectFile(file: IngestFile): DetectedFile {
   return { kind: "unknown" };
 }
 
-export function expandArchives(files: IngestFile[], depth = 0): IngestFile[] {
+export function expandArchives(files: IngestFile[], options: ExpandOptions = {}): IngestFile[] {
+  const {
+    warnings = [],
+    depth = 0,
+    maxDecompressedBytes = MAX_DECOMPRESSED_BYTES,
+  } = options;
   if (depth >= MAX_ZIP_DEPTH) return files;
 
   const out: IngestFile[] = [];
@@ -119,13 +143,19 @@ export function expandArchives(files: IngestFile[], depth = 0): IngestFile[] {
     try {
       entries = unzipSync(file.bytes);
     } catch {
+      warnings.push(`Unreadable archive: ${file.name}`);
       continue;
     }
 
-    const inner: IngestFile[] = Object.entries(entries)
-      .filter(([name]) => !name.endsWith("/"))
-      .map(([name, bytes]) => ({ name, bytes }));
-    out.push(...expandArchives(inner, depth + 1));
+    const members = Object.entries(entries).filter(([name]) => !name.endsWith("/"));
+    const inflatedBytes = members.reduce((sum, [, bytes]) => sum + bytes.byteLength, 0);
+    if (inflatedBytes > maxDecompressedBytes) {
+      warnings.push(`Archive ${file.name} expands to ${inflatedBytes} bytes; skipped.`);
+      continue;
+    }
+
+    const inner: IngestFile[] = members.map(([name, bytes]) => ({ name, bytes }));
+    out.push(...expandArchives(inner, { warnings, depth: depth + 1, maxDecompressedBytes }));
   }
   return out;
 }

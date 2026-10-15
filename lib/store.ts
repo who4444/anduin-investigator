@@ -228,6 +228,11 @@ export async function setPlan(id: string, plan: string): Promise<void> {
   await sql`update investigations set plan = ${plan} where id = ${id}`;
 }
 
+export async function deleteInvestigation(id: string): Promise<void> {
+  const sql = getPool();
+  await sql`delete from investigations where id = ${id}`;
+}
+
 export async function insertEvents(
   investigationId: string,
   events: (EventInput & { id: string })[],
