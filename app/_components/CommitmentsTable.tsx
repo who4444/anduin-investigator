@@ -11,7 +11,7 @@ export function CommitmentsTable({ ledger }: { ledger: Claim[] }) {
   if (ledger.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-xs text-muted">
-        No verified commitments were found in the records.
+        No promises were found in the records.
       </p>
     );
   }
@@ -21,11 +21,11 @@ export function CommitmentsTable({ ledger }: { ledger: Claim[] }) {
       <table className="table min-w-[42rem]">
         <thead>
           <tr>
-            <th className="w-24">Status</th>
+            <th className="w-24">Kept?</th>
             <th className="w-40">Who</th>
             <th>Promise (to whom, as recorded)</th>
             <th className="w-44">When</th>
-            <th className="w-32">Source</th>
+            <th className="w-28">Source</th>
           </tr>
         </thead>
         <tbody>
@@ -41,18 +41,23 @@ export function CommitmentsTable({ ledger }: { ledger: Claim[] }) {
               </td>
               <td className="font-mono text-[11px] text-muted">{claim.ts ?? "—"}</td>
               <td className="text-xs">
-                <a className="font-mono text-accent underline decoration-dotted" href={`#event-${claim.eventId}`}>
-                  {claim.eventId}
+                <a className="text-accent underline decoration-dotted" href={`#event-${claim.eventId}`}>
+                  view message
                 </a>
-                {claim.skepticFlag && <span className="ml-1" title="flagged by the skeptic">⚠</span>}
+                {claim.skepticFlag && (
+                  <span
+                    className="ml-1 text-warn-fg"
+                    title="Another finding or record may conflict with this one"
+                  >
+                    ⚑
+                  </span>
+                )}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="hint">
-        The recipient of each promise is shown in the promise text where the records state it.
-      </p>
+      <p className="hint">The recipient of each promise is shown in the promise text where the records state it.</p>
     </div>
   );
 }

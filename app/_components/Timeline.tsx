@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { EventDrawer } from "@/app/_components/EventDrawer";
+import { SearchIcon } from "@/app/_components/icons";
 import type { Claim, Event } from "@/lib/types";
 
 interface TimelineProps {
@@ -79,12 +80,15 @@ export function Timeline({ timeline, claims }: TimelineProps) {
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="hint">Search text</span>
-          <input
-            className="select w-48"
-            placeholder="filter events…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <span className="relative">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            <input
+              className="select w-48 pl-7"
+              placeholder="filter events…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </span>
         </label>
         <label className="flex flex-col gap-1">
           <span className="hint">Person</span>
@@ -125,7 +129,7 @@ export function Timeline({ timeline, claims }: TimelineProps) {
             checked={commitmentsOnly}
             onChange={(event) => setCommitmentsOnly(event.target.checked)}
           />
-          commitments only
+          promises only
         </label>
         {filtered && (
           <button type="button" className="btn btn-ghost mb-1" onClick={clear}>

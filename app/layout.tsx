@@ -22,7 +22,6 @@ export default function RootLayout({
                 source-backed project history
               </span>
             </Link>
-            <span className="pill pill-neutral">layer 1 · v1.0.0</span>
           </div>
         </header>
         <main>{children}</main>

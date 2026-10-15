@@ -32,12 +32,9 @@ export default async function InvestigationPage({
         <Link href="/" className="text-xs text-muted hover:text-ink">
           ← New investigation
         </Link>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            {result.investigation.title}
-          </h1>
-          <p className="hint font-mono">{result.investigation.id}</p>
-        </div>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          {result.investigation.title}
+        </h1>
         {result.investigation.escalationText && (
           <blockquote className="border-l-2 border-line-strong pl-3 text-sm leading-relaxed text-muted">
             {result.investigation.escalationText}
@@ -56,7 +53,7 @@ export default async function InvestigationPage({
 
       <section className="card flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="section-title">Timeline</h2>
+          <h2 className="section-title">What happened</h2>
           <span className="hint">chronological, all sources</span>
         </div>
         <Timeline timeline={result.timeline} claims={result.claims} />
@@ -64,7 +61,7 @@ export default async function InvestigationPage({
 
       <section className="card flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="section-title">Commitments ledger</h2>
+          <h2 className="section-title">What was promised</h2>
           <span className="hint">promised vs delivered</span>
         </div>
         <CommitmentsTable ledger={result.ledger} />

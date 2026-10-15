@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { CopyIcon, ExternalLinkIcon, LinkIcon } from "@/app/_components/icons";
 import { highlightSegments } from "@/lib/highlight";
 import type { Claim, Event } from "@/lib/types";
 
@@ -16,6 +17,14 @@ const STATUS_PILL: Record<string, string> = {
   broken: "pill-bad",
   unclear: "pill-warn",
   "n/a": "pill-neutral",
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  commitment: "promise",
+  root_cause: "cause",
+  process_failure: "process issue",
+  decision: "decision",
+  ownership: "ownership",
 };
 
 function confidenceLabel(confidence: number): string {
@@ -90,11 +99,13 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="btn btn-secondary" onClick={() => copy("event", event.text)}>
-              {copied === "event" ? "copied" : "Copy text"}
+              <CopyIcon className="h-3.5 w-3.5" />
+              {copied === "event" ? "Copied" : "Copy text"}
             </button>
             {event.url && (
               <a className="btn btn-secondary" href={event.url} target="_blank" rel="noreferrer">
-                Open original ↗
+                <ExternalLinkIcon className="h-3.5 w-3.5" />
+                Open original
               </a>
             )}
           </div>
@@ -102,7 +113,8 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
 
         {event.refs && event.refs.length > 0 && (
           <p className="flex flex-wrap items-center gap-1 text-xs text-muted">
-            references:
+            <LinkIcon className="h-3.5 w-3.5" />
+            related tickets:
             {event.refs.map((ref) => (
               <span key={ref} className="pill pill-neutral font-mono">
                 {ref}
@@ -112,8 +124,8 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
         )}
 
         <section className="flex flex-col gap-3">
-          <h3 className="section-title">Claims citing this event</h3>
-          {claims.length === 0 && <p className="hint">No claims cite this event.</p>}
+          <h3 className="section-title">Findings from this message</h3>
+          {claims.length === 0 && <p className="hint">Nothing was concluded from this message.</p>}
           {claims.map((claim) => (
             <article
               key={claim.id}
@@ -123,10 +135,13 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`pill ${STATUS_PILL[claim.status] ?? "pill-neutral"}`}>{claim.status}</span>
-                <span className="pill pill-neutral">{claim.type}</span>
-                <span className="hint">agent: {claim.agent}</span>
+                <span className="pill pill-neutral">{TYPE_LABEL[claim.type] ?? claim.type}</span>
                 <span className="hint">confidence: {confidenceLabel(claim.confidence)}</span>
-                {claim.skepticFlag && <span className="pill pill-warn">⚠ skeptic</span>}
+                {claim.skepticFlag && (
+                  <span className="pill pill-warn" title="Another finding or record may conflict with this one">
+                    possible conflict
+                  </span>
+                )}
               </div>
               <p className="text-sm leading-relaxed">{claim.text}</p>
               <div className="flex items-start gap-2">
@@ -136,17 +151,18 @@ export function EventDrawer({ event, claims, onClose }: EventDrawerProps) {
                   className="btn btn-ghost text-[11px]"
                   onClick={() => copy(claim.id, claim.quote)}
                 >
-                  {copied === claim.id ? "copied" : "copy"}
+                  <CopyIcon className="h-3.5 w-3.5" />
+                  {copied === claim.id ? "Copied" : "Copy"}
                 </button>
               </div>
               {claim.verifyStatus === "excluded" ? (
                 <p className="pill pill-bad w-fit">
-                  failed verification{claim.verifyError ? ` · ${claim.verifyError}` : ""} — excluded
+                  the quoted words were not found in this message — left out of the timeline
                 </p>
               ) : claim.verifyStatus === "unverified" ? (
                 <p className="pill pill-neutral w-fit">not verified yet</p>
               ) : (
-                <p className="pill pill-ok w-fit">quote verified</p>
+                <p className="pill pill-ok w-fit">quote verified against this message</p>
               )}
             </article>
           ))}

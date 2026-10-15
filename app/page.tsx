@@ -3,27 +3,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  CheckIcon,
+  CircleIcon,
+  InfoIcon,
+  SpinnerIcon,
+  WarnIcon,
+  XIcon,
+} from "@/app/_components/icons";
 import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
 
 const STAGE_ROWS: { key: string; label: string }[] = [
-  { key: "plan", label: "Analyst writes the investigation plan" },
-  { key: "root_cause", label: "Investigator · root cause" },
-  { key: "commitments", label: "Investigator · commitments" },
-  { key: "ownership", label: "Investigator · decisions & ownership" },
-  { key: "skeptic", label: "Skeptic challenges the findings" },
-  { key: "verify", label: "Code verifier checks every quote" },
-  { key: "assemble", label: "Assemble timeline, ledger and gaps" },
+  { key: "plan", label: "Reading the records and drafting an investigation plan" },
+  { key: "root_cause", label: "Tracing what went wrong" },
+  { key: "commitments", label: "Checking what was promised" },
+  { key: "ownership", label: "Checking who owned what, and where handoffs failed" },
+  { key: "skeptic", label: "Testing the findings for contradictions" },
+  { key: "verify", label: "Verifying every quote against its source" },
+  { key: "assemble", label: "Building your timeline, promises and gaps" },
 ];
 
 type StageState = { status: string; error?: string | null; pass: number };
-
-interface ServerStage {
-  stage: string;
-  pass: number;
-  status: string;
-  error?: string | null;
-  log: unknown[];
-}
 
 interface UploadResult {
   investigationId: string;
@@ -35,7 +35,6 @@ interface UploadResult {
 interface SourceInfo {
   id: string;
   label: string;
-  envKeys: string[];
   configured: boolean;
   missingEnv: string[];
 }
@@ -44,8 +43,6 @@ interface SourceTargetInfo {
   id: string;
   label: string;
 }
-
-const LOG_POLL_MS = 3000;
 
 export default function Home() {
   const router = useRouter();
@@ -58,7 +55,6 @@ export default function Home() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [synthetic, setSynthetic] = useState(false);
   const [stages, setStages] = useState<Record<string, StageState>>({});
-  const [serverLogs, setServerLogs] = useState<Record<string, unknown[]>>({});
   const [eventCount, setEventCount] = useState<number | null>(null);
   const [run, setRun] = useState<{ id: string; synthetic: boolean; live?: boolean } | null>(null);
   const [sources, setSources] = useState<SourceInfo[]>([]);
@@ -87,11 +83,8 @@ export default function Home() {
         targets?: SourceTargetInfo[];
         error?: string;
       };
-      if (!response.ok) throw new Error(body.error ?? "Could not load targets.");
+      if (!response.ok) throw new Error(body.error ?? "Could not load the list.");
       setTargets((current) => ({ ...current, [sourceId]: body.targets ?? [] }));
-      if (sourceId === "gmail" && !(body.targets ?? []).some((target) => target.id === "search")) {
-        setSelectedTargets((current) => ({ ...current, [sourceId]: ["search"] }));
-      }
     } catch (caught) {
       setSourceError((current) => ({
         ...current,
@@ -126,102 +119,26 @@ export default function Home() {
     return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
   };
 
-  const collectLogs = (stages: ServerStage[]): Record<string, unknown[]> => {
-    const logs: Record<string, unknown[]> = {};
-    for (const stage of stages) {
-      if (stage.log.length > 0) logs[stage.stage] = stage.log;
-    }
-    return logs;
-  };
-
-  async function drivePipeline(investigationId: string, flags: { synthetic: boolean; live?: boolean }) {
-    let poller: ReturnType<typeof setInterval> | null = null;
-    try {
-      poller = setInterval(async () => {
-        try {
-          const response = await fetch(`/api/investigations/${investigationId}/status`);
-          const body = (await response.json().catch(() => ({}))) as { stages?: ServerStage[] };
-          setServerLogs(collectLogs(body.stages ?? []));
-        } catch {
-          // Polling is best-effort; the pipeline result is authoritative.
-        }
-      }, LOG_POLL_MS);
-
-      const outcome = await runPipeline(investigationId, { onStage: applyStage });
-      if (!outcome.ok) {
-        throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
-      }
-
-      try {
-        const status = await fetch(`/api/investigations/${investigationId}/status`);
-        const payload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
-        setServerLogs(collectLogs(payload.stages ?? []));
-      } catch {
-        // Cosmetic refresh only.
-      }
-
-      router.push(resultsHref(investigationId, { ...flags, cached: false }));
-    } finally {
-      if (poller) clearInterval(poller);
-    }
-  }
-
-  async function pullFromSource(sourceId: string) {
-    const selected = selectedTargets[sourceId] ?? [];
-    const query = sourceQuery[sourceId]?.trim() ?? "";
-
-    setBusy(true);
+  function resetRunState() {
     setError(null);
     setStages({});
-    setServerLogs({});
     setWarnings([]);
     setEventCount(null);
-    setSynthetic(false);
     setRun(null);
-    setSourceError((current) => ({ ...current, [sourceId]: "" }));
+  }
 
-    try {
-      const response = await fetch("/api/sources/pull", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          source: sourceId,
-          targets: selected,
-          query: query || undefined,
-          escalation,
-        }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
-        error?: string;
-      };
-      if (!response.ok || !payload.investigationId) {
-        throw new Error(payload.error ?? "Pull failed.");
-      }
-
-      setEventCount(payload.eventCount ?? 0);
-      setWarnings(payload.warnings ?? []);
-      setRun({ id: payload.investigationId, synthetic: false, live: true });
-
-      await drivePipeline(payload.investigationId, { synthetic: false, live: true });
-    } catch (caught) {
-      setSourceError((current) => ({
-        ...current,
-        [sourceId]: caught instanceof Error ? caught.message : String(caught),
-      }));
-    } finally {
-      setBusy(false);
+  async function drivePipeline(investigationId: string, flags: { synthetic: boolean; live?: boolean }) {
+    const outcome = await runPipeline(investigationId, { onStage: applyStage });
+    if (!outcome.ok) {
+      throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
     }
+    router.push(resultsHref(investigationId, { ...flags, cached: false }));
   }
 
   async function upload(uploadFiles: File[], isSynthetic: boolean) {
     setBusy(true);
-    setError(null);
-    setStages({});
-    setServerLogs({});
-    setWarnings([]);
-    setEventCount(null);
+    resetRunState();
     setSynthetic(isSynthetic);
-    setRun(null);
 
     try {
       const form = new FormData();
@@ -256,6 +173,43 @@ export default function Home() {
     }
   }
 
+  async function pullFromSource(sourceId: string) {
+    const selected = selectedTargets[sourceId] ?? [];
+    const query = sourceQuery[sourceId]?.trim() ?? "";
+
+    setBusy(true);
+    resetRunState();
+    setSynthetic(false);
+    setSourceError((current) => ({ ...current, [sourceId]: "" }));
+
+    try {
+      const response = await fetch("/api/sources/pull", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ source: sourceId, targets: selected, query: query || undefined, escalation }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
+        error?: string;
+      };
+      if (!response.ok || !payload.investigationId) {
+        throw new Error(payload.error ?? "Pull failed.");
+      }
+
+      setEventCount(payload.eventCount ?? 0);
+      setWarnings(payload.warnings ?? []);
+      setRun({ id: payload.investigationId, synthetic: false, live: true });
+
+      await drivePipeline(payload.investigationId, { synthetic: false, live: true });
+    } catch (caught) {
+      setSourceError((current) => ({
+        ...current,
+        [sourceId]: caught instanceof Error ? caught.message : String(caught),
+      }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function retry() {
     if (!run) return;
     setBusy(true);
@@ -275,7 +229,7 @@ export default function Home() {
     setError(null);
     try {
       const manifestResponse = await fetch("/demo/manifest.json");
-      if (!manifestResponse.ok) throw new Error("Built-in demo exports are unavailable.");
+      if (!manifestResponse.ok) throw new Error("The built-in demo exports are unavailable.");
       const manifest = (await manifestResponse.json()) as { files: string[] };
 
       const loaded = await Promise.all(
@@ -283,7 +237,6 @@ export default function Home() {
           const response = await fetch(`/demo/${name}`);
           if (!response.ok) throw new Error(`Missing demo file: ${name}`);
           const blob = await response.blob();
-          // Keep the manifest path so Slack's per-channel folders survive ingest.
           return new File([blob], name, { type: blob.type });
         }),
       );
@@ -302,6 +255,7 @@ export default function Home() {
     if (dropped.length > 0) setFiles(dropped);
   };
 
+  const configuredSources = sources.filter((source) => source.configured);
   const doneCount = STAGE_ROWS.filter((row) => stages[row.key]?.status === "done").length;
   const started = Object.keys(stages).length > 0;
   const progress = Math.round((doneCount / STAGE_ROWS.length) * 100);
@@ -310,24 +264,24 @@ export default function Home() {
     <div className="shell flex flex-col gap-8">
       <section className="flex flex-col gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Reconstruct what actually happened
+          Answer the client in minutes
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Drop in a project&apos;s Jira, email and Slack exports. The tool builds one event store,
-          runs investigators over it, verifies every claim against its source quote, and gives you a
-          timeline, a commitments ledger and the gaps in the record.
+          Drop in the project&apos;s Jira, email and Slack exports. You get one ordered timeline of
+          what happened, every promise that was made and whether it was kept, and an explicit list
+          of what the records cannot tell you. Every finding links back to the original message.
         </p>
       </section>
 
       <section className="card flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <label className="field-label" htmlFor="escalation">
-            Escalation <span className="font-normal text-muted">(optional)</span>
+            What is the client asking? <span className="font-normal text-muted">(optional)</span>
           </label>
           <textarea
             id="escalation"
             className="input min-h-24"
-            placeholder="Paste the client escalation. Leave blank and the analyst will infer it from the records."
+            placeholder="Paste the escalation. Leave blank and it will be inferred from the records."
             value={escalation}
             onChange={(event) => setEscalation(event.target.value)}
             disabled={busy}
@@ -346,7 +300,8 @@ export default function Home() {
           onDrop={onDrop}
         >
           <p className="text-sm font-medium">
-            Exports <span className="font-normal text-muted">— drag files here, or choose them</span>
+            Project history{" "}
+            <span className="font-normal text-muted">— drag files here, or choose them</span>
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <label className="btn btn-secondary cursor-pointer">
@@ -355,9 +310,7 @@ export default function Home() {
                 type="file"
                 multiple
                 className="sr-only"
-                onChange={(event) =>
-                  setFiles(event.target.files ? Array.from(event.target.files) : [])
-                }
+                onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
                 disabled={busy}
               />
             </label>
@@ -368,9 +321,7 @@ export default function Home() {
                 type="file"
                 multiple
                 className="sr-only"
-                onChange={(event) =>
-                  setFiles(event.target.files ? Array.from(event.target.files) : [])
-                }
+                onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
                 disabled={busy}
               />
             </label>
@@ -381,14 +332,17 @@ export default function Home() {
             )}
           </div>
           <p className="hint">
-            Jira JSON · <span className="font-mono">.mbox</span>/{" "}
-            <span className="font-mono">.eml</span> email · a Slack export folder or a{" "}
+            Jira JSON · email <span className="font-mono">.mbox</span>/
+            <span className="font-mono">.eml</span> · a Slack export folder or a{" "}
             <span className="font-mono">.zip</span> of it. Up to 8&nbsp;MB.
           </p>
           {files.length > 0 && (
             <ul className="flex flex-wrap gap-1.5">
               {files.map((file) => (
-                <li key={`${file.webkitRelativePath || file.name}-${file.size}`} className="pill pill-neutral font-mono">
+                <li
+                  key={`${file.webkitRelativePath || file.name}-${file.size}`}
+                  className="pill pill-neutral font-mono"
+                >
                   {file.webkitRelativePath || file.name}
                 </li>
               ))}
@@ -403,27 +357,25 @@ export default function Home() {
             disabled={busy || files.length === 0}
             onClick={() => upload(files, false)}
           >
-            {busy ? "Running…" : "Run investigation"}
+            {busy ? "Working…" : "Reconstruct what happened"}
           </button>
           <button type="button" className="btn btn-secondary" disabled={busy} onClick={loadDemo}>
-            Load built-in demo exports
+            Try the built-in demo
           </button>
         </div>
 
         {synthetic && (
           <p className="callout callout-warn">
-            <span aria-hidden>◆</span>
+            <WarnIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Synthetic demo data (Northwind / Meridian) — generated exports, not a real project.
           </p>
         )}
-        {eventCount !== null && !busy && (
-          <p className="hint">{eventCount} events ingested.</p>
-        )}
+        {eventCount !== null && !busy && <p className="hint">{eventCount} events read.</p>}
         {warnings.length > 0 && (
           <ul className="flex flex-col gap-1">
             {warnings.map((warning) => (
               <li key={warning} className="callout callout-info">
-                <span aria-hidden>•</span>
+                <InfoIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {warning}
               </li>
             ))}
@@ -431,21 +383,19 @@ export default function Home() {
         )}
         {error && (
           <div className="callout callout-bad">
-            <span aria-hidden>✗</span>
+            <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div className="flex flex-col gap-2">
               <span>{error}</span>
               {run && (
                 <div className="flex gap-2">
                   <button type="button" className="btn btn-secondary" onClick={retry} disabled={busy}>
-                    Retry run
+                    Try again
                   </button>
                   <button
                     type="button"
                     className="btn btn-ghost"
                     onClick={() => {
-                      setError(null);
-                      setStages({});
-                      setRun(null);
+                      resetRunState();
                     }}
                   >
                     Start over
@@ -457,109 +407,94 @@ export default function Home() {
         )}
       </section>
 
-      <section className="card flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="section-title">Pull from live sources</h2>
-          <span className="hint">read-only · credentials stay server-side</span>
-        </div>
+      {configuredSources.length > 0 && (
+        <section className="card flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="section-title">Connected sources</h2>
+            <span className="hint">read-only access</span>
+          </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          {sources.map((source) => {
-            const sourceTargets = targets[source.id] ?? [];
-            const selected = selectedTargets[source.id] ?? [];
-            const isGmail = source.id === "gmail";
-            return (
-              <div key={source.id} className="flex flex-col gap-2 rounded-xl border border-line p-3">
-                <div className="flex items-center justify-between gap-2">
+          <div className="grid gap-3 md:grid-cols-3">
+            {configuredSources.map((source) => {
+              const sourceTargets = targets[source.id] ?? [];
+              const selected = selectedTargets[source.id] ?? [];
+              const isGmail = source.id === "gmail";
+              return (
+                <div key={source.id} className="flex flex-col gap-2 rounded-xl border border-line p-3">
                   <span className="text-sm font-medium">{source.label}</span>
-                  {source.configured ? (
-                    <span className="pill pill-ok">configured</span>
-                  ) : (
-                    <span className="pill pill-warn">off</span>
-                  )}
-                </div>
 
-                {!source.configured && (
-                  <p className="hint">
-                    Missing env: <span className="font-mono">{source.missingEnv.join(", ")}</span>
-                  </p>
-                )}
-
-                {source.configured && (
-                  <>
+                  {!isGmail && (
                     <button
                       type="button"
                       className="btn btn-secondary self-start"
-                      disabled={busy || (sourceTargets.length > 0 && !isGmail)}
+                      disabled={busy || sourceTargets.length > 0}
                       onClick={() => loadTargets(source.id)}
                     >
-                      {sourceTargets.length > 0 ? "reload targets" : "load targets"}
+                      {sourceTargets.length > 0 ? "reload" : "choose what to pull"}
                     </button>
+                  )}
 
-                    {sourceTargets.length > 0 && !isGmail && (
-                      <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                        {sourceTargets.map((target) => (
-                          <li key={target.id}>
-                            <label className="flex items-center gap-2 text-xs">
-                              <input
-                                type="checkbox"
-                                checked={selected.includes(target.id)}
-                                onChange={() => toggleTarget(source.id, target.id)}
-                                disabled={busy}
-                              />
-                              {target.label}
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                  {sourceTargets.length > 0 && !isGmail && (
+                    <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+                      {sourceTargets.map((target) => (
+                        <li key={target.id}>
+                          <label className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(target.id)}
+                              onChange={() => toggleTarget(source.id, target.id)}
+                              disabled={busy}
+                            />
+                            {target.label}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
-                    {(isGmail || source.id === "jira") && (
-                      <input
-                        className="input"
-                        placeholder={
-                          source.id === "jira"
-                            ? "JQL (optional): project = MER ORDER BY created ASC"
-                            : "Gmail query: label:meridian newer_than:90d"
-                        }
-                        value={sourceQuery[source.id] ?? ""}
-                        onChange={(event) =>
-                          setSourceQuery((current) => ({ ...current, [source.id]: event.target.value }))
-                        }
-                        disabled={busy}
-                      />
-                    )}
+                  {(isGmail || source.id === "jira") && (
+                    <input
+                      className="input"
+                      placeholder={
+                        source.id === "jira"
+                          ? "Which issues? (optional, defaults to the whole project)"
+                          : "Which emails? e.g. label:meridian newer_than:90d"
+                      }
+                      value={sourceQuery[source.id] ?? ""}
+                      onChange={(event) =>
+                        setSourceQuery((current) => ({ ...current, [source.id]: event.target.value }))
+                      }
+                      disabled={busy}
+                    />
+                  )}
 
-                    <button
-                      type="button"
-                      className="btn btn-primary self-start"
-                      disabled={busy || (!isGmail && selected.length === 0)}
-                      onClick={() => pullFromSource(source.id)}
-                    >
-                      Pull {isGmail ? "messages" : sourceTargets.length > 0 ? `${selected.length} selected` : ""}
-                    </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary self-start"
+                    disabled={busy || (!isGmail && selected.length === 0)}
+                    onClick={() => pullFromSource(source.id)}
+                  >
+                    Pull into a new investigation
+                  </button>
 
-                    {sourceError[source.id] && (
-                      <p className="callout callout-bad">{sourceError[source.id]}</p>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-          {sources.length === 0 && (
-            <p className="hint md:col-span-3">
-              No live sources are configured. Add JIRA_*/SLACK_TOKEN/GMAIL_* env vars and restart.
-            </p>
-          )}
-        </div>
-      </section>
+                  {sourceError[source.id] && (
+                    <p className="callout callout-bad">
+                      <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {sourceError[source.id]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section className="card flex flex-col gap-4" aria-live="polite">
         <div className="flex items-center justify-between gap-3">
           <h2 className="section-title">Progress</h2>
           <span className="hint">
-            {doneCount}/{STAGE_ROWS.length} stages
+            {doneCount}/{STAGE_ROWS.length}
           </span>
         </div>
 
@@ -574,27 +509,12 @@ export default function Home() {
           {STAGE_ROWS.map((row) => {
             const state = stages[row.key];
             const status = state?.status ?? "pending";
-            const logs = serverLogs[row.key];
             return (
-              <li key={row.key} className="flex flex-col gap-1">
-                <div className="flex items-start gap-2 text-sm">
-                  <StageIcon status={status} />
-                  <span className={status === "pending" ? "text-muted" : "text-ink"}>{row.label}</span>
-                  {state?.pass && state.pass > 1 && (
-                    <span className="pill pill-info">retry pass {state.pass}</span>
-                  )}
-                  {state?.error && <span className="text-xs text-bad-fg">{state.error}</span>}
-                </div>
-                {logs && logs.length > 0 && (
-                  <details className="ml-6 text-xs text-muted">
-                    <summary className="cursor-pointer hover:text-ink">
-                      tool log ({logs.length} entries)
-                    </summary>
-                    <pre className="mt-1 max-h-40 overflow-auto rounded-lg border border-line bg-surface-2 p-2">
-                      {logs.map((entry) => JSON.stringify(entry)).join("\n")}
-                    </pre>
-                  </details>
-                )}
+              <li key={row.key} className="flex items-start gap-2 text-sm">
+                <StageIcon status={status} />
+                <span className={status === "pending" ? "text-muted" : "text-ink"}>{row.label}</span>
+                {state?.pass && state.pass > 1 && <span className="pill pill-info">pass {state.pass}</span>}
+                {state?.error && <span className="text-xs text-bad-fg">{state.error}</span>}
               </li>
             );
           })}
@@ -607,28 +527,28 @@ export default function Home() {
 function StageIcon({ status }: { status: string }) {
   if (status === "done") {
     return (
-      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ok-bg text-[11px] text-ok-fg" aria-label="done">
-        ✓
+      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-ok-bg text-ok-fg">
+        <CheckIcon className="h-3 w-3" />
       </span>
     );
   }
   if (status === "running") {
     return (
-      <span className="grid h-5 w-5 shrink-0 place-items-center" aria-label="running">
-        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line border-t-accent" />
+      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center text-accent">
+        <SpinnerIcon className="h-3.5 w-3.5" />
       </span>
     );
   }
   if (status === "error") {
     return (
-      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-bad-bg text-[11px] text-bad-fg" aria-label="failed">
-        ✗
+      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-bad-bg text-bad-fg">
+        <XIcon className="h-3 w-3" />
       </span>
     );
   }
   return (
-    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-line text-[10px] text-muted" aria-label="pending">
-      ○
+    <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center text-muted">
+      <CircleIcon className="h-3 w-3" />
     </span>
   );
 }
