@@ -1,0 +1,11 @@
+{
+  "files": [
+    "jira-meridian.json",
+    "northwind-emails.mbox",
+    "escalation.eml",
+    "slack/users.json",
+    "slack/channels.json",
+    "slack/meridian-billing/messages.json",
+    "slack/general/messages.json"
+  ]
+}

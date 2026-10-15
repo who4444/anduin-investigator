@@ -1,0 +1,105 @@
+From L. Chen <l.chen@northwind.example> Fri, 20 Sep 2024 10:00:00 +0500
+From: L. Chen <l.chen@northwind.example>
+To: Priya Nair <priya.nair@northwind.example>
+Date: Fri, 20 Sep 2024 10:00:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m1@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.
+
+From Priya Nair <priya.nair@northwind.example> Tue, 24 Sep 2024 09:15:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Tue, 24 Sep 2024 09:15:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m2@northwind.example>
+In-Reply-To: <m1@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Checking in - is the Sep 24 release out? We still see wrong totals.
+
+From Marcus Webb <marcus.webb@meridian-software.example> Tue, 24 Sep 2024 18:40:00 -0400
+From: Marcus Webb <marcus.webb@meridian-software.example>
+To: Priya Nair <priya.nair@northwind.example>
+Date: Tue, 24 Sep 2024 18:40:00 -0400
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m3@meridian-software.example>
+In-Reply-To: <m2@northwind.example>
+Content-Type: text/plain; charset=utf-8
+
+Build is going out tonight; the invoice fix is included.
+
+From Priya Nair <priya.nair@northwind.example> Fri, 27 Sep 2024 08:05:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Fri, 27 Sep 2024 08:05:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m4@northwind.example>
+In-Reply-To: <m3@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Totals are still wrong this morning. Please confirm what went out.
+
+From Priya Nair <priya.nair@northwind.example> Sat, 28 Sep 2024 08:10:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Sat, 28 Sep 2024 08:10:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m5@northwind.example>
+In-Reply-To: <m3@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Following up again - our finance team is blocked on this.
+
+From Priya Nair <priya.nair@northwind.example> Sun, 29 Sep 2024 09:00:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Sun, 29 Sep 2024 09:00:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m6@northwind.example>
+In-Reply-To: <m3@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Third message with no reply. We need a date for the fix.
+
+From Priya Nair <priya.nair@northwind.example> Mon, 30 Sep 2024 07:45:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Mon, 30 Sep 2024 07:45:00 +0500
+Subject: Re: Invoice totals after 4.12
+Message-ID: <m7@northwind.example>
+In-Reply-To: <m3@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Still nothing. Escalating this on our side today.
+
+From Dana Okoro <dana.okoro@meridian-software.example> Mon, 16 Sep 2024 12:00:00 -0400
+From: Dana Okoro <dana.okoro@meridian-software.example>
+To: all@meridian-software.example
+Date: Mon, 16 Sep 2024 12:00:00 -0400
+Subject: Reminder: timesheet deadline
+Message-ID: <m8@meridian-software.example>
+Content-Type: text/plain; charset=utf-8
+
+Please submit timesheets by Friday.
+
+From news@payments-weekly.example Wed, 18 Sep 2024 06:00:00 +0500
+From: news@payments-weekly.example
+To: Priya Nair <priya.nair@northwind.example>
+Date: Wed, 18 Sep 2024 06:00:00 +0500
+Subject: Webinar: billing automation
+Message-ID: <m9@payments-weekly.example>
+Content-Type: text/plain; charset=utf-8
+
+Join our webinar on billing automation.
+
+From Priya Nair <priya.nair@northwind.example> Wed, 18 Sep 2024 11:20:00 +0500
+From: Priya Nair <priya.nair@northwind.example>
+To: Marcus Webb <marcus.webb@meridian-software.example>
+Date: Wed, 18 Sep 2024 11:20:00 +0500
+Subject: Unrelated: SUP-2231 renewal paperwork
+Message-ID: <m10@northwind.example>
+Content-Type: text/plain; charset=utf-8
+
+Separately, can you confirm the SUP-2231 renewal paperwork status?

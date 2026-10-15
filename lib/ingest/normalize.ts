@@ -20,6 +20,11 @@ export function isoFromEpoch(sec: number | string): string {
   return new Date(Math.round(seconds * 1000)).toISOString();
 }
 
+export function toUtcIso(ts: string): string {
+  const parsed = new Date(ts);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+
 const TRUNCATION_MARKER = "…[truncated]";
 
 export function capText(s: string, max = 4000): string {

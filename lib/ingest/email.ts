@@ -61,11 +61,15 @@ function stripHtml(html: string): string {
 
 function fromDisplay(from: Email["from"]): string | undefined {
   if (!from) return undefined;
-  if (typeof from.name === "string" && from.name.trim()) return from.name.trim();
-  if ("address" in from && typeof from.address === "string" && from.address.trim()) {
-    return from.address.trim();
-  }
-  return undefined;
+  const name = typeof from.name === "string" && from.name.trim() ? from.name.trim() : undefined;
+  const address = "address" in from && typeof from.address === "string" && from.address.trim()
+    ? from.address.trim()
+    : undefined;
+
+  // Keep the address alongside the display name so cross-source identity
+  // resolution can link an email sender to the same person in Jira/Slack.
+  if (name && address) return `${name} <${address}>`;
+  return name ?? address;
 }
 
 function bodyText(email: Email): string {

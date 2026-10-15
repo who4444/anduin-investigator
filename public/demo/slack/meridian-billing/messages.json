@@ -1,0 +1,58 @@
+[
+  {
+    "ts": "1725937800.000000",
+    "user": "U2",
+    "text": "4.12 is live on production as of this morning."
+  },
+  {
+    "ts": "1726117800.000000",
+    "user": "U2",
+    "text": "Meridian flagged wrong invoice totals; looking at MER-101."
+  },
+  {
+    "ts": "1726822800.000000",
+    "user": "U1",
+    "text": "I am on leave until Oct 2. No handoff set up yet for MER-101."
+  },
+  {
+    "ts": "1727065800.000000",
+    "user": "U2",
+    "text": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release."
+  },
+  {
+    "ts": "1727193600.000000",
+    "user": "U2",
+    "text": "Sep 24 release is cut; invoice fix included."
+  },
+  {
+    "ts": "1727254800.000000",
+    "user": "U3",
+    "text": "QA is still failing on the Sep 24 build; totals are off by a day in test."
+  },
+  {
+    "ts": "1727255100.000000",
+    "user": "U2",
+    "text": "Let us keep MER-101 open until QA passes.",
+    "thread_ts": "1727254800.000000"
+  },
+  {
+    "ts": "1727316600.000000",
+    "user": "U2",
+    "text": "Marking MER-101 resolved; the fix is in the Sep 24 build."
+  },
+  {
+    "ts": "1727317200.000000",
+    "user": "U3",
+    "text": "It is not in the build I tested, but ok."
+  },
+  {
+    "ts": "1727683200.000000",
+    "user": "U2",
+    "text": "Has anyone heard back from Northwind about the totals?"
+  },
+  {
+    "ts": "1726326000.000000",
+    "user": "U3",
+    "text": "Coffee machine on floor 3 is fixed."
+  }
+]

@@ -1,6 +1,6 @@
 ---
 description: Coding subagent for Anduin Investigator — implements assigned tasks (writes/edits code, runs builds/tests). Dispatch all implementation work here.
-mode: subagent
+mode: all
 model: opencode-go/deepseek-v4.1-flash
 permission:
   edit: allow

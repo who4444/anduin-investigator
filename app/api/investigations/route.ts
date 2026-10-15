@@ -6,7 +6,7 @@ import { detectFile, expandArchives, type IngestFile } from "@/lib/ingest/detect
 import { parseEml, parseMbox } from "@/lib/ingest/email";
 import { resolveIdentities } from "@/lib/ingest/identity";
 import { parseJira } from "@/lib/ingest/jira";
-import { capText, dedupeEvents, eventId } from "@/lib/ingest/normalize";
+import { capText, dedupeEvents, eventId, toUtcIso } from "@/lib/ingest/normalize";
 import { extractTicketRefs } from "@/lib/ingest/refs";
 import { parseSlackFiles, type SlackFile } from "@/lib/ingest/slack";
 import { getLlmClient } from "@/lib/llm";
@@ -31,11 +31,6 @@ const UNDEFINED_TABLE = "42P01";
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
-}
-
-function toUtcIso(ts: string): string {
-  const parsed = new Date(ts);
-  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }
 
 function withRefs(event: EventInput): EventInput {

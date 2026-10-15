@@ -21,7 +21,7 @@ const KIND_MISSIONS: Record<InvestigatorKind, string> = {
   root_cause:
     "Establish what actually went wrong technically: the change or event that caused the problem, when it first appeared, and which fixes were attempted or failed.",
   commitments:
-    "Establish every promise made (who promised what, to whom, and by whom it was due) and whether it was kept. Name the person who promised and the recipient in the claim text when the records state them. Set status to kept, broken, or unclear; use n/a for claims that are not commitments.",
+    "Establish every promise made (who promised what, to whom, and by when) and whether it was kept. Name the person who promised and the recipient in the claim text when the records state them. Set status to kept, broken, or unclear; use n/a for claims that are not commitments.",
   ownership:
     "Establish who decided and owned what: handoffs, escalations, unannounced changes, and messages that went unanswered (process failure).",
 };

@@ -1,0 +1,32 @@
+[
+  {
+    "ts": "1725868800.000000",
+    "user": "U3",
+    "text": "Reminder: standup moves to 9:30 this week."
+  },
+  {
+    "ts": "1726056000.000000",
+    "user": "U2",
+    "text": "Lunch order closes at noon."
+  },
+  {
+    "ts": "1726221600.000000",
+    "user": "U2",
+    "text": "Who has the release checklist template?"
+  },
+  {
+    "ts": "1726563600.000000",
+    "user": "U3",
+    "text": "New coffee machine is great."
+  },
+  {
+    "ts": "1726754400.000000",
+    "user": "U2",
+    "text": "Reminder to file expenses for the offsite."
+  },
+  {
+    "ts": "1727712000.000000",
+    "user": "U3",
+    "text": "All-hands moved to Thursday."
+  }
+]

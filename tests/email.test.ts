@@ -33,8 +33,8 @@ describe("parseMbox", () => {
   it("converts +0800 Date headers to UTC ISO and uses the From display name", async () => {
     const { events } = await parseMbox(bytes("sample.mbox"));
     expect(events[0].ts).toBe("2024-09-24T01:30:00.000Z");
-    expect(events[0].actor).toBe("Dana Okafor");
-    expect(events[1].actor).toBe("Priya Nair");
+    expect(events[0].actor).toBe("Dana Okafor <dana@northwind.example>");
+    expect(events[1].actor).toBe("Priya Nair <priya@northwind.example>");
     expect(events[1].ts).toBe("2024-09-24T03:00:00.000Z");
   });
 
@@ -89,7 +89,7 @@ describe("parseMbox", () => {
       ].join("\n"),
     );
     const { events } = await parseMbox(raw);
-    expect(events.map((event) => event.actor)).toEqual(["Alice", "Carol"]);
+    expect(events.map((event) => event.actor)).toEqual(["Alice <alice@nw.example>", "Carol <carol@nw.example>"]);
   });
 });
 
@@ -98,7 +98,7 @@ describe("parseEml", () => {
     const { events } = await parseEml(bytes("single.eml"));
     expect(events).toHaveLength(1);
     expect(events[0].source).toBe("email");
-    expect(events[0].actor).toBe("Lin Chen");
+    expect(events[0].actor).toBe("Lin Chen <lin@northwind.example>");
     expect(events[0].channel).toBe("email");
     expect(events[0].ts).toBe("2024-09-26T03:00:00.000Z");
   });
