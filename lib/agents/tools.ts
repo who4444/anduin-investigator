@@ -1,6 +1,6 @@
 import { asNumber, asString } from "../json";
 import type { ToolSpec } from "../llm";
-import { getEvent, getEvents, insertClaims } from "../store";
+import { getClaims, getEvent, getEvents, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event } from "../types";
 import { verifyQuote } from "../verify";
 import { compactEvent, type CompactEvent } from "./summary";
@@ -243,6 +243,18 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
       case "submit_claim": {
         const { claim, error } = claimFromArgs({ ...args, agent: agentName });
         if (!claim) return JSON.stringify({ error });
+
+        const existing = await getClaims(investigationId);
+        const duplicate = existing.find(
+          (stored) =>
+            stored.agent === agentName &&
+            stored.type === claim.type &&
+            stored.eventId === claim.eventId &&
+            stored.text.toLowerCase().replace(/\s+/g, " ").trim() ===
+              claim.text.toLowerCase().replace(/\s+/g, " ").trim(),
+        );
+        if (duplicate) return JSON.stringify({ claimId: duplicate.id, duplicate: true });
+
         const [stored] = await insertClaims(investigationId, [{ ...claim, agent: agentName }]);
         return JSON.stringify({ claimId: stored.id });
       }

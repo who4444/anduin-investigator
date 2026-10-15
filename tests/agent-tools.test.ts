@@ -138,6 +138,33 @@ describeDb("agent tools", () => {
     expect(claims.some((claim) => claim.agent === "commitments" && claim.status === "broken")).toBe(true);
   });
 
+  it("treats a repeated submit_claim as the same claim", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const args = {
+      type: "root_cause",
+      text: "A retry-friendly claim.",
+      quote: "release 4.12",
+      event_id: jiraId,
+      status: "n/a",
+      confidence: 0.7,
+    };
+
+    const first = JSON.parse(await tools.exec("submit_claim", args)) as { claimId: string };
+    const second = JSON.parse(await tools.exec("submit_claim", args)) as {
+      claimId: string;
+      duplicate?: boolean;
+    };
+
+    expect(second.claimId).toBe(first.claimId);
+    expect(second.duplicate).toBe(true);
+
+    const { getClaims } = await import("../lib/store");
+    const matches = (await getClaims(investigationId)).filter(
+      (claim) => claim.text === "A retry-friendly claim.",
+    );
+    expect(matches).toHaveLength(1);
+  });
+
   it("rejects a submit_claim without a valid status", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const response = JSON.parse(

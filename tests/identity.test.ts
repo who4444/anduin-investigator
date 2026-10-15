@@ -64,6 +64,17 @@ describe("deterministicAliases", () => {
 
     expect(aliases.size).toBe(0);
   });
+
+  it("picks a clean display name as canonical even when the address form is more frequent", () => {
+    const aliases = deterministicAliases([
+      event("Priya Nair"),
+      event("Priya Nair <priya.nair@northwind.example>"),
+      event("Priya Nair <priya.nair@northwind.example>", "second message"),
+    ]);
+
+    expect(aliases.get("Priya Nair <priya.nair@northwind.example>")).toBe("Priya Nair");
+    expect(aliases.get("Priya Nair")).toBeUndefined();
+  });
 });
 
 describe("suggestLlmMerges", () => {

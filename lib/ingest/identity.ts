@@ -73,10 +73,13 @@ export function deterministicAliases(events: EventInput[]): Map<string, string> 
       byEmail.set(email, names);
     }
 
-    const normalized = normalizeName(displayNameOf(actor));
+    const display = displayNameOf(actor);
+    const normalized = normalizeName(display);
     if (normalized) {
+      // Group by DISPLAY NAME (aggregating every raw form) so the canonical is
+      // always a clean name, never a "Name <addr>" actor string.
       const variants = byName.get(normalized) ?? new Map<string, number>();
-      variants.set(actor, (variants.get(actor) ?? 0) + count);
+      variants.set(display, (variants.get(display) ?? 0) + count);
       byName.set(normalized, variants);
     }
   }
@@ -104,7 +107,6 @@ export function deterministicAliases(events: EventInput[]): Map<string, string> 
     }
     if (canonical && canonical !== actor) aliases.set(actor, canonical);
   }
-
   return aliases;
 }
 
