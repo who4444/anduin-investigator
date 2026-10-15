@@ -9,6 +9,16 @@ export type InvestigatorKind = "root_cause" | "commitments" | "ownership";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const MAX_ROUNDS = 8;
+const ARG_PREVIEW_LIMIT = 120;
+
+function truncateArgs(args: Record<string, unknown>): Record<string, string> {
+  const truncated: Record<string, string> = {};
+  for (const [key, value] of Object.entries(args)) {
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    truncated[key] = text.length > ARG_PREVIEW_LIMIT ? `${text.slice(0, ARG_PREVIEW_LIMIT)}…` : text;
+  }
+  return truncated;
+}
 const CLAIM_STATUSES: ClaimStatus[] = ["kept", "broken", "unclear", "n/a"];
 
 const KIND_LABELS: Record<InvestigatorKind, string> = {
@@ -133,7 +143,11 @@ export async function runInvestigator(
     exec: tools.exec,
     maxRounds: MAX_ROUNDS,
   });
-  const toolLog = log.map((entry) => ({ round: entry.round, name: entry.name }));
+  const toolLog = log.map((entry) => ({
+    round: entry.round,
+    name: entry.name,
+    args: truncateArgs(entry.args),
+  }));
 
   const existing = await getClaims(investigationId);
   const existingKeys = new Set(

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CommitmentsTable } from "@/app/_components/CommitmentsTable";
+import { CoveragePanel } from "@/app/_components/CoveragePanel";
 import { GapsPanel } from "@/app/_components/GapsPanel";
 import { StatsBar } from "@/app/_components/StatsBar";
 import { Timeline } from "@/app/_components/Timeline";
@@ -73,6 +74,14 @@ export default async function InvestigationPage({
           <span className="hint">never guessed</span>
         </div>
         <GapsPanel gaps={result.gaps} notes={result.skepticNotes} />
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">What was searched</h2>
+          <span className="hint">coverage, reported honestly</span>
+        </div>
+        <CoveragePanel coverage={result.coverage} />
       </section>
     </div>
   );

@@ -78,30 +78,36 @@ describeDb("runSkeptic", () => {
     const { runSkeptic } = await import("../lib/agents/skeptic");
     const { getClaims, getGaps, getSkepticNotes, getStages } = await import("../lib/store");
 
+    let seenUserPrompt = "";
     const client: LlmClient = {
-      chat: async () => ({
-        content: JSON.stringify({
-          issues: [
-            {
-              kind: "contradiction",
-              claim_index: 0,
-              text: "MER-101 was marked resolved while QA was still failing the same build.",
-              event_ids: [eventId, "e_skeptic_0000002"],
-            },
-            {
-              kind: "silence",
-              text: "No event shows the Sep 24 release actually going out.",
-              event_ids: [],
-            },
-          ],
-        }),
-      }),
+      chat: async (messages) => {
+        seenUserPrompt = messages.map((message) => message.content ?? "").join("\n");
+        return {
+          content: JSON.stringify({
+            issues: [
+              {
+                kind: "contradiction",
+                claim_index: 0,
+                text: "MER-101 was marked resolved while QA was still failing the same build.",
+                event_ids: [eventId, "e_skeptic_0000002"],
+              },
+              {
+                kind: "silence",
+                text: "No event shows the Sep 24 release actually going out.",
+                event_ids: [],
+              },
+            ],
+          }),
+        };
+      },
     };
     setLlmClientForTests(client);
 
     const result = await runSkeptic(investigationId);
 
     expect(result).toEqual({ flagged: 1, issues: 2 });
+    expect(seenUserPrompt).toContain("Available but NEVER searched: jira, slack");
+    expect(seenUserPrompt).toContain("already searched");
 
     const claims = await getClaims(investigationId);
     expect(claims.filter((claim) => claim.skepticFlag)).toHaveLength(1);

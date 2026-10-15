@@ -4,11 +4,13 @@ import {
   appendStageLog,
   getClaims,
   getEvents,
+  getStages,
   insertGaps,
   insertSkepticNotes,
   setClaimSkepticFlag,
 } from "../store";
 import type { SkepticNoteInput, SkepticNoteKind, GapInput } from "../types";
+import { buildCoverage } from "../pipeline/coverage";
 import { compactEvent, summarizeEvents } from "./summary";
 
 const SKEPTIC_KINDS: SkepticNoteKind[] = ["contradiction", "unsupported", "silence", "unanswered"];
@@ -17,8 +19,8 @@ const MAX_EVENTS_IN_PROMPT = 60;
 const SYSTEM_PROMPT = [
   "You are the skeptic on an incident investigation.",
   "Your job is to attack the draft findings, not to add new ones.",
-  "Look for: contradictions between sources; claims the cited event does not actually support; suspicious silences (long gaps, questions with no reply); and questions the records leave unanswered.",
-  "Report each issue with the claim index it concerns when applicable, and cite event ids.",
+  "Look for: contradictions between sources; claims the cited item does not actually support; suspicious silences (long gaps, questions with no reply); questions the records leave unanswered; and any available source or obvious angle that was never searched.",
+  "Report each issue with the claim index it concerns when applicable, and cite item ids.",
   'Reply with JSON only: {"issues":[{"kind":"contradiction|unsupported|silence|unanswered","claim_index":0,"text":"...","event_ids":["..."]}]}. claim_index is optional; omit it for issues not tied to a claim. If you find nothing, return {"issues":[]}.',
 ].join("\n");
 
@@ -78,18 +80,31 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
       ? events.map((event) => compactEvent(event))
       : undefined;
 
+  const stages = await getStages(investigationId);
+  const coverage = buildCoverage(events, stages);
+
   const user = [
     "Draft claims (index is how the model should reference them):",
     JSON.stringify(indexedClaims),
     "",
-    "Event store summary:",
+    "Evidence Registry summary:",
     summarizeEvents(events),
     "",
-    eventPayload
-      ? `All events (compact):\n${JSON.stringify(eventPayload)}`
-      : "Use the summary above; the store is too large to inline.",
+    "Sources and queries already searched:",
+    JSON.stringify(
+      coverage.sources
+        .filter((entry) => entry.searched)
+        .map((entry) => ({ source: entry.source, queries: entry.queries })),
+    ),
+    coverage.neverSearched.length > 0
+      ? `Available but NEVER searched: ${coverage.neverSearched.join(", ")} — raise an "unanswered" issue naming what should have been searched.`
+      : "Every available source was searched at least once.",
     "",
-    "Report contradictions, unsupported claims, silences, and unanswered questions.",
+    eventPayload
+      ? `All items (compact):\n${JSON.stringify(eventPayload)}`
+      : "Use the summary above; the registry is too large to inline.",
+    "",
+    "Report contradictions, unsupported claims, silences, unanswered questions, and never-searched angles.",
   ].join("\n");
 
   let content = "";

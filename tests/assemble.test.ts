@@ -114,6 +114,8 @@ describeDb("verify + assemble", () => {
     expect(result.needsRetry).toBe(true);
     expect(result.investigation.id).toBe(investigationId);
     expect(result.stages.some((stage) => stage.stage === "root_cause")).toBe(true);
+    expect(result.coverage.sources).toHaveLength(3);
+    expect(result.coverage.neverSearched).toEqual(["jira", "slack"]);
   });
 
   it("stops retrying at pass 3", async () => {

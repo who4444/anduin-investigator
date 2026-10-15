@@ -10,6 +10,7 @@ import {
 } from "../store";
 import type { Claim, Event, Gap, Investigation, SkepticNote, Stage } from "../types";
 import type { InvestigatorKind } from "../agents/investigator";
+import { buildCoverage, type CoverageReport } from "./coverage";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const LEDGER_TYPES = new Set(["commitment", "decision"]);
@@ -29,6 +30,7 @@ export interface AssembledResult {
   claims: Claim[];
   gaps: Gap[];
   skepticNotes: SkepticNote[];
+  coverage: CoverageReport;
   stats: AssembledStats;
   identities: AssembledIdentity[];
   stages: Stage[];
@@ -99,6 +101,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
 
   const pass = currentPass(stages);
   const needsRetry = missing.length > 0 && pass < MAX_RETRY_PASS;
+  const coverage = buildCoverage(events, stages);
 
   return {
     investigation,
@@ -107,6 +110,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     claims,
     gaps,
     skepticNotes,
+    coverage,
     stats,
     identities: identities.map((identity) => ({
       alias: identity.alias,

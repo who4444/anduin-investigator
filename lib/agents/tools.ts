@@ -3,7 +3,7 @@ import type { ToolSpec } from "../llm";
 import { getClaims, getEvents, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event, SourceKind } from "../types";
 import { verifyQuote } from "../verify";
-import { compactEvent, type CompactEvent } from "./summary";
+import { compactEvent } from "./summary";
 
 const MAX_SEARCH_RESULTS = 30;
 const FULL_TEXT = 100_000;
