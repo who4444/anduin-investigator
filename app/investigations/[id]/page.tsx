@@ -50,6 +50,7 @@ export default async function InvestigationPage({
         eventCount={result.timeline.length}
         synthetic={query.synthetic === "1"}
         cached={query.cached === "1"}
+        live={query.live === "1"}
         identities={result.identities}
       />
 

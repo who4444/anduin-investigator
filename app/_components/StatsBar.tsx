@@ -5,10 +5,11 @@ interface StatsBarProps {
   eventCount: number;
   synthetic: boolean;
   cached: boolean;
+  live?: boolean;
   identities: AssembledIdentity[];
 }
 
-export function StatsBar({ stats, eventCount, synthetic, cached, identities }: StatsBarProps) {
+export function StatsBar({ stats, eventCount, synthetic, cached, live, identities }: StatsBarProps) {
   const applied = identities.filter((identity) => identity.applied);
   const proposed = identities.filter((identity) => !identity.applied);
   const verifiedPct = stats.total > 0 ? Math.round((stats.kept / stats.total) * 100) : 0;
@@ -27,6 +28,7 @@ export function StatsBar({ stats, eventCount, synthetic, cached, identities }: S
         </span>
         <span className="pill pill-neutral">{eventCount} events</span>
         {synthetic && <span className="pill pill-warn">synthetic demo data</span>}
+        {live && <span className="pill pill-info">live pull</span>}
         {cached && <span className="pill pill-info">cached run</span>}
       </div>
 

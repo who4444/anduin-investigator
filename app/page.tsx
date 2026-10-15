@@ -32,6 +32,19 @@ interface UploadResult {
   warnings: string[];
 }
 
+interface SourceInfo {
+  id: string;
+  label: string;
+  envKeys: string[];
+  configured: boolean;
+  missingEnv: string[];
+}
+
+interface SourceTargetInfo {
+  id: string;
+  label: string;
+}
+
 const LOG_POLL_MS = 3000;
 
 export default function Home() {
@@ -47,12 +60,55 @@ export default function Home() {
   const [stages, setStages] = useState<Record<string, StageState>>({});
   const [serverLogs, setServerLogs] = useState<Record<string, unknown[]>>({});
   const [eventCount, setEventCount] = useState<number | null>(null);
-  const [run, setRun] = useState<{ id: string; synthetic: boolean } | null>(null);
+  const [run, setRun] = useState<{ id: string; synthetic: boolean; live?: boolean } | null>(null);
+  const [sources, setSources] = useState<SourceInfo[]>([]);
+  const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
+  const [selectedTargets, setSelectedTargets] = useState<Record<string, string[]>>({});
+  const [sourceQuery, setSourceQuery] = useState<Record<string, string>>({});
+  const [sourceError, setSourceError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     directoryInput.current?.setAttribute("webkitdirectory", "");
     directoryInput.current?.setAttribute("directory", "");
   }, []);
+
+  useEffect(() => {
+    fetch("/api/sources")
+      .then((response) => (response.ok ? response.json() : { sources: [] }))
+      .then((body: { sources?: SourceInfo[] }) => setSources(body.sources ?? []))
+      .catch(() => setSources([]));
+  }, []);
+
+  const loadTargets = useCallback(async (sourceId: string) => {
+    setSourceError((current) => ({ ...current, [sourceId]: "" }));
+    try {
+      const response = await fetch(`/api/sources?targets=${encodeURIComponent(sourceId)}`);
+      const body = (await response.json().catch(() => ({}))) as {
+        targets?: SourceTargetInfo[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "Could not load targets.");
+      setTargets((current) => ({ ...current, [sourceId]: body.targets ?? [] }));
+      if (sourceId === "gmail" && !(body.targets ?? []).some((target) => target.id === "search")) {
+        setSelectedTargets((current) => ({ ...current, [sourceId]: ["search"] }));
+      }
+    } catch (caught) {
+      setSourceError((current) => ({
+        ...current,
+        [sourceId]: caught instanceof Error ? caught.message : String(caught),
+      }));
+    }
+  }, []);
+
+  const toggleTarget = (sourceId: string, targetId: string) => {
+    setSelectedTargets((current) => {
+      const selected = current[sourceId] ?? [];
+      const next = selected.includes(targetId)
+        ? selected.filter((id) => id !== targetId)
+        : [...selected, targetId];
+      return { ...current, [sourceId]: next };
+    });
+  };
 
   const applyStage = useCallback((update: StageUpdate) => {
     setStages((current) => ({
@@ -61,10 +117,11 @@ export default function Home() {
     }));
   }, []);
 
-  const resultsHref = (id: string, flags: { synthetic: boolean; cached: boolean }) => {
+  const resultsHref = (id: string, flags: { synthetic: boolean; cached: boolean; live?: boolean }) => {
     const query = new URLSearchParams();
     if (flags.synthetic) query.set("synthetic", "1");
     if (flags.cached) query.set("cached", "1");
+    if (flags.live) query.set("live", "1");
     const suffix = query.toString();
     return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
   };
@@ -77,7 +134,7 @@ export default function Home() {
     return logs;
   };
 
-  async function drivePipeline(investigationId: string, isSynthetic: boolean) {
+  async function drivePipeline(investigationId: string, flags: { synthetic: boolean; live?: boolean }) {
     let poller: ReturnType<typeof setInterval> | null = null;
     try {
       poller = setInterval(async () => {
@@ -103,9 +160,56 @@ export default function Home() {
         // Cosmetic refresh only.
       }
 
-      router.push(resultsHref(investigationId, { synthetic: isSynthetic, cached: false }));
+      router.push(resultsHref(investigationId, { ...flags, cached: false }));
     } finally {
       if (poller) clearInterval(poller);
+    }
+  }
+
+  async function pullFromSource(sourceId: string) {
+    const selected = selectedTargets[sourceId] ?? [];
+    const query = sourceQuery[sourceId]?.trim() ?? "";
+
+    setBusy(true);
+    setError(null);
+    setStages({});
+    setServerLogs({});
+    setWarnings([]);
+    setEventCount(null);
+    setSynthetic(false);
+    setRun(null);
+    setSourceError((current) => ({ ...current, [sourceId]: "" }));
+
+    try {
+      const response = await fetch("/api/sources/pull", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          source: sourceId,
+          targets: selected,
+          query: query || undefined,
+          escalation,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
+        error?: string;
+      };
+      if (!response.ok || !payload.investigationId) {
+        throw new Error(payload.error ?? "Pull failed.");
+      }
+
+      setEventCount(payload.eventCount ?? 0);
+      setWarnings(payload.warnings ?? []);
+      setRun({ id: payload.investigationId, synthetic: false, live: true });
+
+      await drivePipeline(payload.investigationId, { synthetic: false, live: true });
+    } catch (caught) {
+      setSourceError((current) => ({
+        ...current,
+        [sourceId]: caught instanceof Error ? caught.message : String(caught),
+      }));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -144,7 +248,7 @@ export default function Home() {
         return;
       }
 
-      await drivePipeline(payload.investigationId, isSynthetic);
+      await drivePipeline(payload.investigationId, { synthetic: isSynthetic });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -158,7 +262,7 @@ export default function Home() {
     setError(null);
     setStages({});
     try {
-      await drivePipeline(run.id, run.synthetic);
+      await drivePipeline(run.id, { synthetic: run.synthetic, live: run.live });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -351,6 +455,104 @@ export default function Home() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="section-title">Pull from live sources</h2>
+          <span className="hint">read-only · credentials stay server-side</span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {sources.map((source) => {
+            const sourceTargets = targets[source.id] ?? [];
+            const selected = selectedTargets[source.id] ?? [];
+            const isGmail = source.id === "gmail";
+            return (
+              <div key={source.id} className="flex flex-col gap-2 rounded-xl border border-line p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{source.label}</span>
+                  {source.configured ? (
+                    <span className="pill pill-ok">configured</span>
+                  ) : (
+                    <span className="pill pill-warn">off</span>
+                  )}
+                </div>
+
+                {!source.configured && (
+                  <p className="hint">
+                    Missing env: <span className="font-mono">{source.missingEnv.join(", ")}</span>
+                  </p>
+                )}
+
+                {source.configured && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary self-start"
+                      disabled={busy || (sourceTargets.length > 0 && !isGmail)}
+                      onClick={() => loadTargets(source.id)}
+                    >
+                      {sourceTargets.length > 0 ? "reload targets" : "load targets"}
+                    </button>
+
+                    {sourceTargets.length > 0 && !isGmail && (
+                      <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+                        {sourceTargets.map((target) => (
+                          <li key={target.id}>
+                            <label className="flex items-center gap-2 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={selected.includes(target.id)}
+                                onChange={() => toggleTarget(source.id, target.id)}
+                                disabled={busy}
+                              />
+                              {target.label}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {(isGmail || source.id === "jira") && (
+                      <input
+                        className="input"
+                        placeholder={
+                          source.id === "jira"
+                            ? "JQL (optional): project = MER ORDER BY created ASC"
+                            : "Gmail query: label:meridian newer_than:90d"
+                        }
+                        value={sourceQuery[source.id] ?? ""}
+                        onChange={(event) =>
+                          setSourceQuery((current) => ({ ...current, [source.id]: event.target.value }))
+                        }
+                        disabled={busy}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      className="btn btn-primary self-start"
+                      disabled={busy || (!isGmail && selected.length === 0)}
+                      onClick={() => pullFromSource(source.id)}
+                    >
+                      Pull {isGmail ? "messages" : sourceTargets.length > 0 ? `${selected.length} selected` : ""}
+                    </button>
+
+                    {sourceError[source.id] && (
+                      <p className="callout callout-bad">{sourceError[source.id]}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+          {sources.length === 0 && (
+            <p className="hint md:col-span-3">
+              No live sources are configured. Add JIRA_*/SLACK_TOKEN/GMAIL_* env vars and restart.
+            </p>
+          )}
+        </div>
       </section>
 
       <section className="card flex flex-col gap-4" aria-live="polite">

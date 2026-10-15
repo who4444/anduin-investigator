@@ -50,6 +50,54 @@ Environment variables (all server-side; none are committed):
 | `DEEPSEEK_API_KEY`  | — (required at runtime)     | DeepSeek API key                 |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com`  | OpenAI-compatible endpoint       |
 | `DEEPSEEK_MODEL`    | `deepseek-chat`             | Model used by every agent        |
+| `JIRA_SITE`         | —                           | Jira Cloud host (`yoursite` or `yoursite.atlassian.net`) |
+| `JIRA_EMAIL`        | —                           | Atlassian account email for API auth |
+| `JIRA_API_TOKEN`    | —                           | Atlassian API token (id.atlassian.com) |
+| `SLACK_TOKEN`       | —                           | Slack user token (`xoxp-…`) with read scopes |
+| `GMAIL_CLIENT_ID`   | —                           | Google OAuth client id           |
+| `GMAIL_CLIENT_SECRET` | —                         | Google OAuth client secret       |
+| `GMAIL_REFRESH_TOKEN` | —                         | Refresh token with `gmail.readonly` |
+| `GMAIL_QUERY`       | —                           | Default Gmail search (e.g. `label:meridian newer_than:90d`) |
+| `GMAIL_MAX_MESSAGES` | `200`                      | Per-pull message cap             |
+
+## Live pulls (optional)
+
+The tool always works on uploaded exports. If you add the env vars above, the
+upload screen also gains a **Pull from live sources** panel that fetches
+read-only from the services and runs the exact same ingest pipeline (the runs
+are labelled **live pull**).
+
+**Jira Cloud**
+1. Create an API token: id.atlassian.com → Security → API tokens.
+2. Set `JIRA_SITE`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, restart.
+3. In the panel, load targets (your projects), tick the relevant ones, optionally
+   fine-tune the JQL, pull. Issues are fetched with `expand=changelog` so status
+   transitions are captured.
+
+**Slack**
+1. api.slack.com/apps → Create app → OAuth & Permissions → User Token Scopes:
+   `channels:history`, `groups:history`, `im:history`, `mpim:history`,
+   `channels:read`, `groups:read`, `users:read`.
+2. Install to your workspace and copy the `xoxp-…` token to `SLACK_TOKEN`.
+3. Load targets, tick channels, pull. Users are resolved to real names; thread
+   replies inside the fetched window are linked.
+
+**Gmail**
+1. Google Cloud console → new project → enable the **Gmail API** → OAuth consent
+   screen (External, testing; add yourself as a test user) → Credentials →
+   OAuth client ID (Desktop app).
+2. Open the OAuth 2.0 Playground (developers.google.com/oauthplayground) →
+   gear icon → use your own client id/secret → authorize
+   `https://www.googleapis.com/auth/gmail.readonly` with your account → exchange
+   the code → copy the **refresh token**.
+3. Set `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` (and
+   optionally `GMAIL_QUERY`), restart, then pull with a query like
+   `label:meridian newer_than:90d`.
+
+Credentials are read server-side only, never stored in Postgres, never sent to
+the browser, and redacted from the stage logs. Each pull fetches within the
+60-second function budget (Jira ≤ 4 pages per project, Slack ≤ 10 channels /
+600 messages each, Gmail ≤ `GMAIL_MAX_MESSAGES`), warning when it truncates.
 
 ## Commands
 
