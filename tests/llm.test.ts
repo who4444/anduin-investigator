@@ -84,7 +84,11 @@ describe("createLlmClient", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(textMessage('{"a":1}')));
     vi.stubGlobal("fetch", fetchMock);
 
-    const client = createLlmClient({ baseUrl: "https://api.example.com", apiKey: "test-key" });
+    const client = createLlmClient({
+      baseUrl: "https://api.example.com",
+      apiKey: "test-key",
+      model: "deepseek-chat",
+    });
     await client.chat([{ role: "user", content: "hello" }], { forceJson: true, temperature: 0.2 });
 
     const body = bodyOf(fetchMock, 0);
@@ -112,6 +116,22 @@ describe("createLlmClient", () => {
     const client = createLlmClient({ baseUrl: "https://api.example.com", apiKey: "test-key" });
 
     await expect(client.chat([{ role: "user", content: "hello" }])).rejects.toThrow(LlmError);
+  });
+
+  it("throws an LlmError when the response body is not JSON", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => "<html>gateway error</html>",
+      json: async () => {
+        throw new Error("not json");
+      },
+    } as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createLlmClient({ baseUrl: "https://api.example.com", apiKey: "test-key" });
+
+    await expect(client.chat([{ role: "user", content: "hello" }])).rejects.toThrow(/valid JSON/);
   });
 });
 

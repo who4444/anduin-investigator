@@ -76,6 +76,7 @@ export interface CreateLlmClientOptions {
 const DEFAULT_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_MODEL = "deepseek-chat";
 const DEFAULT_TIMEOUT_MS = 60_000;
+const ERROR_BODY_EXCERPT_LENGTH = 300;
 
 interface OpenAiToolCallRaw {
   id?: string;
@@ -105,6 +106,8 @@ function parseToolCall(raw: OpenAiToolCallRaw): ToolCall {
       const parsed = JSON.parse(rawArgs) as unknown;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         call.args = parsed as Record<string, unknown>;
+      } else {
+        call.parseError = "tool arguments were not a JSON object";
       }
     } catch (error) {
       call.parseError = error instanceof Error ? error.message : String(error);
@@ -149,9 +152,10 @@ export function createLlmClient(opts: CreateLlmClientOptions = {}): LlmClient {
 
       const text = await response.text();
       if (!response.ok) {
-        throw new LlmError(`LLM request failed with status ${response.status}: ${text}`, {
+        const excerpt = text.slice(0, ERROR_BODY_EXCERPT_LENGTH);
+        throw new LlmError(`LLM request failed with status ${response.status}: ${excerpt}`, {
           status: response.status,
-          body: text,
+          body: excerpt,
         });
       }
 
