@@ -113,12 +113,16 @@ export default function Home() {
 
       const outcome = await runPipeline(payload.investigationId, { onStage: applyStage });
 
-      const status = await fetch(`/api/investigations/${payload.investigationId}/status`);
-      const statusPayload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
-      setServerLogs(collectLogs(statusPayload.stages ?? []));
-
       if (!outcome.ok) {
         throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
+      }
+
+      try {
+        const status = await fetch(`/api/investigations/${payload.investigationId}/status`);
+        const statusPayload = (await status.json().catch(() => ({}))) as { stages?: ServerStage[] };
+        setServerLogs(collectLogs(statusPayload.stages ?? []));
+      } catch {
+        // The final log refresh is cosmetic; the run itself already succeeded.
       }
 
       router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: false }));
