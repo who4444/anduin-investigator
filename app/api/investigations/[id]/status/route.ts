@@ -17,6 +17,6 @@ export async function GET(
 
   return json({
     investigation: found.investigation,
-    stages: tailLog(found.investigation, stages),
+    stages: tailLog(stages),
   });
 }

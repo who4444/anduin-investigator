@@ -33,7 +33,7 @@ function isUuidSyntaxError(error: unknown): boolean {
   return /invalid input syntax for type uuid/i.test(message);
 }
 
-export function tailLog(investigation: Investigation, stages: Stage[]): Stage[] {
+export function tailLog(stages: Stage[]): Stage[] {
   return stages.map((stage) => ({ ...stage, log: stage.log.slice(-LOG_TAIL) }));
 }
 
