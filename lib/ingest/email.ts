@@ -125,21 +125,20 @@ async function parseRawMessages(chunks: string[]): Promise<EmailParseResult> {
 
   for (const chunk of chunks) {
     if (!chunk.trim()) continue;
-    let email: Email;
     try {
-      email = await PostalMime.parse(chunk);
+      const email = await PostalMime.parse(chunk);
+      const event = buildEvent(email);
+      if (!event) continue;
+      if (event.threadId) {
+        const list = threads.get(event.threadId) ?? [];
+        const messageId = event.meta?.messageId;
+        list.push(typeof messageId === "string" ? messageId : event.threadId);
+        threads.set(event.threadId, list);
+      }
+      events.push(event);
     } catch {
-      continue;
+      // A single malformed message must never abort the whole file's events.
     }
-    const event = buildEvent(email);
-    if (!event) continue;
-    if (event.threadId) {
-      const list = threads.get(event.threadId) ?? [];
-      const messageId = event.meta?.messageId;
-      list.push(typeof messageId === "string" ? messageId : event.threadId);
-      threads.set(event.threadId, list);
-    }
-    events.push(event);
   }
 
   return { events, threads };

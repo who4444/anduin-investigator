@@ -2,7 +2,18 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../lib/ingest/refs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/ingest/refs")>();
+  return {
+    ...actual,
+    extractTicketRefs: (text: string) => {
+      if (text.includes("BOOM-CONSTRUCTION")) throw new Error("construction boom");
+      return actual.extractTicketRefs(text);
+    },
+  };
+});
 
 import { parseEml, parseMbox } from "../lib/ingest/email";
 
@@ -48,6 +59,37 @@ describe("parseMbox", () => {
   it("extracts SUP-2231 from the subject into refs", async () => {
     const { events } = await parseMbox(bytes("sample.mbox"));
     expect(events[2].refs).toContain("SUP-2231");
+  });
+
+  it("isolates a message that fails construction so others still yield events", async () => {
+    const raw = new TextEncoder().encode(
+      [
+        "From alice@nw.example Tue Sep 24 09:30:00 2024",
+        "From: Alice <alice@nw.example>",
+        "Date: Tue, 24 Sep 2024 09:30:00 +0800",
+        "Subject: first",
+        "Message-ID: <iso-1@nw.example>",
+        "",
+        "first body",
+        "From bob@nw.example Tue Sep 24 10:30:00 2024",
+        "From: Bob <bob@nw.example>",
+        "Date: Tue, 24 Sep 2024 10:30:00 +0800",
+        "Subject: BOOM-CONSTRUCTION",
+        "Message-ID: <iso-2@nw.example>",
+        "",
+        "second body",
+        "From carol@nw.example Tue Sep 24 11:30:00 2024",
+        "From: Carol <carol@nw.example>",
+        "Date: Tue, 24 Sep 2024 11:30:00 +0800",
+        "Subject: third",
+        "Message-ID: <iso-3@nw.example>",
+        "",
+        "third body",
+        "",
+      ].join("\n"),
+    );
+    const { events } = await parseMbox(raw);
+    expect(events.map((event) => event.actor)).toEqual(["Alice", "Carol"]);
   });
 });
 
