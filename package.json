@@ -11,6 +11,7 @@
     "db:migrate": "tsx lib/db/migrate.ts",
     "db:up": "docker compose up -d",
     "demo:gen": "tsx scripts/gen-demo.ts",
+    "sandbox:seed": "tsx sandbox/seed/engine/index.ts",
     "test": "vitest run"
   },
   "dependencies": {

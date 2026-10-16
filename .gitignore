@@ -45,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Sandbox seeding (private answer keys — never served, never committed)
+sandbox/
