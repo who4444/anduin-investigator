@@ -164,6 +164,48 @@ describeDb("runInvestigator", () => {
     expect((await getClaims(investigationId)).filter((claim) => claim.agent === "commitments")).toHaveLength(1);
   });
 
+  it("forces a final structured reply when the tool budget runs out before any claim", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getClaims } = await import("../lib/store");
+
+    let calls = 0;
+    setLlmClientForTests({
+      chat: async () => {
+        calls += 1;
+        if (calls <= 10) {
+          return {
+            content: "",
+            toolCalls: [
+              { id: `call_${calls}`, name: "search_jira", args: { query: "timezone" } },
+            ],
+          };
+        }
+        return {
+          content: JSON.stringify({
+            claims: [
+              {
+                type: "root_cause",
+                text: "The 4.12 timezone change caused the totals defect.",
+                quote: "Timezone change for release 4.12 shipped on Sep 10.",
+                event_id: jiraId,
+                status: "n/a",
+                confidence: 0.7,
+              },
+            ],
+            notes: ["The record does not show when the fix actually shipped."],
+          }),
+        };
+      },
+    });
+
+    const result = await runInvestigator(investigationId, "root_cause", "1. Reconstruct the timeline.");
+
+    expect(calls).toBe(11); // 10 tool rounds, then one forced structured reply
+    expect(result.claims.some((claim) => claim.text === "The 4.12 timezone change caused the totals defect.")).toBe(true);
+    expect((await getClaims(investigationId)).some((claim) => claim.text.includes("timezone change caused"))).toBe(true);
+  });
+
   it("rejects an unknown investigator kind", async () => {
     const { runInvestigator } = await import("../lib/agents/investigator");
     await expect(

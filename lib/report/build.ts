@@ -65,6 +65,7 @@ export interface LedgerRow {
   outcome: string;
   daysLate: number | null;
   source: SourceKind | null;
+  mergedClaims?: number;
 }
 
 export interface AuditRow {
@@ -173,6 +174,76 @@ function formatDays(days: number): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* commitments: cluster near-duplicate promises so one promise is one  */
+/* ledger row, and a failing outcome outweighs a "kept" reading        */
+/* ------------------------------------------------------------------ */
+
+const PROMISE_STOPWORDS = new Set([
+  "the", "a", "an", "to", "in", "on", "of", "for", "by", "and", "will", "would", "be", "out",
+  "that", "was", "is", "with", "his", "her", "their", "it", "this", "from", "as", "at", "into",
+  "made", "promised", "commit", "committed", "would", "should", "after", "before", "then",
+]);
+
+function promiseTokens(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((word) => word.length > 2 && !PROMISE_STOPWORDS.has(word)),
+  );
+}
+
+function similarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let shared = 0;
+  for (const token of a) if (b.has(token)) shared += 1;
+  return shared / (a.size + b.size - shared);
+}
+
+const STATUS_STANCE: Record<string, number> = { broken: 0, unclear: 1, "n/a": 2, kept: 3 };
+
+export interface CommitmentCluster {
+  representative: Claim;
+  members: Claim[];
+}
+
+export function clusterCommitments(claims: Claim[], threshold = 0.45): CommitmentCluster[] {
+  const commitments = verified(claims)
+    .filter((claim) => claim.type === "commitment")
+    .sort((a, b) => {
+      const stance = (STATUS_STANCE[a.status] ?? 9) - (STATUS_STANCE[b.status] ?? 9);
+      if (stance !== 0) return stance;
+      const left = a.ts ?? "";
+      const right = b.ts ?? "";
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
+
+  const clusters: { tokens: Set<string>; members: Claim[] }[] = [];
+  for (const claim of commitments) {
+    const tokens = promiseTokens(claim.text);
+    const target = clusters.find((cluster) => similarity(cluster.tokens, tokens) >= threshold);
+    if (target) {
+      target.members.push(claim);
+      for (const token of tokens) target.tokens.add(token);
+    } else {
+      clusters.push({ tokens, members: [claim] });
+    }
+  }
+
+  return clusters
+    .map((cluster) => ({
+      representative: cluster.members[0],
+      members: cluster.members,
+    }))
+    .sort((a, b) => {
+      const left = a.representative.ts ?? "";
+      const right = b.representative.ts ?? "";
+      return left < right ? -1 : left > right ? 1 : 0;
+    });
+}
+
+/* ------------------------------------------------------------------ */
 /* metrics                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -245,18 +316,21 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     });
   }
 
-  // 3. commitments kept / total
-  const commitments = kept.filter((claim) => claim.type === "commitment");
-  const keptCommitments = commitments.filter((claim) => claim.status === "kept");
+  // 3. commitments kept / total (deduplicated: one promise is one row)
+  const clusters = clusterCommitments(claims);
+  const keptClusters = clusters.filter((cluster) => cluster.representative.status === "kept");
   metrics.push({
     id: "commitments",
     label: "Commitments kept",
-    value: commitments.length > 0 ? `${keptCommitments.length} of ${commitments.length}` : "none found",
-    detail: commitments.length > 0 ? "Counted from verified commitment findings." : undefined,
+    value: clusters.length > 0 ? `${keptClusters.length} of ${clusters.length}` : "none found",
+    detail:
+      clusters.length > 0
+        ? `Counted from ${clusters.length} distinct verified promise${clusters.length === 1 ? "" : "s"} (near-duplicates merged; a broken reading outweighs a kept one).`
+        : undefined,
     judgment: false,
-    determined: commitments.length > 0,
-    claimIds: commitments.map((claim) => claim.id),
-    eventIds: commitments.map((claim) => claim.eventId),
+    determined: clusters.length > 0,
+    claimIds: clusters.flatMap((cluster) => cluster.members.map((member) => member.id)),
+    eventIds: clusters.flatMap((cluster) => cluster.members.map((member) => member.eventId)),
   });
 
   // 4. longest silence
@@ -362,9 +436,9 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     eventIds: statusConflicts.map((claim) => claim.eventId),
   });
 
-  // 8. handoffs with no documented handoff
-  const handoffFailures = processFailures.filter((claim) =>
-    /handoff|hand-off|on leave|leave|coverage|no one picked/i.test(claim.text),
+  // 8. handoffs with no documented handoff (any verified claim type may carry this)
+  const handoffFailures = kept.filter((claim) =>
+    /handoff|hand-off|on leave|leave|coverage|rota/i.test(claim.text),
   );
   metrics.push({
     id: "handoffs",
@@ -584,30 +658,30 @@ function extractDeadline(text: string, referenceIso: string | null): { label: st
 }
 
 export function buildLedger(input: ReportInput): LedgerRow[] {
-  const { claims, events } = input;
+  const { events } = input;
   const eventsById = eventMap(events);
-  return verified(claims)
-    .filter((claim) => claim.type === "commitment")
-    .map((claim) => {
-      const event = cited(claim, eventsById);
-      const deadline = extractDeadline(claim.text, claim.ts ?? event?.ts ?? null);
-      const toWhomMatch = claim.text.match(/\bto ([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*)?)/);
-      const daysLate =
-        claim.status === "broken" && deadline?.iso && claim.ts
-          ? Math.max(0, Math.floor((Date.parse(claim.ts) - Date.parse(deadline.iso)) / DAY_MS))
-          : null;
-      return {
-        claimId: claim.id,
-        promise: claim.text,
-        who: claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
-        toWhom: toWhomMatch ? toWhomMatch[1] : null,
-        madeAt: event?.ts ?? claim.ts ?? null,
-        deadline: deadline ? deadline.label : null,
-        outcome: claim.status,
-        daysLate,
-        source: event?.source ?? null,
-      };
-    });
+  return clusterCommitments(input.claims).map((cluster) => {
+    const claim = cluster.representative;
+    const event = cited(claim, eventsById);
+    const deadline = extractDeadline(claim.text, claim.ts ?? event?.ts ?? null);
+    const toWhomMatch = claim.text.match(/\bto ([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*)?)/);
+    const daysLate =
+      claim.status === "broken" && deadline?.iso && claim.ts
+        ? Math.max(0, Math.floor((Date.parse(claim.ts) - Date.parse(deadline.iso)) / DAY_MS))
+        : null;
+    return {
+      claimId: claim.id,
+      promise: claim.text,
+      who: claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
+      toWhom: toWhomMatch ? toWhomMatch[1] : null,
+      madeAt: event?.ts ?? claim.ts ?? null,
+      deadline: deadline ? deadline.label : null,
+      outcome: claim.status,
+      daysLate,
+      source: event?.source ?? null,
+      mergedClaims: cluster.members.length > 1 ? cluster.members.length : undefined,
+    };
+  });
 }
 
 export function buildAudit({ notes, events }: ReportInput): AuditRow[] {
@@ -618,9 +692,17 @@ export function buildAudit({ notes, events }: ReportInput): AuditRow[] {
     const citedItems = note.eventIds
       .map((id) => eventsById.get(id))
       .filter((event): event is Event => Boolean(event));
-    const told = citedItems.find((event) => event.source === "email");
-    const internal = citedItems.find((event) => event.id !== told?.id);
-    if (!told || !internal) continue;
+    if (citedItems.length < 2) continue;
+
+    // Prefer an email as the communicated record, then a client-ish channel,
+    // otherwise any record — contradictions without email still form an audit row.
+    const told =
+      citedItems.find((event) => event.source === "email") ??
+      citedItems.find((event) => /client/i.test(event.channel)) ??
+      citedItems[0];
+    const internal = citedItems.find((event) => event.id !== told.id);
+    if (!internal) continue;
+
     rows.push({
       date: told.ts.slice(0, 10),
       told: told.text,

@@ -447,17 +447,17 @@ function PromisesTab({
       </section>
 
       <section className="panel stack">
-        <h2>What the client heard versus internal records</h2>
+        <h2>What was communicated versus other records</h2>
         {report.audit.length === 0 ? (
-          <p className="empty">No client-facing update was contradicted by internal evidence.</p>
+          <p className="empty">No communicated update was contradicted by another record.</p>
         ) : (
           <div className="table-scroll">
             <table className="data">
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Client-facing record</th>
-                  <th>Internal record at that time</th>
+                  <th>Record that was communicated</th>
+                  <th>What other records showed</th>
                   <th>Mismatch noted</th>
                 </tr>
               </thead>

@@ -168,6 +168,20 @@ describe("report metrics", () => {
     const window = metrics.find((metric) => metric.id === "window");
     expect(window).toMatchObject({ determined: false, value: "not determined" });
   });
+
+  it("finds leave and handoff findings even when they are not typed process_failure", () => {
+    const ownershipClaim = claim({
+      id: "leave1",
+      eventId: "e4",
+      type: "ownership",
+      text: "The owner went on leave with no handoff and the rota still lists her.",
+      ts: "2024-09-25T09:00:00.000Z",
+    });
+    const metrics = buildMetrics({ events, claims: [...claims, ownershipClaim], notes: [] });
+    const handoffs = metrics.find((metric) => metric.id === "handoffs");
+    expect(handoffs).toMatchObject({ determined: true, value: "1" });
+    expect(handoffs?.claimIds).toEqual(["leave1"]);
+  });
 });
 
 describe("report timeline", () => {
@@ -183,6 +197,46 @@ describe("report timeline", () => {
 
     const ids = allRows.filter((row) => row.kind === "claim").map((row) => (row.kind === "claim" ? row.claimId : ""));
     expect(ids).not.toContain("c6");
+  });
+});
+
+describe("commitment clustering", () => {
+  it("merges near-duplicate promises and lets a broken reading outweigh a kept one", () => {
+    const duplicateClaims: Claim[] = [
+      claim({
+        id: "d1",
+        eventId: "e3",
+        type: "commitment",
+        text: "Ravi promised the fix would be out by end of week.",
+        status: "kept",
+        ts: "2024-09-24T16:00:00.000Z",
+      }),
+      claim({
+        id: "d2",
+        eventId: "e3",
+        type: "commitment",
+        text: "ravi_m promised in eng that the fix would ship by end of week.",
+        status: "broken",
+        ts: "2024-09-24T16:00:00.000Z",
+      }),
+      claim({
+        id: "d3",
+        eventId: "e6",
+        type: "commitment",
+        text: "The client promised to file the renewal paperwork.",
+        status: "kept",
+        ts: "2024-09-27T03:05:00.000Z",
+      }),
+    ];
+
+    const ledger = buildLedger({ events, claims: duplicateClaims, notes: [] });
+    expect(ledger).toHaveLength(2);
+    expect(ledger[0].outcome).toBe("broken");
+    expect(ledger[0].mergedClaims).toBe(2);
+    expect(ledger[1].outcome).toBe("kept");
+
+    const metrics = buildMetrics({ events, claims: duplicateClaims, notes: [] });
+    expect(metrics.find((metric) => metric.id === "commitments")).toMatchObject({ value: "1 of 2" });
   });
 });
 
@@ -226,6 +280,43 @@ describe("ledger and audit", () => {
     expect(audit[0].internalEventId).toBe("e5");
   });
 
+  it("pairs contradictory Slack records even when no email is involved", () => {
+    const slackClient = event({
+      id: "s1",
+      ts: "2024-09-26T10:00:00.000Z",
+      source: "slack",
+      actor: "Marcus Webb",
+      channel: "seedX-client",
+      text: "The fix is done and rolling out to you today.",
+    });
+    const slackInternal = event({
+      id: "s2",
+      ts: "2024-09-26T11:00:00.000Z",
+      source: "slack",
+      actor: "Lin Chen",
+      channel: "seedX-eng",
+      text: "The fix is still on a branch, nothing was deployed.",
+    });
+
+    const audit = buildAudit({
+      events: [...events, slackClient, slackInternal],
+      claims,
+      notes: [
+        {
+          id: "n3",
+          investigationId: "inv",
+          kind: "contradiction",
+          text: "Client channel claims a rollout that engineering says did not happen.",
+          eventIds: ["s1", "s2"],
+        },
+      ],
+    });
+
+    expect(audit).toHaveLength(1);
+    expect(audit[0].toldEventId).toBe("s1");
+    expect(audit[0].internalEventId).toBe("s2");
+  });
+
   it("splits verified findings into safe-to-repeat and check-with-human", () => {
     const trust = buildTrust({ events, claims, notes });
     expect(trust.safeToRepeat.map((item) => item.claimId)).toEqual(["c1", "c2", "c3", "c5"]);
@@ -256,7 +347,7 @@ describe("report view", () => {
     expect(view.actions.immediate.length).toBeGreaterThan(0);
     expect(view.timeline.length).toBeGreaterThan(0);
     expect(view.ledger).toHaveLength(1);
-    expect(view.audit).toHaveLength(1);
+    expect(view.audit).toHaveLength(2);
     expect(view.lanes.length).toBeGreaterThan(0);
     expect(view.causes.length).toBeGreaterThan(0);
   });

@@ -8,7 +8,7 @@ import { buildAgentTools } from "./tools";
 export type InvestigatorKind = "root_cause" | "commitments" | "ownership";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
-const MAX_ROUNDS = 8;
+const MAX_ROUNDS = 10;
 const ARG_PREVIEW_LIMIT = 120;
 
 function truncateArgs(args: Record<string, unknown>): Record<string, string> {
@@ -37,7 +37,7 @@ const KIND_MISSIONS: Record<InvestigatorKind, string> = {
   root_cause:
     "Establish what actually went wrong technically: the change or event that caused the problem, when it first appeared, and which fixes were attempted or failed.",
   commitments:
-    "Establish every promise made (who promised what, to whom, and by when) and whether it was kept. Name the person who promised and the recipient in the claim text when the records state them. Set status to kept, broken, or unclear; use n/a for claims that are not commitments.",
+    "Establish every promise made (who promised what, to whom, and by when) and whether it was kept. Record each promise ONCE: if the same promise appears in several places, submit a single claim citing where it was actually made — a message relaying the promise to someone else is not a new commitment. Name the person who promised and the recipient in the claim text when the records state them. Set status to kept, broken, or unclear; use n/a for claims that are not commitments.",
   ownership:
     "Establish who decided and owned what: handoffs, escalations, unannounced changes, and messages that went unanswered (process failure).",
 };
@@ -141,6 +141,7 @@ export async function runInvestigator(
     'When done, reply with JSON only: {"claims":[],"notes":["things you could not determine"]} — claims already submitted need not be repeated.',
   ].join("\n");
 
+  const claimsBefore = (await getClaims(investigationId)).filter((claim) => claim.agent === kind).length;
   const { content, log } = await runToolLoop({
     client: getLlmClient(),
     system,
@@ -157,18 +158,43 @@ export async function runInvestigator(
   }));
 
   const existing = await getClaims(investigationId);
+  const submittedDuringLoop = existing.filter((claim) => claim.agent === kind).length > claimsBefore;
+
+  // If the tool budget ran out before anything was submitted, force one final
+  // structured reply so the investigation still yields findings.
+  let finalContent = content;
+  if (!submittedDuringLoop) {
+    try {
+      const forced = await getLlmClient().chat(
+        [
+          { role: "system", content: system },
+          { role: "user", content: user },
+          {
+            role: "user",
+            content:
+              'You have reached the tool-call limit. Do not call tools. Reply with JSON only: {"claims":[],"notes":[]} using evidence you have already read, citing item ids you have seen.',
+          },
+        ],
+        { forceJson: true },
+      );
+      finalContent = `${content}\n${forced.content}`;
+    } catch {
+      // The loop's own content is still parsed below.
+    }
+  }
+
   const existingKeys = new Set(
     existing.filter((claim) => claim.agent === kind).map((claim) => claimKey(claim.eventId, claim.text)),
   );
 
-  const finalClaims = collectClaims(content, kind).filter(
+  const finalClaims = collectClaims(finalContent, kind).filter(
     (claim) => !existingKeys.has(claimKey(claim.eventId, claim.text)),
   );
   if (finalClaims.length > 0) {
     await insertClaims(investigationId, finalClaims);
   }
 
-  const notes = collectNotes(content, kind);
+  const notes = collectNotes(finalContent, kind);
   if (notes.length > 0) {
     await insertGaps(investigationId, notes);
   }
