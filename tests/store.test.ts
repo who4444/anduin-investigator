@@ -52,6 +52,40 @@ describeDb("event store", () => {
     expect(inv?.id).toBe(investigationId);
   });
 
+  it("insertClaims treats the same event plus normalized text as one claim", async () => {
+    const { createInvestigation, insertClaims, getClaims, deleteInvestigation } = await import(
+      "../lib/store"
+    );
+    const scopedId = await createInvestigation({
+      title: `Claim dedupe ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    try {
+      const claim = {
+        agent: "root_cause",
+        type: "root_cause",
+        text: "The timezone change caused wrong invoice totals.",
+        quote: "timezone change",
+        eventId: "e_store_dedupe_1",
+        status: "n/a" as const,
+        confidence: 0.8,
+      };
+
+      const [first] = await insertClaims(scopedId, [claim]);
+      const [again] = await insertClaims(scopedId, [
+        { ...claim, text: "the timezone change  caused wrong invoice totals." },
+      ]);
+      expect(again).toBeUndefined();
+      expect(first).toBeDefined();
+
+      const claims = await getClaims(scopedId);
+      expect(claims).toHaveLength(1);
+    } finally {
+      await deleteInvestigation(scopedId);
+    }
+  });
+
   it("getInvestigation returns null for an unknown id", async () => {
     const { getInvestigation } = await import("../lib/store");
     expect(await getInvestigation(randomUUID())).toBeNull();

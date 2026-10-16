@@ -1,4 +1,5 @@
 import { asNumber, asString } from "../json";
+import { toUtcIso } from "../ingest/normalize";
 import type { ToolSpec } from "../llm";
 import { getClaims, getEvents, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event, SourceKind } from "../types";
@@ -110,9 +111,21 @@ function toolSpecs(): ToolSpec[] {
   ];
 }
 
+/* A date-only bound means the whole calendar day, not midnight-exact —
+   "2026-09-24" as `to` must include events later that day. */
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 function matchesWindow(event: Event, from?: string, to?: string): boolean {
-  if (from && event.ts < from) return false;
-  if (to && event.ts > to) return false;
+  if (from) {
+    if (DAY_ONLY.test(from)) {
+      if (event.ts.slice(0, 10) < from) return false;
+    } else if (event.ts < from) return false;
+  }
+  if (to) {
+    if (DAY_ONLY.test(to)) {
+      if (event.ts.slice(0, 10) > to) return false;
+    } else if (event.ts > to) return false;
+  }
   return true;
 }
 
@@ -130,6 +143,32 @@ function normalizeThreadRef(id: string): string {
   return id.replace(/^</, "").replace(/>$/, "");
 }
 
+/* Read tools return full text per item; without a total budget a single long
+   issue or thread can overflow the model context and kill the run. */
+const MAX_READ_ITEMS = 40;
+const MAX_READ_CHARS = 24_000;
+
+function readCapped(events: Event[]): { items: Record<string, unknown>[]; truncated: boolean } {
+  const items: Record<string, unknown>[] = [];
+  let used = 0;
+  let truncated = false;
+  for (const event of events) {
+    if (items.length >= MAX_READ_ITEMS) {
+      truncated = true;
+      break;
+    }
+    const item = compactEvent(event, FULL_TEXT) as unknown as Record<string, unknown>;
+    const size = JSON.stringify(item).length;
+    if (items.length > 0 && used + size > MAX_READ_CHARS) {
+      truncated = true;
+      break;
+    }
+    items.push(item);
+    used += size;
+  }
+  return { items, truncated };
+}
+
 function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; error?: string } {
   const type = asString(args.type);
   const text = asString(args.text);
@@ -137,6 +176,8 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
   const eventId = asString(args.item_id) ?? asString(args.event_id);
   const status = asString(args.status);
   const confidence = asNumber(args.confidence);
+  const tsRaw = asString(args.ts);
+  const ts = tsRaw ? toUtcIso(tsRaw) : undefined;
 
   if (!type || !text || !quote || !eventId) {
     return { error: "type, text, quote, and item_id are required." };
@@ -147,6 +188,12 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
   if (confidence === undefined) {
     return { error: "confidence must be a number between 0 and 1." };
   }
+  if (tsRaw && !ts) {
+    return {
+      error:
+        "ts must be an ISO 8601 timestamp with an explicit UTC offset (or a date-only YYYY-MM-DD); use the item's own timestamp.",
+    };
+  }
 
   return {
     claim: {
@@ -156,7 +203,7 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
       actor: asString(args.actor),
       quote,
       eventId,
-      ts: asString(args.ts),
+      ts,
       status: status as ClaimStatus,
       confidence: Math.min(1, Math.max(0, confidence)),
     },
@@ -193,10 +240,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
           (event) => event.channel.toLowerCase() === needle,
         );
         if (items.length === 0) return JSON.stringify({ error: `No stored issue ${key}.` });
-        return JSON.stringify({
-          count: items.length,
-          items: items.map((event) => compactEvent(event, FULL_TEXT)),
-        });
+        return JSON.stringify({ count: items.length, ...readCapped(items) });
       }
 
       case "search_slack": {
@@ -229,7 +273,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
           );
         }
         if (items.length === 0) return JSON.stringify({ error: `No stored thread ${threadId}.` });
-        return JSON.stringify({ count: items.length, items: items.map((event) => compactEvent(event, FULL_TEXT)) });
+        return JSON.stringify({ count: items.length, ...readCapped(items) });
       }
 
       case "search_email": {
@@ -260,7 +304,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         let items = email.filter((event) => event.threadId === needle);
         if (items.length === 0) items = email.filter((event) => event.threadId?.includes(needle));
         if (items.length === 0) return JSON.stringify({ error: `No stored thread for ${id}.` });
-        return JSON.stringify({ count: items.length, items: items.map((event) => compactEvent(event, FULL_TEXT)) });
+        return JSON.stringify({ count: items.length, ...readCapped(items) });
       }
 
       case "verify_quote": {
@@ -279,19 +323,30 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const { claim, error } = claimFromArgs(args);
         if (!claim) return JSON.stringify({ error });
 
+        const normalizedText = claim.text.toLowerCase().replace(/\s+/g, " ").trim();
         const existing = await getClaims(investigationId);
         const duplicate = existing.find(
           (stored) =>
             stored.agent === agentName &&
             stored.type === claim.type &&
             stored.eventId === claim.eventId &&
-            stored.text.toLowerCase().replace(/\s+/g, " ").trim() ===
-              claim.text.toLowerCase().replace(/\s+/g, " ").trim(),
+            stored.text.toLowerCase().replace(/\s+/g, " ").trim() === normalizedText,
         );
         if (duplicate) return JSON.stringify({ claimId: duplicate.id, duplicate: true });
 
-        const [stored] = await insertClaims(investigationId, [{ ...claim, agent: agentName }]);
-        return JSON.stringify({ claimId: stored.id });
+        const inserted = await insertClaims(investigationId, [{ ...claim, agent: agentName }]);
+        const stored = inserted[0];
+        if (stored) return JSON.stringify({ claimId: stored.id });
+
+        // Lost an insert race against a concurrent run — report the winner.
+        const refreshed = await getClaims(investigationId);
+        const winner = refreshed.find(
+          (candidate) =>
+            candidate.eventId === claim.eventId &&
+            candidate.text.toLowerCase().replace(/\s+/g, " ").trim() === normalizedText,
+        );
+        if (winner) return JSON.stringify({ claimId: winner.id, duplicate: true });
+        return JSON.stringify({ error: "claim could not be stored." });
       }
 
       default:

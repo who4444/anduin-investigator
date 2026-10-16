@@ -118,6 +118,24 @@ describeDb("POST /api/investigations", () => {
     });
   });
 
+  it("does not serve a cached run when the escalation text differs", async () => {
+    const first = await POST(request(buildForm()));
+    const firstBody = await first.json();
+    created.push(firstBody.investigationId);
+    const { upsertStage } = await import("../lib/store");
+    await upsertStage(firstBody.investigationId, "assemble", 1, "done");
+
+    const secondForm = buildForm();
+    secondForm.set("escalation", "A different client escalation entirely.");
+    const second = await POST(request(secondForm));
+    const secondBody = await second.json();
+    created.push(secondBody.investigationId);
+
+    expect(second.status).toBe(201);
+    expect(secondBody.cached).toBe(false);
+    expect(secondBody.investigationId).not.toBe(firstBody.investigationId);
+  });
+
   it("rejects an upload with no files", async () => {
     const response = await POST(request(new FormData()));
     expect(response.status).toBe(400);

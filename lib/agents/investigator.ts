@@ -1,4 +1,5 @@
 import { extractJson, isPlainObject } from "../json";
+import { toUtcIso } from "../ingest/normalize";
 import { getLlmClient, runToolLoop } from "../llm";
 import { appendStageLog, getClaims, getEvents, insertClaims, insertGaps } from "../store";
 import type { Claim, ClaimInput, ClaimStatus, GapInput } from "../types";
@@ -76,7 +77,7 @@ function collectClaims(content: string, agent: string): ClaimInput[] {
       actor: typeof raw.actor === "string" ? raw.actor : undefined,
       quote,
       eventId,
-      ts: typeof raw.ts === "string" ? raw.ts : undefined,
+      ts: typeof raw.ts === "string" && raw.ts.trim() ? toUtcIso(raw.ts) || undefined : undefined,
       status: status as ClaimStatus,
       confidence: Math.min(1, Math.max(0, confidence)),
     });
@@ -177,7 +178,11 @@ export async function runInvestigator(
         ],
         { forceJson: true },
       );
-      finalContent = `${content}\n${forced.content}`;
+      // Concatenating two JSON objects produces text that no longer parses, so
+      // only append the forced reply when the loop content yielded nothing.
+      const yielded =
+        collectClaims(finalContent, kind).length > 0 || collectNotes(finalContent, kind).length > 0;
+      if (!yielded) finalContent = `${finalContent}\n${forced.content}`;
     } catch {
       // The loop's own content is still parsed below.
     }

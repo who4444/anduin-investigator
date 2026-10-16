@@ -126,6 +126,34 @@ describeDb("runSkeptic", () => {
     expect(stages.find((stage) => stage.stage === "skeptic")?.log).toHaveLength(1);
   });
 
+  it("does not duplicate notes and gaps when the skeptic re-runs", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runSkeptic } = await import("../lib/agents/skeptic");
+    const { getGaps, getSkepticNotes } = await import("../lib/store");
+
+    setLlmClientForTests({
+      chat: async () => ({
+        content: JSON.stringify({
+          issues: [
+            {
+              kind: "silence",
+              text: "No record shows the Sep 24 release actually shipping.",
+              event_ids: [],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await runSkeptic(investigationId, 3);
+    const notesAfterFirst = await getSkepticNotes(investigationId);
+    const gapsAfterFirst = await getGaps(investigationId);
+
+    await runSkeptic(investigationId, 4);
+    expect(await getSkepticNotes(investigationId)).toHaveLength(notesAfterFirst.length);
+    expect(await getGaps(investigationId)).toHaveLength(gapsAfterFirst.length);
+  });
+
   it("degrades without throwing when the model call fails", async () => {
     const { setLlmClientForTests } = await import("../lib/llm");
     const { runSkeptic } = await import("../lib/agents/skeptic");

@@ -152,8 +152,10 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   };
 
   const mentionCounts = new Map<string, { role: string; mentions: number }>();
+  const rawTsByClaim = new Map<string, string>();
   const eventsOut: BriefingEvent[] = ordered.map(({ claim, event }) => {
     const ts = claim.ts ?? event?.ts ?? "";
+    rawTsByClaim.set(claim.id, event?.ts ?? "");
     const actor = event?.actorResolved ?? event?.actor ?? claim.actor ?? "unknown";
     const role = roleFor(actor, kept, eventsById);
     const existing = mentionCounts.get(actor) ?? { role, mentions: 0 };
@@ -194,13 +196,15 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
     event.actorColor = peopleIndex.get(event.actor) ?? 0;
   }
 
-  // silences with scope + leave annotation
+  // silences with scope + leave annotation. A source is quiet during the gap
+  // when it has no record in (from, to] — its own record may end the silence
+  // (it was quiet until that moment), but the record that starts it was active.
   const rawSilences = buildSilences(events);
   const silences: BriefingSilence[] = rawSilences.map((silence) => {
     const quietSources = (["jira", "email", "slack"] as SourceKind[]).filter(
       (source) =>
         !events.some(
-          (event) => event.source === source && event.ts > silence.from && event.ts < silence.to,
+          (event) => event.source === source && event.ts > silence.from && event.ts <= silence.to,
         ),
     );
     const leaveNote = kept.some((claim) => {
@@ -226,7 +230,9 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   let current: BriefingEvent[] = [];
   for (const event of eventsOut) {
     current.push(event);
-    const endsWithSilence = silences.some((silence) => silence.from === event.ts);
+    // Compare against the underlying record's ts, not the claim's display ts —
+    // a date-only or offset claim timestamp must not blind the chapter cut.
+    const endsWithSilence = silences.some((silence) => silence.from === rawTsByClaim.get(event.claimId));
     if (endsWithSilence) {
       drafts.push({ events: current });
       current = [];
@@ -299,7 +305,8 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
     }));
 
   const brokenClusters = clusters.filter((cluster) => cluster.representative.status === "broken").length;
-  const keptClusters = clusters.length - brokenClusters;
+  const keptClusters = clusters.filter((cluster) => cluster.representative.status === "kept").length;
+  const unclearClusters = clusters.length - brokenClusters - keptClusters;
   const lastDay = eventsOut.length > 0 ? eventsOut[eventsOut.length - 1].dayNumber : 0;
   const sources = new Set(eventsOut.map((event) => event.source));
   const flagged = claims.filter((claim) => claim.skepticFlag).length;
@@ -319,10 +326,15 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
       );
     }
     if (clusters.length > 0) {
+      const unclearSuffix = unclearClusters > 0 ? `, ${unclearClusters} as unclear` : "";
       narrativeParts.push(
         brokenClusters > 0
-          ? `${brokenClusters} of ${clusters.length} promises read as broken${keptClusters > 0 ? `, ${keptClusters} as kept` : ""}.`
-          : `All ${clusters.length} promises read as kept.`,
+          ? `${brokenClusters} of ${clusters.length} promises read as broken${keptClusters > 0 ? `, ${keptClusters} as kept` : ""}${unclearSuffix}.`
+          : keptClusters === clusters.length
+            ? `All ${clusters.length} promises read as kept.`
+            : keptClusters > 0
+              ? `${keptClusters} of ${clusters.length} promises read as kept${unclearSuffix}.`
+              : `${clusters.length} promise${clusters.length === 1 ? "" : "s"} read as unclear — the records do not settle the outcome.`,
       );
     } else {
       narrativeParts.push("No promises were found in the records.");

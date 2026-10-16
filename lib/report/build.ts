@@ -377,11 +377,11 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     });
   }
 
-  // 5. unanswered run of cited messages by one person
+  // 5. unanswered run of consecutive records by one person. Computed over ALL
+  // stored records: an interleaved reply that no claim cites still breaks the run.
   let longestRun: { actor: string; count: number; events: Event[] } = { actor: "", count: 0, events: [] };
   let run: { actor: string; count: number; events: Event[] } = { actor: "", count: 0, events: [] };
-  for (const entry of citedEvents) {
-    const event = entry.event;
+  for (const event of sortedByTs(events)) {
     if (run.actor === event.actor) {
       run.count += 1;
       run.events.push(event);
@@ -729,12 +729,10 @@ export function buildAudit({ notes, events }: ReportInput): AuditRow[] {
 }
 
 export function buildLanes(input: ReportInput): Lane[] {
-  const { claims, events } = input;
-  const eventsById = eventMap(events);
-  const citedItems = visibleClaims(claims)
-    .map((claim) => cited(claim, eventsById))
-    .filter((event): event is Event => Boolean(event));
-  const ordered = sortedByTs(citedItems);
+  const { events } = input;
+  // Owner activity is every stored record, not only the ones claims cite —
+  // otherwise uncited work looks like an ownerless stretch.
+  const ordered = sortedByTs(events);
 
   const byActor = new Map<string, Event[]>();
   for (const event of ordered) {

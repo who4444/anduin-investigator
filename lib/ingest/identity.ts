@@ -84,9 +84,27 @@ export function deterministicAliases(events: EventInput[]): Map<string, string> 
     }
   }
 
+  // A display name shared by several distinct emails is ambiguous — two
+  // different people can carry the same name. Those emails must not collapse
+  // onto the shared bare name; each keeps its own disambiguated actor.
+  const emailsByName = new Map<string, Set<string>>();
+  for (const [email, names] of byEmail) {
+    for (const name of names.keys()) {
+      const set = emailsByName.get(name) ?? new Set<string>();
+      set.add(email);
+      emailsByName.set(name, set);
+    }
+  }
+  const ambiguousNames = new Set(
+    [...emailsByName.entries()].filter(([, emails]) => emails.size > 1).map(([name]) => name),
+  );
+
   const canonicalByEmail = new Map<string, string>();
   for (const [email, names] of byEmail) {
-    canonicalByEmail.set(email, pickCanonical(names) ?? email);
+    const unambiguous = [...names.entries()].filter(([name]) => !ambiguousNames.has(name));
+    if (unambiguous.length === 0) continue;
+    const canonical = pickCanonical(new Map(unambiguous));
+    if (canonical) canonicalByEmail.set(email, canonical);
   }
 
   const canonicalByName = new Map<string, string>();

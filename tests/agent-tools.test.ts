@@ -236,6 +236,101 @@ describeDb("agent tools", () => {
     expect(claims.find((claim) => claim.id === first.claimId)?.eventId).toBe(mailId);
   });
 
+  it("rejects a submit_claim whose ts is not a real timestamp", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+    const base = {
+      type: "commitment",
+      quote: "ship the fix in the Sep 24 release",
+      item_id: mailId,
+      status: "broken",
+      confidence: 0.9,
+    };
+
+    const garbage = JSON.parse(
+      await tools.exec("submit_claim", { ...base, text: "Garbage ts promise.", ts: "Sept 24" }),
+    ) as { error?: string };
+    expect(garbage.error).toMatch(/ts/i);
+
+    const naive = JSON.parse(
+      await tools.exec("submit_claim", { ...base, text: "Naive ts promise.", ts: "2024-09-20 05:00:00" }),
+    ) as { error?: string };
+    expect(naive.error).toMatch(/ts/i);
+
+    const relative = JSON.parse(
+      await tools.exec("submit_claim", { ...base, text: "Relative ts promise.", ts: "yesterday" }),
+    ) as { error?: string };
+    expect(relative.error).toMatch(/ts/i);
+
+    const { getClaims } = await import("../lib/store");
+    const texts = (await getClaims(investigationId)).map((claim) => claim.text);
+    expect(texts).not.toContain("Garbage ts promise.");
+    expect(texts).not.toContain("Naive ts promise.");
+    expect(texts).not.toContain("Relative ts promise.");
+  });
+
+  it("normalizes a date-only ts to UTC midnight on a submitted claim", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+    const result = JSON.parse(
+      await tools.exec("submit_claim", {
+        type: "commitment",
+        text: "Date-only ts promise.",
+        quote: "ship the fix in the Sep 24 release",
+        item_id: mailId,
+        ts: "2024-09-24",
+        status: "unclear",
+        confidence: 0.5,
+      }),
+    ) as { claimId: string };
+
+    const { getClaims } = await import("../lib/store");
+    const stored = (await getClaims(investigationId)).find((claim) => claim.id === result.claimId);
+    expect(stored?.ts).toBe("2024-09-24T00:00:00.000Z");
+  });
+
+  it("treats date-only search bounds as inclusive calendar days", async () => {
+    const tools = buildAgentTools(investigationId, "commitments");
+
+    const upper = JSON.parse(await tools.exec("search_slack", { to: "2024-09-24" })) as {
+      items: { id: string }[];
+    };
+    expect(upper.items.map((item) => item.id)).toContain(slackId);
+
+    const day = JSON.parse(
+      await tools.exec("search_slack", { from: "2024-09-24", to: "2024-09-24" }),
+    ) as { items: { id: string }[] };
+    expect(day.items.map((item) => item.id)).toEqual([slackId]);
+
+    const fromTs = JSON.parse(
+      await tools.exec("search_slack", { from: "2024-09-24T00:00:00.000Z" }),
+    ) as { items: { id: string }[] };
+    expect(fromTs.items.map((item) => item.id)).toEqual([slackId, replyId]);
+  });
+
+  it("caps get_issue output so a long issue cannot blow the model context", async () => {
+    const { insertEvents } = await import("../lib/store");
+    const body = "Detail line about the timezone regression. ".repeat(70); // ~3.1k chars
+    await insertEvents(
+      investigationId,
+      Array.from({ length: 45 }, (_, index) => ({
+        id: `e_test_big_${String(index).padStart(2, "0")}`,
+        source: "jira" as const,
+        ts: `2024-09-11T00:00:${String(index).padStart(2, "0")}.000Z`,
+        actor: "Lin Chen",
+        channel: "MER-BIG",
+        text: `${body} (${index})`,
+      })),
+    );
+
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const raw = await tools.exec("get_issue", { key: "MER-BIG" });
+    const result = JSON.parse(raw) as { count: number; items: unknown[]; truncated: boolean };
+
+    expect(result.count).toBe(45);
+    expect(result.items.length).toBeLessThan(45);
+    expect(result.truncated).toBe(true);
+    expect(raw.length).toBeLessThan(30_000);
+  });
+
   it("rejects a submit_claim without a valid status", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const response = JSON.parse(

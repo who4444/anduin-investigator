@@ -206,6 +206,121 @@ describeDb("runInvestigator", () => {
     expect((await getClaims(investigationId)).some((claim) => claim.text.includes("timezone change caused"))).toBe(true);
   });
 
+  it("keeps a final-JSON claim with a bad ts by dropping the ts, not the claim", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getClaims } = await import("../lib/store");
+
+    setLlmClientForTests(
+      scriptedClient([
+        {
+          content: JSON.stringify({
+            claims: [
+              {
+                type: "process_failure",
+                text: "Claim with garbage ts.",
+                quote: "fix is in the Sep 24 build",
+                event_id: slackId,
+                ts: "Sept 24",
+                status: "n/a",
+                confidence: 0.6,
+              },
+              {
+                type: "process_failure",
+                text: "Claim with naive ts.",
+                quote: "fix is in the Sep 24 build",
+                event_id: slackId,
+                ts: "2024-09-26 09:00:00",
+                status: "n/a",
+                confidence: 0.6,
+              },
+              {
+                type: "process_failure",
+                text: "Claim with date-only ts.",
+                quote: "fix is in the Sep 24 build",
+                event_id: slackId,
+                ts: "2024-09-26",
+                status: "n/a",
+                confidence: 0.6,
+              },
+            ],
+            notes: [],
+          }),
+        },
+        { content: "" },
+      ]),
+    );
+
+    await runInvestigator(investigationId, "ownership", "1. Process failures.");
+
+    const claims = (await getClaims(investigationId)).filter((claim) => claim.agent === "ownership");
+    expect(claims.map((claim) => claim.text)).toEqual(
+      expect.arrayContaining([
+        "Claim with garbage ts.",
+        "Claim with naive ts.",
+        "Claim with date-only ts.",
+      ]),
+    );
+    const byText = new Map(claims.map((claim) => [claim.text, claim]));
+    expect(byText.get("Claim with garbage ts.")?.ts ?? null).toBeNull();
+    expect(byText.get("Claim with naive ts.")?.ts ?? null).toBeNull();
+    expect(byText.get("Claim with date-only ts.")?.ts).toBe("2024-09-26T00:00:00.000Z");
+  });
+
+  it("does not lose final claims when a forced reply is appended after a parseable object", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getClaims } = await import("../lib/store");
+
+    const finalJson = JSON.stringify({
+      claims: [
+        {
+          type: "process_failure",
+          text: "Concatenation survivor claim.",
+          quote: "fix is in the Sep 24 build",
+          event_id: slackId,
+          status: "n/a",
+          confidence: 0.6,
+        },
+      ],
+      notes: [],
+    });
+    setLlmClientForTests(
+      scriptedClient([
+        { content: finalJson },
+        { content: '{"claims":[],"notes":[]}' },
+      ]),
+    );
+
+    await runInvestigator(investigationId, "ownership", "1. Process failures.");
+
+    const claims = (await getClaims(investigationId)).filter((claim) => claim.agent === "ownership");
+    expect(claims.some((claim) => claim.text === "Concatenation survivor claim.")).toBe(true);
+  });
+
+  it("does not duplicate gaps when the same investigator re-runs", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getPool } = await import("../lib/db/pool");
+
+    const finalJson = JSON.stringify({
+      claims: [],
+      notes: ["No record shows who owned the Sep 24 release decision."],
+    });
+    setLlmClientForTests(scriptedClient([{ content: finalJson }]));
+
+    await runInvestigator(investigationId, "ownership", "1. Ownership.");
+    const sql = getPool();
+    const afterFirst = await sql<{ count: string }[]>`
+      select count(*)::text as count from gaps where investigation_id = ${investigationId}
+    `;
+    await runInvestigator(investigationId, "ownership", "1. Ownership.");
+    const afterSecond = await sql<{ count: string }[]>`
+      select count(*)::text as count from gaps where investigation_id = ${investigationId}
+    `;
+    expect(afterSecond[0].count).toBe(afterFirst[0].count);
+  });
+
   it("rejects an unknown investigator kind", async () => {
     const { runInvestigator } = await import("../lib/agents/investigator");
     await expect(

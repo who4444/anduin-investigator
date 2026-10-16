@@ -16,8 +16,10 @@ function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
 }
 
-function contentHash(files: IngestFile[]): string {
+function contentHash(files: IngestFile[], escalation: string): string {
   const hash = createHash("sha1");
+  hash.update(escalation);
+  hash.update("\0");
   for (const file of [...files].sort((a, b) => a.name.localeCompare(b.name))) {
     hash.update(file.name);
     hash.update("\0");
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const escalation = String(form.get("escalation") ?? "").slice(0, ESCALATION_TEXT_LIMIT);
-  const hash = contentHash(uploads);
+  const hash = contentHash(uploads, escalation);
 
   try {
     const existing = await findInvestigationByHash(hash);

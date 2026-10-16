@@ -50,8 +50,8 @@ export async function runStage<T>(
   pass: number,
   work: () => Promise<T>,
 ): Promise<Response> {
-  await upsertStage(investigationId, stage, pass, "running");
   try {
+    await upsertStage(investigationId, stage, pass, "running");
     const result = await work();
     await upsertStage(investigationId, stage, pass, "done");
     return json(result ?? { ok: true });

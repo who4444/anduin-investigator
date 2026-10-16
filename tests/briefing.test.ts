@@ -107,6 +107,21 @@ describe("buildBriefing", () => {
     expect(withBroken?.takeaway).toMatch(/broken promise/);
   });
 
+  it("cuts chapters at silences even when a claim carries its own timestamp", () => {
+    const shifted = claims.map((entry) =>
+      entry.id === "c5" ? { ...entry, ts: "2024-09-25" } : entry,
+    );
+    const shiftedBriefing = buildBriefing({ events, claims: shifted });
+    expect(shiftedBriefing.chapters.length).toBeGreaterThanOrEqual(2);
+    // The Sep 25 → Oct 8 silence must separate the Sep 25 finding from the
+    // Oct 8 finding even though c5's claim ts is date-only.
+    const chapterOf = (claimId: string) =>
+      shiftedBriefing.chapters.findIndex((chapter) => chapter.eventIds.includes(`ev_${claimId}`));
+    const c5Chapter = chapterOf("c5");
+    expect(c5Chapter).toBeGreaterThanOrEqual(0);
+    expect(chapterOf("c4")).not.toBe(c5Chapter);
+  });
+
   it("assigns importance, lanes and headlines", () => {
     const brokenPromise = briefing.events.find((entry) => entry.claimId === "c3");
     expect(brokenPromise).toMatchObject({ importance: "key", lane: "promises", actorRole: "client" });
@@ -139,10 +154,13 @@ describe("buildBriefing", () => {
     expect(briefing.people.find((person) => person.name === "Noah Bright")?.role).toBe("team");
   });
 
-  it("labels silences with quiet sources and leave annotations", () => {
-    const longSilence = briefing.silences.find((silence) => silence.days >= 13);
-    expect(longSilence).toBeDefined();
-    expect(longSilence?.quietSources).toContain("jira");
+  it("labels silences with the sources that were actually quiet", () => {
+    const early = briefing.silences.find((silence) => silence.from.startsWith("2024-09-10"));
+    // jira's own record (e2) ends this silence, so jira was not quiet — only email and slack were.
+    expect(early?.quietSources).toEqual(["email", "slack"]);
+    const late = briefing.silences.find((silence) => silence.from.startsWith("2024-09-25"));
+    // slack speaks at both ends of this one (e4 then e5), so jira and email went quiet.
+    expect(late?.quietSources).toEqual(["jira", "email"]);
     const leaveSilence = briefing.silences.find((silence) => silence.leaveNote);
     expect(leaveSilence?.label).toContain("Owner on leave");
   });
@@ -150,6 +168,41 @@ describe("buildBriefing", () => {
   it("keeps the narrative factual when breaking promises exist", () => {
     const fallback = buildBriefing({ events, claims });
     expect(fallback.narrative).toContain("1 of 1 promises read as broken");
+  });
+
+  it("does not count unclear promises as kept in the narrative", () => {
+    const withUnclear = [
+      ...claims,
+      claim({
+        id: "c7",
+        eventId: "e3",
+        type: "commitment",
+        status: "unclear",
+        text: "A second promise whose outcome is unclear.",
+        actor: "Marcus Webb",
+        ts: "2024-09-24T17:00:00.000Z",
+      }),
+    ];
+    const unclearBriefing = buildBriefing({ events, claims: withUnclear });
+    expect(unclearBriefing.narrative).toMatch(/1 as unclear/);
+    expect(unclearBriefing.narrative).not.toMatch(/1 as kept/);
+  });
+
+  it("never claims all promises are kept when outcomes are unclear", () => {
+    const onlyUnclear = [
+      claim({
+        id: "c8",
+        eventId: "e3",
+        type: "commitment",
+        status: "unclear",
+        text: "Delivery date was suggested but never confirmed.",
+        actor: "Marcus Webb",
+        ts: "2024-09-24T17:00:00.000Z",
+      }),
+    ];
+    const unclearBriefing = buildBriefing({ events, claims: onlyUnclear });
+    expect(unclearBriefing.narrative).toMatch(/unclear/);
+    expect(unclearBriefing.narrative).not.toMatch(/read as kept/);
   });
 
   it("renders an honest empty briefing when nothing was verified", () => {

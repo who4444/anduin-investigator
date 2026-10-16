@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { validateReplyPayload } from "../lib/agents/reply";
 import {
   buildAudit,
+  buildLanes,
   buildLedger,
   buildMetrics,
   buildReportView,
@@ -154,7 +155,9 @@ describe("report metrics", () => {
     expect(byId.get("firstResponse")).toMatchObject({ determined: true });
     expect(byId.get("commitments")).toMatchObject({ value: "0 of 1" });
     expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "13 days" });
-    expect(byId.get("chasers")).toMatchObject({ determined: false, value: "none found" });
+    // e1→e2 (Lin, nothing in between) and e6→e7 (Priya) are both unanswered
+    // consecutive runs in the full registry; the earliest one wins the tie.
+    expect(byId.get("chasers")).toMatchObject({ determined: true, value: "2 from Lin Chen", eventIds: ["e1", "e2"] });
     expect(byId.get("statusConflicts")?.claimIds).toEqual(["c4"]);
     expect(byId.get("processFailures")?.judgment).toBe(true);
   });
@@ -181,6 +184,64 @@ describe("report metrics", () => {
     const handoffs = metrics.find((metric) => metric.id === "handoffs");
     expect(handoffs).toMatchObject({ determined: true, value: "1" });
     expect(handoffs?.claimIds).toEqual(["leave1"]);
+  });
+
+  it("detects an unanswered chaser run even when the later message was never cited", () => {
+    const metrics = buildMetrics({ events: [events[5], events[6]], claims: [claims[4]], notes: [] });
+    const chasers = metrics.find((metric) => metric.id === "chasers");
+    expect(chasers?.determined).toBe(true);
+    expect(chasers?.value).toContain("2 from Priya");
+    expect(chasers?.eventIds).toEqual(["e6", "e7"]);
+  });
+
+  it("does not report a chaser run when an uncited reply sits between the messages", () => {
+    const reply = event({
+      id: "e6b",
+      ts: "2024-09-28T09:00:00.000Z",
+      source: "slack",
+      actor: "Dana Okoro",
+      channel: "meridian-billing",
+      text: "Sorry for the silence — we are looking into it.",
+    });
+    const metrics = buildMetrics({
+      events: [events[5], reply, events[6]],
+      claims: [
+        claims[4],
+        claim({
+          id: "c5b",
+          eventId: "e7",
+          type: "process_failure",
+          text: "Chased again with no answer.",
+          ts: "2024-09-30T03:05:00.000Z",
+        }),
+      ],
+      notes: [],
+    });
+    const chasers = metrics.find((metric) => metric.id === "chasers");
+    expect(chasers?.determined).toBe(false);
+  });
+});
+
+describe("report lanes", () => {
+  it("extends owner activity to uncited stored records", () => {
+    const localEvents = [
+      event({ id: "a1", ts: "2024-09-10T03:00:00.000Z", actor: "Marcus Webb", channel: "MER-9", text: "start" }),
+      event({
+        id: "a2",
+        ts: "2024-09-14T03:00:00.000Z",
+        actor: "Marcus Webb",
+        source: "slack",
+        channel: "meridian-billing",
+        text: "uncited but real work",
+      }),
+    ];
+    const lanes = buildLanes({
+      events: localEvents,
+      claims: [claim({ id: "k1", eventId: "a1", ts: "2024-09-10T03:00:00.000Z" })],
+      notes: [],
+    });
+    const marcus = lanes.find((lane) => lane.actor === "Marcus Webb");
+    expect(marcus?.end).toBe("2024-09-14T03:00:00.000Z");
   });
 });
 

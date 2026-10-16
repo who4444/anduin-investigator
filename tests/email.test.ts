@@ -61,6 +61,47 @@ describe("parseMbox", () => {
     expect(events[2].refs).toContain("SUP-2231");
   });
 
+  it("does not split a message at a body line that merely starts with From", async () => {
+    const raw = new TextEncoder().encode(
+      [
+        "From priya@northwind.example Tue Sep 24 09:30:00 2024",
+        "From: Priya Nair <priya@northwind.example>",
+        "To: team@northwind.example",
+        "Subject: Call summary",
+        "Date: Tue, 24 Sep 2024 09:30:00 +0800",
+        "Message-ID: <sum1@northwind.example>",
+        "",
+        "Summary of the call:",
+        "From our last conversation we agreed to ship the fix by Sep 24.",
+        "",
+      ].join("\n"),
+    );
+    const { events } = await parseMbox(raw);
+    expect(events).toHaveLength(1);
+    expect(events[0].text).toContain("we agreed to ship the fix by Sep 24");
+  });
+
+  it("unescapes mboxrd >From quoting in bodies", async () => {
+    const raw = new TextEncoder().encode(
+      [
+        "From priya@northwind.example Tue Sep 24 09:30:00 2024",
+        "From: Priya Nair <priya@northwind.example>",
+        "Date: Tue, 24 Sep 2024 09:30:00 +0800",
+        "Message-ID: <sum2@northwind.example>",
+        "",
+        ">From the desk of the vendor: the fix ships Sep 24.",
+        ">>From an earlier note.",
+        "",
+      ].join("\n"),
+    );
+    const { events } = await parseMbox(raw);
+    expect(events).toHaveLength(1);
+    expect(events[0].text).toContain("From the desk of the vendor");
+    expect(events[0].text).not.toContain(">From the desk");
+    expect(events[0].text).toContain(">From an earlier note.");
+    expect(events[0].text).not.toContain(">>From");
+  });
+
   it("isolates a message that fails construction so others still yield events", async () => {
     const raw = new TextEncoder().encode(
       [

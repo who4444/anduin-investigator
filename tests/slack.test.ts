@@ -59,6 +59,41 @@ describe("parseSlackFiles", () => {
     expect(bot!.refs).toContain("MER-102");
   });
 
+  it("drops messages with empty or zero timestamps instead of pinning them to 1970", () => {
+    const { events } = parseSlackFiles([
+      {
+        name: "general.json",
+        json: [
+          { ts: "", user: "U1", text: "no ts" },
+          { ts: "0", user: "U1", text: "zero ts" },
+          { ts: 1727251200.5, user: "U1", text: "real" },
+        ],
+      },
+    ]);
+    expect(events).toHaveLength(1);
+    expect(events[0].text).toBe("real");
+  });
+
+  it("skips edit and tombstone placeholders and decodes HTML entities in message text", () => {
+    const { events } = parseSlackFiles([
+      {
+        name: "general.json",
+        json: [
+          {
+            ts: "1727251200.000200",
+            subtype: "message_changed",
+            message: { ts: "1727251200.000201", user: "U1", text: "edited body" },
+          },
+          { ts: "1727251200.000300", subtype: "message_deleted" },
+          { ts: "1727251200.000400", hidden: true, user: "U1", text: "hidden" },
+          { ts: "1727251200.000500", user: "U1", text: "Q&amp;A about &lt;release&gt;" },
+        ],
+      },
+    ]);
+    expect(events).toHaveLength(1);
+    expect(events[0].text).toBe("Q&A about <release>");
+  });
+
   it("falls back to raw ids when users.json is missing, without throwing", () => {
     const { events } = parseSlackFiles(files(false));
     expect(events).toHaveLength(5);

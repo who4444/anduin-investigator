@@ -20,8 +20,7 @@ export default async function ReportPage({
 
   let report: ReportPayload;
   try {
-    const assembled = await buildResult(id);
-    const extras = await getReportExtras(id);
+    const assembled = await buildResult(id);    const extras = await getReportExtras(id);
     report = {
       investigation: {
         id: assembled.investigation.id,
@@ -48,8 +47,11 @@ export default async function ReportPage({
         claims: assembled.claims,
       }),
     };
-  } catch {
-    notFound();
+  } catch (error) {
+    // Only a genuinely unknown investigation is a 404; anything else (database
+    // outage, partial pipeline state) must not masquerade as a missing page.
+    if (error instanceof Error && /^No investigation with id /.test(error.message)) notFound();
+    throw error;
   }
 
   const flags = new URLSearchParams();

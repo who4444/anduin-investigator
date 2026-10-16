@@ -60,6 +60,79 @@ describe("parseJira", () => {
     expect(events[0].channel).toBe("MER-103");
   });
 
+  it("converts Atlassian Document Format bodies (Jira Cloud v3) into plain text", () => {
+    const adfText = (text: string) => ({ type: "text", text });
+    const paragraph = (...texts: string[]) => ({
+      type: "paragraph",
+      content: texts.map(adfText),
+    });
+    const issue = {
+      key: "NW-1",
+      self: "https://acme.atlassian.net/rest/api/3/issue/10001",
+      fields: {
+        summary: "Invoice totals wrong for Q3",
+        created: "2024-09-10T08:15:00.000+0000",
+        reporter: { displayName: "Dana Okafor" },
+        description: {
+          type: "doc",
+          version: 1,
+          content: [paragraph("Totals drifted after the 4.12 release. See MER-99 for the rollback plan.")],
+        },
+        comment: {
+          comments: [
+            {
+              created: "2024-09-10T10:30:00.000+0000",
+              author: { displayName: "Priya Nair" },
+              body: {
+                type: "doc",
+                version: 1,
+                content: [
+                  paragraph("We will ship the fix by Sep 24."),
+                  paragraph("Confirmed the drift is timezone-related."),
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    const { events } = parseJira({ issues: [issue] });
+
+    const comment = events.find((event) => event.ts === "2024-09-10T10:30:00.000+0000");
+    expect(comment).toBeDefined();
+    expect(comment!.text).toContain("We will ship the fix by Sep 24.");
+    expect(comment!.text).toContain("Confirmed the drift is timezone-related.");
+    expect(comment!.text).not.toContain("[object Object]");
+
+    const created = events.find((event) => event.text.startsWith("Issue created"));
+    expect(created).toBeDefined();
+    const refs = [...(created?.refs ?? []), ...(comment?.refs ?? [])];
+    expect(refs).toContain("MER-99");
+  });
+
+  it("leaves v2-style HTML string bodies working alongside ADF", () => {
+    const issue = {
+      key: "NW-2",
+      fields: {
+        summary: "Legacy export",
+        created: "2024-09-10T08:15:00.000+0000",
+        comment: {
+          comments: [
+            {
+              created: "2024-09-10T11:00:00.000+0000",
+              author: "Dana Okafor",
+              body: "<p>Old-style <b>HTML</b> body</p>",
+            },
+          ],
+        },
+      },
+    };
+    const { events } = parseJira({ issues: [issue] });
+    const comment = events.find((event) => event.ts === "2024-09-10T11:00:00.000+0000");
+    expect(comment!.text).toBe("Old-style HTML body");
+  });
+
   it("handles an empty search response without throwing", () => {
     expect(parseJira({ issues: [] })).toEqual({ events: [], issues: [] });
   });

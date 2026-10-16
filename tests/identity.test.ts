@@ -75,6 +75,30 @@ describe("deterministicAliases", () => {
     expect(aliases.get("Priya Nair <priya.nair@northwind.example>")).toBe("Priya Nair");
     expect(aliases.get("Priya Nair")).toBeUndefined();
   });
+  it("does not collapse two different people who share a display name", () => {
+    const events = [
+      event("Alex Kim <alex.kim@northwind.example>", "vendor message"),
+      event("Alex Kim <alex.kim@meridian.example>", "client message"),
+    ];
+
+    const aliases = deterministicAliases(events);
+
+    expect(aliases.get("Alex Kim <alex.kim@northwind.example>")).toBeUndefined();
+    expect(aliases.get("Alex Kim <alex.kim@meridian.example>")).toBeUndefined();
+  });
+
+  it("still merges name variants when the shared name is not ambiguous", () => {
+    const events = [
+      event("L. Chen <l.chen@northwind.com>"),
+      event("Lin Chen <l.chen@northwind.com>", "second message"),
+      event("Lin Chen <l.chen@northwind.com>", "third message"),
+    ];
+
+    const aliases = deterministicAliases(events);
+
+    expect(aliases.get("L. Chen <l.chen@northwind.com>")).toBe("Lin Chen");
+    expect(aliases.get("Lin Chen <l.chen@northwind.com>")).toBe("Lin Chen");
+  });
 });
 
 describe("suggestLlmMerges", () => {

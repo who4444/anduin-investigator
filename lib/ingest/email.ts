@@ -1,6 +1,7 @@
 import PostalMime, { type Email } from "postal-mime";
 
 import type { EventInput } from "../types";
+import { decodeEntities } from "./entities";
 import { extractTicketRefs } from "./refs";
 
 export interface EmailParseResult {
@@ -16,41 +17,39 @@ function decode(bytes: Uint8Array): string {
   }
 }
 
+/* mboxrd: a "From " line only starts a message when it follows a blank line
+   (or the start of the file), or when it is shaped like a real envelope line
+   ("From alice@example.org Tue Sep 24 09:30:00 2024") — body prose like
+   "From our last conversation…" is content, not a boundary. ">From " quoting
+   inside a message is unescaped on read. */
+const MBOX_ENVELOPE = /^From \S+@\S+\s+\w{3}\s+\w{3}\s+\d{1,2}\s+\d{1,2}:\d{2}/;
+
+function unescapeMboxrd(message: string): string {
+  return message
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^>(>*From )/, "$1"))
+    .join("\n");
+}
+
 function splitMbox(text: string): string[] {
   const messages: string[] = [];
   let current: string[] | null = null;
+  let previousBlank = true;
   for (const line of text.split(/\r?\n/)) {
-    if (line.startsWith("From ")) {
+    const isSeparator = previousBlank
+      ? line.startsWith("From ")
+      : MBOX_ENVELOPE.test(line);
+    if (isSeparator) {
       if (current) messages.push(current.join("\n"));
       current = [];
     } else if (current) {
       current.push(line);
     }
+    previousBlank = line.trim() === "";
   }
   if (current) messages.push(current.join("\n"));
-  if (messages.length > 0) return messages;
-  return text.trim() ? [text] : [];
-}
-
-function safeCodePoint(code: number): string {
-  if (!Number.isFinite(code) || code < 0 || code > 0x10ffff) return "";
-  try {
-    return String.fromCodePoint(code);
-  } catch {
-    return "";
-  }
-}
-
-function decodeEntities(input: string): string {
-  return input
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&apos;/gi, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => safeCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec: string) => safeCodePoint(Number(dec)));
+  if (messages.length > 0) return messages.map(unescapeMboxrd);
+  return text.trim() ? [unescapeMboxrd(text)] : [];
 }
 
 function stripHtml(html: string): string {

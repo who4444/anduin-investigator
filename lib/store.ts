@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import type { JSONValue } from "postgres";
 
 import { getPool } from "./db/pool";
+import { toUtcIso } from "./ingest/normalize";
 import type {
   Claim,
   ClaimChecks,
@@ -241,7 +243,15 @@ const CLAIM_COLUMNS = [
   "ts",
   "status",
   "confidence",
+  "dedupe_key",
 ] as const;
+
+/* Must match the migration's key: md5(event_id || '|' || btrim(lower(regexp_replace(text, '\s+', ' ', 'g')))) */
+export function claimDedupeKey(eventId: string, text: string): string {
+  return createHash("md5")
+    .update(`${eventId}|${text.toLowerCase().replace(/\s+/g, " ").trim()}`)
+    .digest("hex");
+}
 
 export async function createInvestigation(input: NewInvestigation): Promise<string> {
   const sql = getPool();
@@ -345,12 +355,14 @@ export async function insertClaims(investigationId: string, claims: ClaimInput[]
     actor: claim.actor ?? null,
     quote: claim.quote,
     event_id: claim.eventId,
-    ts: claim.ts ?? null,
+    ts: claim.ts ? toUtcIso(claim.ts) || null : null,
     status: claim.status,
     confidence: claim.confidence,
+    dedupe_key: claimDedupeKey(claim.eventId, claim.text),
   }));
   const inserted = await sql<ClaimRow[]>`
     insert into claims ${sql(rows, ...CLAIM_COLUMNS)}
+    on conflict (investigation_id, dedupe_key) do nothing
     returning id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag
   `;
   return inserted.map(mapClaim);
@@ -404,7 +416,15 @@ export async function insertSkepticNotes(
     return;
   }
   const sql = getPool();
-  const rows = notes.map((note) => ({
+  const existing = await sql<{ kind: string; claim_id: string | null; text: string }[]>`
+    select kind, claim_id, text from skeptic_notes where investigation_id = ${investigationId}
+  `;
+  const seen = new Set(existing.map((row) => `${row.kind}|${row.claim_id ?? ""}|${row.text}`));
+  const fresh = notes.filter((note) => !seen.has(`${note.kind}|${note.claimId ?? ""}|${note.text}`));
+  if (fresh.length === 0) {
+    return;
+  }
+  const rows = fresh.map((note) => ({
     investigation_id: investigationId,
     claim_id: note.claimId ?? null,
     kind: note.kind,
@@ -419,7 +439,15 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     return;
   }
   const sql = getPool();
-  const rows = gaps.map((gap) => ({
+  const existing = await sql<{ question: string; note: string }[]>`
+    select question, note from gaps where investigation_id = ${investigationId}
+  `;
+  const seen = new Set(existing.map((row) => `${row.question}|${row.note}`));
+  const fresh = gaps.filter((gap) => !seen.has(`${gap.question}|${gap.note}`));
+  if (fresh.length === 0) {
+    return;
+  }
+  const rows = fresh.map((gap) => ({
     investigation_id: investigationId,
     question: gap.question,
     note: gap.note,

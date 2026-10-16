@@ -1,4 +1,5 @@
 import type { EventInput } from "../types";
+import { decodeEntities } from "./entities";
 import { isoFromEpoch } from "./normalize";
 import { extractTicketRefs } from "./refs";
 
@@ -83,6 +84,8 @@ function buildSlackEvent(
 ): EventInput | null {
   const rawTs = message.ts;
   if (typeof rawTs !== "number" && typeof rawTs !== "string") return null;
+  const seconds = typeof rawTs === "number" ? rawTs : Number(rawTs.trim());
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
 
   let ts: string;
   try {
@@ -92,6 +95,14 @@ function buildSlackEvent(
   }
 
   const userId = asString(message.user);
+  const subtype = asString(message.subtype);
+  // Edit/tombstone entries are placeholders for a message stored elsewhere
+  // (real exports keep the original), and hidden rows are moderation noise.
+  if (subtype === "message_changed" || subtype === "message_deleted" || subtype === "tombstone") {
+    return null;
+  }
+  if (message.hidden === true) return null;
+
   const actor =
     (userId ? users.get(userId) : undefined) ??
     userId ??
@@ -99,7 +110,7 @@ function buildSlackEvent(
     asString(message.bot_id) ??
     "unknown";
 
-  const text = typeof message.text === "string" ? message.text : "";
+  const text = decodeEntities(typeof message.text === "string" ? message.text : "");
   const threadTs = asString(message.thread_ts);
 
   const event: EventInput = {
@@ -114,7 +125,6 @@ function buildSlackEvent(
   if (refs.length > 0) event.refs = refs;
 
   const meta: Record<string, unknown> = {};
-  const subtype = asString(message.subtype);
   if (subtype) meta.subtype = subtype;
   if (userId) meta.user = userId;
   if (Object.keys(meta).length > 0) event.meta = meta;

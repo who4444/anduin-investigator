@@ -1,4 +1,5 @@
 import type { EventInput } from "../types";
+import { decodeEntities } from "./entities";
 import { extractTicketRefs } from "./refs";
 
 type Json = Record<string, unknown>;
@@ -20,17 +21,55 @@ function displayName(value: unknown): string | undefined {
 }
 
 function stripHtml(input: string): string {
-  return input
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;/g, "'")
-    .replace(/&apos;/gi, "'")
+  return decodeEntities(input.replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function adfInline(node: Json): string {
+  const type = asString(node.type);
+  if (type === "text") return asString(node.text) ?? "";
+  if (type === "hardBreak") return "\n";
+  const attrs = isObject(node.attrs) ? node.attrs : {};
+  if (type === "mention") return asString(attrs.text) ?? asString(attrs.displayName) ?? "";
+  if (type === "emoji") return asString(attrs.shortName) ?? "";
+  if (type === "inlineCard") return asString(attrs.url) ?? "[link]";
+  if (type === "media" || type === "mediaSingle") return asString(attrs.url) ?? "[attachment]";
+  const content = Array.isArray(node.content) ? node.content : [];
+  return content.map((child) => (isObject(child) ? adfInline(child) : "")).join("");
+}
+
+function adfBlock(node: Json): string {
+  const type = asString(node.type);
+  const content = Array.isArray(node.content) ? node.content : [];
+  if (type === "paragraph" || type === "heading" || type === "codeBlock") {
+    return adfInline(node).trim();
+  }
+  if (type === "listItem" || type === "taskItem") {
+    const inner = content
+      .map((child) => (isObject(child) ? adfBlock(child) : ""))
+      .filter(Boolean)
+      .join("\n");
+    return inner
+      .split("\n")
+      .map((line) => `- ${line}`)
+      .join("\n");
+  }
+  return content
+    .map((child) => (isObject(child) ? adfBlock(child) : ""))
+    .filter(Boolean)
+    .join("\n");
+}
+
+/* Jira Cloud v3 returns comment/description bodies as ADF documents;
+   v2 exports use HTML strings. Accept both. */
+function bodyText(value: unknown): string | undefined {
+  if (typeof value === "string") return value.length > 0 ? stripHtml(value) : undefined;
+  if (!isObject(value)) return undefined;
+  const text = adfBlock(value)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text.length > 0 ? text : undefined;
 }
 
 function browseUrl(self: unknown, key: string): string | undefined {
@@ -74,8 +113,7 @@ function issueEvents(issue: Json): EventInput[] {
   const fields = isObject(issue.fields) ? issue.fields : {};
   const url = browseUrl(issue.self, key);
   const summary = asString(fields.summary);
-  const descriptionRaw = asString(fields.description);
-  const description = descriptionRaw ? stripHtml(descriptionRaw) : undefined;
+  const description = bodyText(fields.description);
 
   const events: EventInput[] = [];
 
@@ -97,13 +135,13 @@ function issueEvents(issue: Json): EventInput[] {
     if (!isObject(raw)) continue;
     const ts = asString(raw.created);
     if (!ts) continue;
-    const body = asString(raw.body);
+    const body = bodyText(raw.body);
     events.push({
       source: "jira",
       ts,
       actor: displayName(raw.author) ?? "unknown",
       channel: key,
-      text: body ? stripHtml(body) : "",
+      text: body ?? "",
       url,
       refs: refsFor(body),
     });
