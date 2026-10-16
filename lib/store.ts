@@ -512,3 +512,43 @@ export async function getIdentities(investigationId: string): Promise<IdentityRe
   `;
   return rows.map(mapIdentity);
 }
+
+export interface ReplySentence {
+  text: string;
+  claimIds: string[];
+}
+
+export interface ReportExtras {
+  verdict: string | null;
+  reply: { sentences: ReplySentence[] } | null;
+}
+
+export async function upsertReportExtras(
+  investigationId: string,
+  extras: { verdict: string; reply: { sentences: ReplySentence[] } },
+): Promise<void> {
+  const sql = getPool();
+  await sql`
+    insert into report_extras (investigation_id, verdict, reply)
+    values (${investigationId}, ${extras.verdict}, ${sql.json(extras.reply as unknown as JSONValue)})
+    on conflict (investigation_id) do update set
+      verdict = excluded.verdict,
+      reply = excluded.reply
+  `;
+}
+
+export async function getReportExtras(investigationId: string): Promise<ReportExtras | null> {
+  const sql = getPool();
+  const rows = await sql<{ verdict: string | null; reply: { sentences?: ReplySentence[] } | null }[]>`
+    select verdict, reply from report_extras where investigation_id = ${investigationId} limit 1
+  `;
+  if (rows.length === 0) return null;
+  const reply = rows[0].reply;
+  return {
+    verdict: rows[0].verdict,
+    reply:
+      reply && Array.isArray(reply.sentences)
+        ? { sentences: reply.sentences.filter((s) => typeof s?.text === "string") }
+        : null,
+  };
+}
