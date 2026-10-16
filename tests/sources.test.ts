@@ -127,6 +127,23 @@ function slackHandlers(channelName = "meridian-billing") {
       () => json({ ok: true, channel: { id: "C2", name: channelName } }),
     ],
     [
+      /conversations\.replies/,
+      (_url, init) => {
+        const body = new URLSearchParams(String(init?.body ?? ""));
+        const ts = body.get("ts");
+        if (ts === "1727251200.000100") {
+          return json({
+            ok: true,
+            messages: [
+              { ts: "1727251200.000100", user: "U2", text: "fix is in the Sep 24 build" },
+              { ts: "1727251500.000100", user: "U1", text: "QA is still failing", thread_ts: "1727251200.000100" },
+            ],
+          });
+        }
+        return json({ ok: true, messages: [] });
+      },
+    ],
+    [
       /conversations\.history/,
       (_url, init) => {
         const body = new URLSearchParams(String(init?.body ?? ""));
@@ -136,8 +153,7 @@ function slackHandlers(channelName = "meridian-billing") {
         return json({
           ok: true,
           messages: [
-            { ts: "1727251200.000100", user: "U2", text: "fix is in the Sep 24 build" },
-            { ts: "1727251500.000100", user: "U1", text: "QA is still failing", thread_ts: "1727251200.000100" },
+            { ts: "1727251200.000100", user: "U2", text: "fix is in the Sep 24 build", reply_count: 1 },
           ],
           response_metadata: { next_cursor: "next" },
         });
@@ -158,8 +174,8 @@ function slackHandlers(channelName = "meridian-billing") {
 }
 
 describe("slack source", () => {
-  it("lists channels and pulls users, channels and messages that round-trip through the parser", async () => {
-    const { fetchImpl } = slackHandlers();
+  it("lists channels and pulls users, channels, messages and thread replies that round-trip through the parser", async () => {
+    const { fetchImpl, calls } = slackHandlers();
     const source = createSlackSource({ env: slackEnv, fetchImpl });
 
     const targets = await source.listTargets();
@@ -176,13 +192,19 @@ describe("slack source", () => {
       "slack/channels.json",
     ]);
 
+    // the thread reply came from conversations.replies, not history
+    expect(calls.some((call) => call.url.includes("conversations.replies"))).toBe(true);
+
     const parsed = parseSlackFiles(
       files.map((file) => ({ name: file.name, json: JSON.parse(file.content) as unknown })),
     );
     expect(parsed.events).toHaveLength(3);
-    expect(parsed.events[0].actor).toBe("Marcus Webb");
-    expect(parsed.events[0].channel).toBe("meridian-billing");
-    expect(parsed.events[1].threadId).toBe("slack:meridian-billing:1727251200.000100");
+    const parent = parsed.events.find((event) => event.text.includes("Sep 24 build"));
+    const reply = parsed.events.find((event) => event.text === "QA is still failing");
+    expect(parent?.channel).toBe("meridian-billing");
+    expect(parent?.actor).toBe("Marcus Webb");
+    expect(reply?.threadId).toBe("slack:meridian-billing:1727251200.000100");
+    expect(reply?.actor).toBe("Lin Chen");
   });
 
   it("explains missing scopes when Slack rejects the call", async () => {

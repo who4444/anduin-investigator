@@ -10,6 +10,7 @@ import {
 const ENV_KEYS = ["SLACK_TOKEN"];
 const MAX_CHANNELS_PER_PULL = 10;
 const MAX_MESSAGES_PER_CHANNEL = 600;
+const MAX_REPLY_FETCHES = 25;
 const PAGE_LIMIT = 200;
 
 const REQUIRED_SCOPES =
@@ -172,6 +173,51 @@ export function createSlackSource(options: SlackSourceOptions = {}): SourceDefin
           warnings.push(
             `Slack #${name}: pulled the newest ${messages.length} messages only (budget reached).`,
           );
+        }
+
+        // conversations.history returns parents only; thread replies arrive via conversations.replies.
+        const parents = messages
+          .filter(
+            (message): message is { ts: string } =>
+              typeof message === "object" &&
+              message !== null &&
+              typeof (message as { ts?: unknown }).ts === "string" &&
+              typeof (message as { reply_count?: unknown }).reply_count === "number" &&
+              ((message as { reply_count: number }).reply_count ?? 0) > 0,
+          )
+          .slice(0, MAX_REPLY_FETCHES);
+
+        for (const parent of parents) {
+          if (messages.length >= MAX_MESSAGES_PER_CHANNEL) {
+            truncated = true;
+            break;
+          }
+          let repliesPayload: SlackResponse & { messages?: unknown[] };
+          try {
+            repliesPayload = await api<SlackResponse & { messages?: unknown[] }>("conversations.replies", {
+              channel: channelId,
+              ts: parent.ts,
+              limit: String(PAGE_LIMIT),
+            });
+          } catch {
+            warnings.push(`Slack #${name}: could not read the thread starting at ${parent.ts}.`);
+            continue;
+          }
+
+          for (const reply of repliesPayload.messages ?? []) {
+            const replyTs = typeof reply === "object" && reply !== null ? (reply as { ts?: unknown }).ts : undefined;
+            if (typeof replyTs !== "string") continue;
+            if (messages.some((existing) => (existing as { ts?: unknown }).ts === replyTs)) continue;
+            if (messages.length >= MAX_MESSAGES_PER_CHANNEL) {
+              truncated = true;
+              break;
+            }
+            messages.push(reply);
+          }
+        }
+
+        if (parents.length === MAX_REPLY_FETCHES) {
+          warnings.push(`Slack #${name}: only the first ${MAX_REPLY_FETCHES} threads were expanded.`);
         }
 
         if (messages.length > 0) {

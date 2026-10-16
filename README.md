@@ -88,8 +88,9 @@ are labelled **live pull**).
    `channels:history`, `groups:history`, `im:history`, `mpim:history`,
    `channels:read`, `groups:read`, `users:read`.
 2. Install to your workspace and copy the `xoxp-…` token to `SLACK_TOKEN`.
-3. Load targets, tick channels, pull. Users are resolved to real names; thread
-   replies inside the fetched window are linked.
+3. Load targets, tick channels, pull. Users are resolved to real names, and
+   thread replies are fetched explicitly (`conversations.replies`) and linked
+   to their parent message.
 
 **Gmail**
 1. Google Cloud console → new project → enable the **Gmail API** → OAuth consent
