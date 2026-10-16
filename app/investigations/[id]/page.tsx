@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { ReportShell } from "@/app/_components/report-shell";
+import { BriefingShell } from "@/app/_components/briefing/shell";
 import { buildResult } from "@/lib/pipeline/assemble";
+import { buildBriefing } from "@/lib/report/briefing";
 import { buildReportView, type ReportPayload } from "@/lib/report/build";
 import { getReportExtras } from "@/lib/store";
 
@@ -42,6 +43,10 @@ export default async function ReportPage({
         claims: assembled.claims,
         notes: assembled.skepticNotes,
       }),
+      briefing: buildBriefing({
+        events: assembled.timeline,
+        claims: assembled.claims,
+      }),
     };
   } catch {
     notFound();
@@ -55,7 +60,7 @@ export default async function ReportPage({
   const progressHref = `/investigations/${id}/progress?review=1${suffix ? `&${suffix}` : ""}`;
 
   return (
-    <ReportShell
+    <BriefingShell
       report={report}
       progressHref={progressHref}
       synthetic={query.synthetic === "1"}

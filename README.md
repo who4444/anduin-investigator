@@ -157,15 +157,20 @@ The demo is built for the Vercel Hobby plan (≤60s per function, small uploads)
    Skeptic review, Verify, Assemble) with a live log of each agent's tool calls
    and the records they returned, plus coverage as it stands. Errors say what
    failed and what to do next.
-3. **Report** — an internal-only account with six tabs: Overview (bottom line,
-   metrics, top failures, recommended actions), Timeline (claims on a dated
-   spine with silences drawn as breaks), Promises and client communication
-   (ledger plus the what-the-client-heard-vs-internal-records audit), Ownership
-   and causes (lanes with lapses, tagged causes), Gaps and confidence (what we
+3. **Report** — one scrolling internal briefing with a sticky section index:
+   **The story** (factual narrative, confidence, 3–5 key-moment cards, metrics
+   strip), **Board** (swimlane with a time axis, silent-period bands and owner
+   lapses), **Chapters** (4–7 collapsible phases with short-headline rows;
+   routine events collapse to a count), **Promises** (one card per promise with
+   a promised-vs-actual deadline bar and status stamp, plus the
+   what-was-communicated-vs-other-records audit), **Causes and ownership**
+   (owner periods with lapses, tagged causes), **Gaps and confidence** (what we
    could not determine, safe-to-repeat vs check-with-human, rejected claims kept
-   visible), and Draft reply (client message built only from verified findings,
-   every sentence linked to its evidence and never sent from the app).
-   "How this was produced" reopens the full activity log and coverage.
+   visible), and **Draft reply** (client message built only from verified
+   findings, every sentence linked to its evidence and never sent from the app).
+   Every marker, card and row opens the shared evidence drawer with the stored
+   original message and the cited quote highlighted. "How this was produced"
+   reopens the full activity log and coverage.
    Uploaded exports remain available as the fallback path ("Use uploaded
    exports instead"): Jira JSON, `.mbox`/`.eml`, a Slack export folder or zip.
 

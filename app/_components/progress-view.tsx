@@ -77,6 +77,8 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   const [stages, setStages] = useState<Stage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<CoverageReport | null>(null);
+  const [summary, setSummary] = useState<{ events: number; channels: number } | null>(null);
+  const [showActivity, setShowActivity] = useState(false);
   const started = useRef(false);
   const done = useRef(false);
 
@@ -91,9 +93,27 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   const loadCoverage = useCallback(async () => {
     const response = await fetch(`/api/investigations/${investigationId}/report`);
     if (!response.ok) return;
-    const payload = (await response.json()) as { coverage?: CoverageReport };
+    const payload = (await response.json()) as {
+      coverage?: CoverageReport;
+      events?: { source: string; channel: string }[];
+    };
     if (payload.coverage) setCoverage(payload.coverage);
+    if (payload.events) {
+      setSummary({
+        events: payload.events.length,
+        channels: new Set(payload.events.filter((event) => event.source === "slack").map((event) => event.channel)).size,
+      });
+    }
   }, [investigationId]);
+
+  useEffect(() => {
+    const initial = setTimeout(() => void loadCoverage(), 0);
+    const poll = setInterval(() => void loadCoverage(), 2500);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(poll);
+    };
+  }, [loadCoverage]);
 
   const finish = useCallback(() => {
     if (done.current) return;
@@ -236,29 +256,58 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
         </p>
       )}
 
+      <section className="panel">
+        <h2 style={{ marginBottom: 8 }}>Summary</h2>
+        {summary ? (
+          <p className="row small" style={{ gap: 12 }}>
+            <span className="tabular">{summary.events} items stored</span>
+            {coverage?.sources.map((entry) => (
+              <span key={entry.source} className="tabular">
+                {entry.source}: {entry.available} items
+                {entry.searched ? `, ${entry.queries.length} queries` : entry.available > 0 ? ", never searched" : ", no data"}
+              </span>
+            ))}
+            {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
+          </p>
+        ) : (
+          <p className="small muted">Counts appear as the sources are read.</p>
+        )}
+      </section>
+
       <section className="panel stack">
         <div className="spread">
-          <h2>Live activity</h2>
-          <span className="small muted">{activity.length} tool calls</span>
+          <h2>Activity</h2>
+          <button
+            type="button"
+            className="btn btn-quiet"
+            aria-expanded={showActivity}
+            onClick={() => setShowActivity((current) => !current)}
+          >
+            {showActivity ? "Hide activity" : `Show activity (${activity.length} tool calls)`}
+          </button>
         </div>
-        {activity.length === 0 ? (
-          <p className="empty">Agent tool calls will appear here as they happen, with the records they stored.</p>
-        ) : (
-          <ol className="activity-log">
-            {activity.map((entry, index) => (
-              <li className="activity-entry" key={`${entry.agent}-${entry.name}-${index}`}>
-                <span className="activity-agent">{entry.agent.split(" ")[0]}</span>
-                <span>
-                  <span className="activity-tool">{entry.name}</span>
-                  {entry.detail && <span className="activity-result"> {entry.detail}</span>}
-                  {typeof entry.count === "number" && (
-                    <span className="activity-result"> — {entry.count} record{entry.count === 1 ? "" : "s"} returned</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
+        {showActivity &&
+          (activity.length === 0 ? (
+            <p className="empty">Agent tool calls will appear here as they happen, with the records they stored.</p>
+          ) : (
+            <ol className="activity-log">
+              {activity.map((entry, index) => (
+                <li className="activity-entry" key={`${entry.agent}-${entry.name}-${index}`}>
+                  <span className="activity-agent">{entry.agent.split(" ")[0]}</span>
+                  <span>
+                    <span className="activity-tool">{entry.name}</span>
+                    {entry.detail && <span className="activity-result"> {entry.detail}</span>}
+                    {typeof entry.count === "number" && (
+                      <span className="activity-result">
+                        {" "}
+                        — {entry.count} record{entry.count === 1 ? "" : "s"} returned
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ))}
       </section>
 
       <section className="panel stack">

@@ -1,5 +1,6 @@
 import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types";
 import type { CoverageReport } from "../pipeline/coverage";
+import type { Briefing } from "./briefing";
 
 export type FindingTag = "technical" | "process" | "communication";
 
@@ -132,6 +133,7 @@ export interface ReportPayload extends ReportView {
   skepticNotes: SkepticNote[];
   verdict: string | null;
   reply: { sentences: { text: string; claimIds: string[] }[] } | null;
+  briefing: Briefing;
 }
 
 export interface ReportInput {
