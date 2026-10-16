@@ -19,6 +19,12 @@ function truncateArgs(args: Record<string, unknown>): Record<string, string> {
   }
   return truncated;
 }
+
+function previewCount(preview: string | undefined): number | undefined {
+  if (!preview) return undefined;
+  const match = preview.match(/"count"\s*:\s*(\d+)/);
+  return match ? Number(match[1]) : undefined;
+}
 const CLAIM_STATUSES: ClaimStatus[] = ["kept", "broken", "unclear", "n/a"];
 
 const KIND_LABELS: Record<InvestigatorKind, string> = {
@@ -147,6 +153,7 @@ export async function runInvestigator(
     round: entry.round,
     name: entry.name,
     args: truncateArgs(entry.args),
+    resultCount: previewCount(entry.resultPreview),
   }));
 
   const existing = await getClaims(investigationId);

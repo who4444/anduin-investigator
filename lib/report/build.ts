@@ -1,4 +1,5 @@
-import type { Claim, Event, SkepticNote, SourceKind } from "../types";
+import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types";
+import type { CoverageReport } from "../pipeline/coverage";
 
 export type FindingTag = "technical" | "process" | "communication";
 
@@ -117,6 +118,19 @@ export interface ReportView {
   safeToRepeat: Signature[];
   checkWithHuman: Signature[];
   rejected: RejectedClaim[];
+}
+
+export interface ReportPayload extends ReportView {
+  investigation: { id: string; title: string; escalationText: string; createdAt: string };
+  events: Event[];
+  claims: Claim[];
+  stats: { total: number; kept: number; excluded: number; flagged: number };
+  stages: Stage[];
+  coverage: CoverageReport;
+  gaps: Gap[];
+  skepticNotes: SkepticNote[];
+  verdict: string | null;
+  reply: { sentences: { text: string; claimIds: string[] }[] } | null;
 }
 
 export interface ReportInput {

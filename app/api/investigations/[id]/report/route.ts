@@ -27,12 +27,12 @@ export async function GET(
     return json({
       investigation: assembled.investigation,
       events: assembled.timeline,
+      claims: assembled.claims,
       stats: assembled.stats,
       stages: assembled.stages,
       coverage: assembled.coverage,
       gaps: assembled.gaps,
       skepticNotes: assembled.skepticNotes,
-      identities: assembled.identities,
       verdict: extras?.verdict ?? null,
       reply: extras?.reply ?? null,
       ...view,

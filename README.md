@@ -137,14 +137,25 @@ The demo is built for the Vercel Hobby plan (≤60s per function, small uploads)
 
 ## Using it
 
-1. Paste the escalation (optional) and attach exports: Jira JSON (search
-   response or a single issue), an `.mbox`/`.eml` email file, or a Slack export
-   folder (either pick the folder or upload a `.zip` of it).
-2. Or press **Load built-in demo exports** to run the synthetic Northwind /
-   Meridian scenario through the same ingest path.
-3. Watch the stage checklist, then read the timeline (click an event to see the
-   original message with cited quotes highlighted), the commitments ledger and
-   the gaps panel.
+1. **Start** — paste the client's escalation and pick the project's sources
+   (Jira project, Slack channels, mailbox filter). Connected sources are pulled
+   read-only; credentials stay server-side. "Load Northwind scenario" fills the
+   escalation with the synthetic dataset instead.
+2. **Progress** — the stages tick through (Plan, Retrieve and investigate,
+   Skeptic review, Verify, Assemble) with a live log of each agent's tool calls
+   and the records they returned, plus coverage as it stands. Errors say what
+   failed and what to do next.
+3. **Report** — an internal-only account with six tabs: Overview (bottom line,
+   metrics, top failures, recommended actions), Timeline (claims on a dated
+   spine with silences drawn as breaks), Promises and client communication
+   (ledger plus the what-the-client-heard-vs-internal-records audit), Ownership
+   and causes (lanes with lapses, tagged causes), Gaps and confidence (what we
+   could not determine, safe-to-repeat vs check-with-human, rejected claims kept
+   visible), and Draft reply (client message built only from verified findings,
+   every sentence linked to its evidence and never sent from the app).
+   "How this was produced" reopens the full activity log and coverage.
+   Uploaded exports remain available as the fallback path ("Use uploaded
+   exports instead"): Jira JSON, `.mbox`/`.eml`, a Slack export folder or zip.
 
 ## Demo scenario (synthetic) — answer key
 

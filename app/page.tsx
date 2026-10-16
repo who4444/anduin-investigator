@@ -1,36 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-import {
-  CheckIcon,
-  CircleIcon,
-  InfoIcon,
-  SpinnerIcon,
-  WarnIcon,
-  XIcon,
-} from "@/app/_components/icons";
-import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
-
-const STAGE_ROWS: { key: string; label: string }[] = [
-  { key: "plan", label: "Reading the records and drafting an investigation plan" },
-  { key: "root_cause", label: "Tracing what went wrong" },
-  { key: "commitments", label: "Checking what was promised" },
-  { key: "ownership", label: "Checking who owned what, and where handoffs failed" },
-  { key: "skeptic", label: "Testing the findings for contradictions" },
-  { key: "verify", label: "Verifying every quote against its source" },
-  { key: "assemble", label: "Building your timeline, promises and gaps" },
-];
-
-type StageState = { status: string; error?: string | null; pass: number };
-
-interface UploadResult {
-  investigationId: string;
-  eventCount: number;
-  cached: boolean;
-  warnings: string[];
-}
 
 interface SourceInfo {
   id: string;
@@ -44,511 +15,236 @@ interface SourceTargetInfo {
   label: string;
 }
 
-export default function Home() {
+interface ScopeState {
+  targets: string[];
+  query: string;
+}
+
+const SCENARIO_ESCALATION =
+  "Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.";
+
+export default function StartPage() {
   const router = useRouter();
-  const directoryInput = useRef<HTMLInputElement | null>(null);
   const [escalation, setEscalation] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [synthetic, setSynthetic] = useState(false);
-  const [stages, setStages] = useState<Record<string, StageState>>({});
-  const [eventCount, setEventCount] = useState<number | null>(null);
-  const [run, setRun] = useState<{ id: string; synthetic: boolean; live?: boolean } | null>(null);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
-  const [selectedTargets, setSelectedTargets] = useState<Record<string, string[]>>({});
-  const [sourceQuery, setSourceQuery] = useState<Record<string, string>>({});
-  const [sourceError, setSourceError] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    directoryInput.current?.setAttribute("webkitdirectory", "");
-    directoryInput.current?.setAttribute("directory", "");
-  }, []);
+  const [scopes, setScopes] = useState<Record<string, ScopeState>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/sources")
       .then((response) => (response.ok ? response.json() : { sources: [] }))
-      .then((body: { sources?: SourceInfo[] }) => setSources(body.sources ?? []))
+      .then((body: { sources?: SourceInfo[] }) => {
+        setSources(body.sources ?? []);
+        for (const source of body.sources ?? []) {
+          if (!source.configured) continue;
+          fetch(`/api/sources?targets=${encodeURIComponent(source.id)}`)
+            .then((response) => (response.ok ? response.json() : { targets: [] }))
+            .then((targetBody: { targets?: SourceTargetInfo[] }) =>
+              setTargets((current) => ({ ...current, [source.id]: targetBody.targets ?? [] })),
+            )
+            .catch(() => undefined);
+        }
+      })
       .catch(() => setSources([]));
   }, []);
 
-  const loadTargets = useCallback(async (sourceId: string) => {
-    setSourceError((current) => ({ ...current, [sourceId]: "" }));
-    try {
-      const response = await fetch(`/api/sources?targets=${encodeURIComponent(sourceId)}`);
-      const body = (await response.json().catch(() => ({}))) as {
-        targets?: SourceTargetInfo[];
-        error?: string;
-      };
-      if (!response.ok) throw new Error(body.error ?? "Could not load the list.");
-      setTargets((current) => ({ ...current, [sourceId]: body.targets ?? [] }));
-    } catch (caught) {
-      setSourceError((current) => ({
-        ...current,
-        [sourceId]: caught instanceof Error ? caught.message : String(caught),
-      }));
-    }
-  }, []);
+  const setScope = (sourceId: string, patch: Partial<ScopeState>) => {
+    setScopes((current) => ({
+      ...current,
+      [sourceId]: { ...{ targets: [], query: "" }, ...current[sourceId], ...patch },
+    }));
+  };
 
   const toggleTarget = (sourceId: string, targetId: string) => {
-    setSelectedTargets((current) => {
-      const selected = current[sourceId] ?? [];
-      const next = selected.includes(targetId)
-        ? selected.filter((id) => id !== targetId)
-        : [...selected, targetId];
-      return { ...current, [sourceId]: next };
+    const scope = scopes[sourceId] ?? { targets: [], query: "" };
+    setScope(sourceId, {
+      targets: scope.targets.includes(targetId)
+        ? scope.targets.filter((id) => id !== targetId)
+        : [...scope.targets, targetId],
     });
   };
 
-  const applyStage = useCallback((update: StageUpdate) => {
-    setStages((current) => ({
-      ...current,
-      [update.stage]: { status: update.status, error: update.error ?? null, pass: update.pass },
-    }));
-  }, []);
-
-  const resultsHref = (id: string, flags: { synthetic: boolean; cached: boolean; live?: boolean }) => {
-    const query = new URLSearchParams();
-    if (flags.synthetic) query.set("synthetic", "1");
-    if (flags.cached) query.set("cached", "1");
-    if (flags.live) query.set("live", "1");
-    const suffix = query.toString();
-    return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
-  };
-
-  function resetRunState() {
-    setError(null);
-    setStages({});
-    setWarnings([]);
-    setEventCount(null);
-    setRun(null);
-  }
-
-  async function drivePipeline(investigationId: string, flags: { synthetic: boolean; live?: boolean }) {
-    const outcome = await runPipeline(investigationId, { onStage: applyStage });
-    if (!outcome.ok) {
-      throw new Error(`${outcome.stage} stage failed: ${outcome.error}`);
-    }
-    router.push(resultsHref(investigationId, { ...flags, cached: false }));
-  }
-
-  async function upload(uploadFiles: File[], isSynthetic: boolean) {
-    setBusy(true);
-    resetRunState();
-    setSynthetic(isSynthetic);
-
-    try {
-      const form = new FormData();
-      for (const file of uploadFiles) {
-        form.append("files", file, file.webkitRelativePath || file.name);
-      }
-      form.append("escalation", escalation);
-
-      const response = await fetch("/api/investigations", { method: "POST", body: form });
-      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
-        error?: string;
-      };
-      if (!response.ok || !payload.investigationId) {
-        throw new Error(payload.error ?? "Upload failed.");
-      }
-
-      setEventCount(payload.eventCount ?? 0);
-      setWarnings(payload.warnings ?? []);
-      setRun({ id: payload.investigationId, synthetic: isSynthetic });
-
-      if (payload.cached) {
-        setStages({ assemble: { status: "done", pass: 1 } });
-        router.push(resultsHref(payload.investigationId, { synthetic: isSynthetic, cached: true }));
-        return;
-      }
-
-      await drivePipeline(payload.investigationId, { synthetic: isSynthetic });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function pullFromSource(sourceId: string) {
-    const selected = selectedTargets[sourceId] ?? [];
-    const query = sourceQuery[sourceId]?.trim() ?? "";
-
-    setBusy(true);
-    resetRunState();
-    setSynthetic(false);
-    setSourceError((current) => ({ ...current, [sourceId]: "" }));
-
-    try {
-      const response = await fetch("/api/sources/pull", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ source: sourceId, targets: selected, query: query || undefined, escalation }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as Partial<UploadResult> & {
-        error?: string;
-      };
-      if (!response.ok || !payload.investigationId) {
-        throw new Error(payload.error ?? "Pull failed.");
-      }
-
-      setEventCount(payload.eventCount ?? 0);
-      setWarnings(payload.warnings ?? []);
-      setRun({ id: payload.investigationId, synthetic: false, live: true });
-
-      await drivePipeline(payload.investigationId, { synthetic: false, live: true });
-    } catch (caught) {
-      setSourceError((current) => ({
-        ...current,
-        [sourceId]: caught instanceof Error ? caught.message : String(caught),
-      }));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function retry() {
-    if (!run) return;
-    setBusy(true);
-    setError(null);
-    setStages({});
-    try {
-      await drivePipeline(run.id, { synthetic: run.synthetic, live: run.live });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loadDemo() {
-    setBusy(true);
-    setError(null);
-    try {
-      const manifestResponse = await fetch("/demo/manifest.json");
-      if (!manifestResponse.ok) throw new Error("The built-in demo exports are unavailable.");
-      const manifest = (await manifestResponse.json()) as { files: string[] };
-
-      const loaded = await Promise.all(
-        manifest.files.map(async (name) => {
-          const response = await fetch(`/demo/${name}`);
-          if (!response.ok) throw new Error(`Missing demo file: ${name}`);
-          const blob = await response.blob();
-          return new File([blob], name, { type: blob.type });
-        }),
-      );
-      await upload(loaded, true);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-      setBusy(false);
-    }
-  }
-
-  const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragging(false);
-    if (busy) return;
-    const dropped = Array.from(event.dataTransfer.files);
-    if (dropped.length > 0) setFiles(dropped);
-  };
-
-  const configuredSources = sources.filter((source) => source.configured);
-  const doneCount = STAGE_ROWS.filter((row) => stages[row.key]?.status === "done").length;
-  const started = Object.keys(stages).length > 0;
-  const progress = Math.round((doneCount / STAGE_ROWS.length) * 100);
-
-  return (
-    <div className="shell flex flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Answer the client in minutes
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted">
-          Drop in the project&apos;s Jira, email and Slack exports. You get one ordered timeline of
-          what happened, every promise that was made and whether it was kept, and an explicit list
-          of what the records cannot tell you. Every finding links back to the original message.
-        </p>
-      </section>
-
-      <section className="card flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <label className="field-label" htmlFor="escalation">
-            What is the client asking? <span className="font-normal text-muted">(optional)</span>
-          </label>
-          <textarea
-            id="escalation"
-            className="input min-h-24"
-            placeholder="Paste the escalation. Leave blank and it will be inferred from the records."
-            value={escalation}
-            onChange={(event) => setEscalation(event.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div
-          className={`flex flex-col gap-3 rounded-xl border-2 border-dashed p-4 transition-colors ${
-            dragging ? "border-accent bg-surface-2" : "border-line"
-          }`}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-        >
-          <p className="text-sm font-medium">
-            Project history{" "}
-            <span className="font-normal text-muted">— drag files here, or choose them</span>
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="btn btn-secondary cursor-pointer">
-              Choose files
-              <input
-                type="file"
-                multiple
-                className="sr-only"
-                onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
-                disabled={busy}
-              />
-            </label>
-            <label className="btn btn-secondary cursor-pointer">
-              Choose Slack folder
-              <input
-                ref={directoryInput}
-                type="file"
-                multiple
-                className="sr-only"
-                onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
-                disabled={busy}
-              />
-            </label>
-            {files.length > 0 && (
-              <button type="button" className="btn btn-ghost" onClick={() => setFiles([])} disabled={busy}>
-                clear
-              </button>
-            )}
-          </div>
-          <p className="hint">
-            Jira JSON · email <span className="font-mono">.mbox</span>/
-            <span className="font-mono">.eml</span> · a Slack export folder or a{" "}
-            <span className="font-mono">.zip</span> of it. Up to 8&nbsp;MB.
-          </p>
-          {files.length > 0 && (
-            <ul className="flex flex-wrap gap-1.5">
-              {files.map((file) => (
-                <li
-                  key={`${file.webkitRelativePath || file.name}-${file.size}`}
-                  className="pill pill-neutral font-mono"
-                >
-                  {file.webkitRelativePath || file.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy || files.length === 0}
-            onClick={() => upload(files, false)}
-          >
-            {busy ? "Working…" : "Reconstruct what happened"}
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={busy} onClick={loadDemo}>
-            Try the built-in demo
-          </button>
-        </div>
-
-        {synthetic && (
-          <p className="callout callout-warn">
-            <WarnIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Synthetic demo data (Northwind / Meridian) — generated exports, not a real project.
-          </p>
-        )}
-        {eventCount !== null && !busy && <p className="hint">{eventCount} events read.</p>}
-        {warnings.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {warnings.map((warning) => (
-              <li key={warning} className="callout callout-info">
-                <InfoIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {warning}
-              </li>
-            ))}
-          </ul>
-        )}
-        {error && (
-          <div className="callout callout-bad">
-            <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <div className="flex flex-col gap-2">
-              <span>{error}</span>
-              {run && (
-                <div className="flex gap-2">
-                  <button type="button" className="btn btn-secondary" onClick={retry} disabled={busy}>
-                    Try again
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      resetRunState();
-                    }}
-                  >
-                    Start over
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {configuredSources.length > 0 && (
-        <section className="card flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="section-title">Connected sources</h2>
-            <span className="hint">read-only access</span>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-3">
-            {configuredSources.map((source) => {
-              const sourceTargets = targets[source.id] ?? [];
-              const selected = selectedTargets[source.id] ?? [];
-              const isGmail = source.id === "gmail";
-              return (
-                <div key={source.id} className="flex flex-col gap-2 rounded-xl border border-line p-3">
-                  <span className="text-sm font-medium">{source.label}</span>
-
-                  {!isGmail && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary self-start"
-                      disabled={busy || sourceTargets.length > 0}
-                      onClick={() => loadTargets(source.id)}
-                    >
-                      {sourceTargets.length > 0 ? "reload" : "choose what to pull"}
-                    </button>
-                  )}
-
-                  {sourceTargets.length > 0 && !isGmail && (
-                    <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-                      {sourceTargets.map((target) => (
-                        <li key={target.id}>
-                          <label className="flex items-center gap-2 text-xs">
-                            <input
-                              type="checkbox"
-                              checked={selected.includes(target.id)}
-                              onChange={() => toggleTarget(source.id, target.id)}
-                              disabled={busy}
-                            />
-                            {target.label}
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {(isGmail || source.id === "jira") && (
-                    <input
-                      className="input"
-                      placeholder={
-                        source.id === "jira"
-                          ? "Which issues? (optional, defaults to the whole project)"
-                          : "Which emails? e.g. label:meridian newer_than:90d"
-                      }
-                      value={sourceQuery[source.id] ?? ""}
-                      onChange={(event) =>
-                        setSourceQuery((current) => ({ ...current, [source.id]: event.target.value }))
-                      }
-                      disabled={busy}
-                    />
-                  )}
-
-                  <button
-                    type="button"
-                    className="btn btn-primary self-start"
-                    disabled={busy || (!isGmail && selected.length === 0)}
-                    onClick={() => pullFromSource(source.id)}
-                  >
-                    Pull into a new investigation
-                  </button>
-
-                  {sourceError[source.id] && (
-                    <p className="callout callout-bad">
-                      <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {sourceError[source.id]}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      <section className="card flex flex-col gap-4" aria-live="polite">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="section-title">Progress</h2>
-          <span className="hint">
-            {doneCount}/{STAGE_ROWS.length}
-          </span>
-        </div>
-
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-          <div
-            className="h-full rounded-full bg-accent transition-[width] duration-500"
-            style={{ width: `${started ? progress : 0}%` }}
-          />
-        </div>
-
-        <ul className="flex flex-col gap-2">
-          {STAGE_ROWS.map((row) => {
-            const state = stages[row.key];
-            const status = state?.status ?? "pending";
-            return (
-              <li key={row.key} className="flex items-start gap-2 text-sm">
-                <StageIcon status={status} />
-                <span className={status === "pending" ? "text-muted" : "text-ink"}>{row.label}</span>
-                {state?.pass && state.pass > 1 && <span className="pill pill-info">pass {state.pass}</span>}
-                {state?.error && <span className="text-xs text-bad-fg">{state.error}</span>}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-    </div>
+  const connected = sources.filter((source) => source.configured);
+  const anyScope = connected.some(
+    (source) =>
+      source.id === "gmail"
+        ? (scopes.gmail?.query ?? "").trim().length > 0
+        : (scopes[source.id]?.targets.length ?? 0) > 0,
   );
-}
+  const canInvestigate = !busy && (synthetic || anyScope);
 
-function StageIcon({ status }: { status: string }) {
-  if (status === "done") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-ok-bg text-ok-fg">
-        <CheckIcon className="h-3 w-3" />
-      </span>
-    );
+  function loadScenario() {
+    setEscalation(SCENARIO_ESCALATION);
+    setSynthetic(true);
   }
-  if (status === "running") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center text-accent">
-        <SpinnerIcon className="h-3.5 w-3.5" />
-      </span>
-    );
+
+  async function startSynthetic() {
+    const manifestResponse = await fetch("/demo/manifest.json");
+    if (!manifestResponse.ok) throw new Error("The built-in scenario files are unavailable.");
+    const manifest = (await manifestResponse.json()) as { files: string[] };
+
+    const form = new FormData();
+    for (const name of manifest.files) {
+      const response = await fetch(`/demo/${name}`);
+      if (!response.ok) throw new Error(`Missing scenario file: ${name}`);
+      const blob = await response.blob();
+      form.append("files", new File([blob], name, { type: blob.type }));
+    }
+    form.append("escalation", escalation);
+    form.append("title", "Northwind Logistics — invoice totals after release 4.12");
+
+    const response = await fetch("/api/investigations", { method: "POST", body: form });
+    const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string };
+    if (!response.ok || !payload.investigationId) throw new Error(payload.error ?? "Could not start the investigation.");
+    return { investigationId: payload.investigationId, flag: "synthetic=1" };
   }
-  if (status === "error") {
-    return (
-      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-bad-bg text-bad-fg">
-        <XIcon className="h-3 w-3" />
-      </span>
-    );
+
+  async function startLive() {
+    const entries = connected
+      .map((source) => ({
+        source: source.id,
+        targets: scopes[source.id]?.targets ?? [],
+        query: (scopes[source.id]?.query ?? "").trim() || undefined,
+      }))
+      .filter((entry) => (entry.source === "gmail" ? Boolean(entry.query) : entry.targets.length > 0));
+
+    const response = await fetch("/api/sources/pull", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sources: entries, escalation }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string };
+    if (!response.ok || !payload.investigationId) throw new Error(payload.error ?? "Could not pull the selected sources.");
+    return { investigationId: payload.investigationId, flag: "live=1" };
   }
+
+  async function investigate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = synthetic ? await startSynthetic() : await startLive();
+      router.push(`/investigations/${result.investigationId}/progress?${result.flag}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setBusy(false);
+    }
+  }
+
+  const hasSources = connected.length > 0;
+
   return (
-    <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center text-muted">
-      <CircleIcon className="h-3 w-3" />
-    </span>
+    <div className="shell stack" style={{ maxWidth: 860 }}>
+      <h1 style={{ fontSize: 22 }}>Begin an investigation</h1>
+
+      <section className="panel stack">
+        <label className="field">
+          <span className="field-label">The client&apos;s escalation</span>
+          <textarea
+            className="input"
+            value={escalation}
+            onChange={(event) => {
+              setEscalation(event.target.value);
+              setSynthetic(false);
+            }}
+            placeholder="Paste the escalation message here."
+          />
+        </label>
+        <div className="row">
+          <button type="button" className="btn" onClick={loadScenario} disabled={busy}>
+            Load Northwind scenario
+          </button>
+          <span className="chip chip-broken">synthetic data</span>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 style={{ marginBottom: 8 }}>Sources</h2>
+        {sources.length === 0 && (
+          <p className="small muted">Checking source connections…</p>
+        )}
+        {sources.map((source) => {
+          const scope = scopes[source.id] ?? { targets: [], query: "" };
+          const sourceTargets = targets[source.id] ?? [];
+          return (
+            <div className="source-row" key={source.id}>
+              <span style={{ fontWeight: 600 }}>{source.label}</span>
+              <span>
+                {source.configured ? (
+                  <span className="chip chip-verified">connected</span>
+                ) : (
+                  <span className="chip">not connected</span>
+                )}
+              </span>
+              <span className="scope-inputs">
+                {source.configured && source.id === "jira" && (
+                  <>
+                    {sourceTargets.length === 0 && <span className="small muted">Loading projects…</span>}
+                    {sourceTargets.map((target) => (
+                      <label key={target.id} className="small row" style={{ gap: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={scope.targets.includes(target.id)}
+                          onChange={() => toggleTarget(source.id, target.id)}
+                        />
+                        {target.label}
+                      </label>
+                    ))}
+                  </>
+                )}
+                {source.configured && source.id === "slack" && (
+                  <>
+                    {sourceTargets.length === 0 && <span className="small muted">Loading channels…</span>}
+                    {sourceTargets.slice(0, 24).map((target) => (
+                      <label key={target.id} className="small row" style={{ gap: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={scope.targets.includes(target.id)}
+                          onChange={() => toggleTarget(source.id, target.id)}
+                        />
+                        {target.label}
+                      </label>
+                    ))}
+                  </>
+                )}
+                {source.configured && source.id === "gmail" && (
+                  <input
+                    className="input"
+                    placeholder="Mailbox filter, e.g. label:meridian newer_than:90d"
+                    value={scope.query}
+                    onChange={(event) => setScope(source.id, { query: event.target.value })}
+                  />
+                )}
+                {!source.configured && (
+                  <span className="small muted">
+                    Read-only credentials are held by the server. Ask the admin to connect this source.
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </section>
+
+      <div className="stack">
+        <div className="row">
+          <button type="button" className="btn btn-primary" onClick={investigate} disabled={!canInvestigate}>
+            {busy ? "Starting…" : "Investigate"}
+          </button>
+          <a href="/upload">Use uploaded exports instead</a>
+        </div>
+        {!canInvestigate && !busy && (
+          <p className="small muted">
+            Paste the client&apos;s escalation and choose sources to begin, or load the synthetic scenario.
+          </p>
+        )}
+        {hasSources && !anyScope && !synthetic && (
+          <p className="small muted">Select at least one project, channel or mailbox filter to investigate live.</p>
+        )}
+        {error && <p className="alert alert-error">{error}</p>}
+      </div>
+    </div>
   );
 }
