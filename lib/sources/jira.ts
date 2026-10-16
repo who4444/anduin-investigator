@@ -82,42 +82,46 @@ export function createJiraSource(options: JiraSourceOptions = {}): SourceDefinit
 
       for (const projectKey of targetIds) {
         const jql = explicitJql || `project = "${projectKey}" ORDER BY created ASC`;
-        let startAt = 0;
+        let pageToken: string | undefined;
         let pages = 0;
         let collected = 0;
 
         for (;;) {
           const params = new URLSearchParams({
             jql,
-            startAt: String(startAt),
             maxResults: String(PAGE_SIZE),
             expand: "changelog",
             fields: "summary,created,reporter,assignee,comment",
           });
-          const data = await api<{ issues?: JiraIssue[]; isLast?: boolean; total?: number }>(
-            `/rest/api/2/search?${params.toString()}`,
-          );
+          if (pageToken) params.set("nextPageToken", pageToken);
+
+          const data = await api<{
+            issues?: JiraIssue[];
+            isLast?: boolean;
+            nextPageToken?: string;
+          }>(`/rest/api/3/search/jql?${params.toString()}`);
 
           const issues = data.issues ?? [];
           if (issues.length > 0) {
             files.push({
-              name: `jira/${projectKey.replace(/[^\w-]+/g, "_")}-${startAt}.json`,
+              name: `jira/${projectKey.replace(/[^\w-]+/g, "_")}-page-${pages + 1}.json`,
               content: JSON.stringify({ issues }),
             });
             collected += issues.length;
           }
 
           pages += 1;
-          const last = data.isLast ?? issues.length < PAGE_SIZE;
+          const token = data.nextPageToken;
+          const last = data.isLast === true || !token;
           if (last || pages >= MAX_PAGES_PER_PROJECT) {
-            if (!last) {
+            if (!last && token) {
               warnings.push(
                 `Jira ${projectKey}: stopped after ${collected} issues (${MAX_PAGES_PER_PROJECT}-page budget). Narrow the JQL to see more.`,
               );
             }
             break;
           }
-          startAt += PAGE_SIZE;
+          pageToken = token;
         }
 
         if (collected === 0) {

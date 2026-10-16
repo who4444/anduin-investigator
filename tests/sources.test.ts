@@ -51,12 +51,13 @@ describe("jira source", () => {
         () => json({ values: [{ key: "MER", name: "Meridian" }, { key: "SUP", name: "Support" }] }),
       ],
       [
-        /rest\/api\/2\/search/,
+        /rest\/api\/3\/search\/jql/,
         (url) => {
-          const startAt = Number(url.searchParams.get("startAt"));
-          if (startAt === 0) {
+          const token = url.searchParams.get("nextPageToken");
+          if (!token) {
             return json({
               issues: Array.from({ length: 50 }, (_, index) => ({ key: `MER-${index}` })),
+              nextPageToken: "page-2",
               isLast: false,
             });
           }
@@ -75,11 +76,11 @@ describe("jira source", () => {
     const { files, warnings } = await source.pull(["MER"]);
 
     expect(warnings).toEqual([]);
-    expect(files.map((file) => file.name)).toEqual(["jira/MER-0.json", "jira/MER-50.json"]);
+    expect(files.map((file) => file.name)).toEqual(["jira/MER-page-1.json", "jira/MER-page-2.json"]);
     const secondFile = JSON.parse(files[1].content) as { issues: { key: string }[] };
     expect(secondFile.issues).toHaveLength(1);
 
-    const searchCall = calls.find((call) => call.url.includes("rest/api/2/search"));
+    const searchCall = calls.find((call) => call.url.includes("rest/api/3/search/jql"));
     expect(searchCall?.url).toContain("expand=changelog");
     const headers = searchCall?.init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe(`Basic ${Buffer.from("you@northwind.example:token-123").toString("base64")}`);
@@ -88,8 +89,13 @@ describe("jira source", () => {
   it("warns when the page budget is hit", async () => {
     const { fetchImpl } = router([
       [
-        /rest\/api\/2\/search/,
-        () => json({ issues: Array.from({ length: 50 }, (_, index) => ({ key: `MER-${index}` })), isLast: false }),
+        /rest\/api\/3\/search\/jql/,
+        () =>
+          json({
+            issues: Array.from({ length: 50 }, (_, index) => ({ key: `MER-${index}` })),
+            nextPageToken: "more",
+            isLast: false,
+          }),
       ],
     ]);
 
@@ -101,7 +107,7 @@ describe("jira source", () => {
   });
 
   it("surfaces a helpful error on auth failure", async () => {
-    const { fetchImpl } = router([[/rest\/api\/2\/search/, () => json({}, 401)]]);
+    const { fetchImpl } = router([[/rest\/api\/3\/search\/jql/, () => json({}, 401)]]);
     const source = createJiraSource({ env: jiraEnv, fetchImpl });
 
     await expect(source.pull(["MER"])).rejects.toThrow(/JIRA_EMAIL and JIRA_API_TOKEN/);
