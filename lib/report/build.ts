@@ -38,6 +38,7 @@ export interface TimelineClaimRow {
   status: string;
   flagged: boolean;
   judged: boolean;
+  verification: "verified" | "supported";
 }
 
 export interface TimelineSilenceRow {
@@ -66,6 +67,7 @@ export interface LedgerRow {
   outcome: string;
   daysLate: number | null;
   source: SourceKind | null;
+  verification: "verified" | "supported";
   mergedClaims?: number;
 }
 
@@ -98,6 +100,7 @@ export interface Signature {
   flagged: boolean;
   quote: string;
   source: SourceKind | null;
+  verification: "verified" | "supported";
 }
 
 export interface RejectedClaim {
@@ -126,7 +129,7 @@ export interface ReportPayload extends ReportView {
   investigation: { id: string; title: string; escalationText: string; createdAt: string };
   events: Event[];
   claims: Claim[];
-  stats: { total: number; kept: number; excluded: number; flagged: number };
+  stats: { total: number; verified: number; supported: number; rejected: number; flagged: number };
   stages: Stage[];
   coverage: CoverageReport;
   gaps: Gap[];
@@ -155,8 +158,14 @@ export function tagForClaim(claim: Claim): FindingTag {
   return "process";
 }
 
-function verified(claims: Claim[]): Claim[] {
-  return claims.filter((claim) => claim.verifyStatus === "kept");
+function visibleClaims(claims: Claim[]): Claim[] {
+  return claims.filter(
+    (claim) => claim.verifyStatus === "verified" || claim.verifyStatus === "supported",
+  );
+}
+
+function verificationOf(claim: Claim): "verified" | "supported" {
+  return claim.verifyStatus === "verified" ? "verified" : "supported";
 }
 
 function eventMap(events: Event[]): Map<string, Event> {
@@ -211,7 +220,7 @@ export interface CommitmentCluster {
 }
 
 export function clusterCommitments(claims: Claim[], threshold = 0.45): CommitmentCluster[] {
-  const commitments = verified(claims)
+  const commitments = visibleClaims(claims)
     .filter((claim) => claim.type === "commitment")
     .sort((a, b) => {
       const stance = (STATUS_STANCE[a.status] ?? 9) - (STATUS_STANCE[b.status] ?? 9);
@@ -251,7 +260,7 @@ export function clusterCommitments(claims: Claim[], threshold = 0.45): Commitmen
 
 export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
   const eventsById = eventMap(events);
-  const kept = verified(claims);
+  const kept = visibleClaims(claims);
   const keptWithEvents = kept.filter((claim) => cited(claim, eventsById));
   const citedEvents = keptWithEvents
     .map((claim) => ({ claim, event: cited(claim, eventsById)! }))
@@ -278,7 +287,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
       id: "window",
       label: "Evidence window, first to latest cited record",
       value: "not determined",
-      detail: "Fewer than two verified findings cite dated records.",
+      detail: "Fewer than two source-backed findings cite dated records.",
       judgment: false,
       determined: false,
       claimIds: [],
@@ -327,7 +336,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     value: clusters.length > 0 ? `${keptClusters.length} of ${clusters.length}` : "none found",
     detail:
       clusters.length > 0
-        ? `Counted from ${clusters.length} distinct verified promise${clusters.length === 1 ? "" : "s"} (near-duplicates merged; a broken reading outweighs a kept one).`
+        ? `Counted from ${clusters.length} distinct source-backed promise${clusters.length === 1 ? "" : "s"} (near-duplicates merged; a broken reading outweighs a kept one).`
         : undefined,
     judgment: false,
     determined: clusters.length > 0,
@@ -413,7 +422,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     id: "processFailures",
     label: "Process failures found",
     value: String(processFailures.length),
-    detail: "Classified from verified findings; see Ownership and causes.",
+    detail: "Classified from source-backed findings; see Ownership and causes.",
     judgment: true,
     determined: processFailures.length > 0,
     claimIds: processFailures.map((claim) => claim.id),
@@ -438,7 +447,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     eventIds: statusConflicts.map((claim) => claim.eventId),
   });
 
-  // 8. handoffs with no documented handoff (any verified claim type may carry this)
+  // 8. handoffs with no documented handoff (any retrieved claim type may carry this)
   const handoffFailures = kept.filter((claim) =>
     /handoff|hand-off|on leave|leave|coverage|rota/i.test(claim.text),
   );
@@ -472,7 +481,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
 /* ------------------------------------------------------------------ */
 
 export function buildFailures({ claims }: ReportInput): Finding[] {
-  const kept = verified(claims);
+  const kept = visibleClaims(claims);
   const failures = kept
     .filter((claim) => claim.type === "process_failure" || claim.type === "root_cause")
     .map((claim) => ({ text: claim.text, tag: tagForClaim(claim), claimId: claim.id }));
@@ -480,14 +489,14 @@ export function buildFailures({ claims }: ReportInput): Finding[] {
 }
 
 export function buildCauses({ claims }: ReportInput): Finding[] {
-  const kept = verified(claims).filter((claim) => claim.type !== "commitment");
+  const kept = visibleClaims(claims).filter((claim) => claim.type !== "commitment");
   return kept.map((claim) => ({ text: claim.text, tag: tagForClaim(claim), claimId: claim.id }));
 }
 
 export function buildActions(input: ReportInput): { immediate: ReportAction[]; followUp: ReportAction[] } {
   const { events, claims } = input;
   const eventsById = eventMap(events);
-  const kept = verified(claims);
+  const kept = visibleClaims(claims);
   const immediate: ReportAction[] = [];
   const followUp: ReportAction[] = [];
 
@@ -497,7 +506,7 @@ export function buildActions(input: ReportInput): { immediate: ReportAction[]; f
   for (const claim of brokenCommitments.slice(0, 3)) {
     immediate.push({
       text: `Re-commit to ${claim.text.replace(/^A /, "a ")} with a dated plan, or withdraw it in writing.`,
-      reason: "A verified promise reads as broken.",
+      reason: "A source-backed promise reads as broken.",
       claimIds: [claim.id],
       eventIds: [claim.eventId],
     });
@@ -552,7 +561,7 @@ export function buildActions(input: ReportInput): { immediate: ReportAction[]; f
   if (immediate.length === 0) {
     immediate.push({
       text: "Send the client a dated update from the draft reply tab.",
-      reason: "No broken promise or unanswered run was found in the verified findings.",
+      reason: "No broken promise or unanswered run was found in the source-backed findings.",
       claimIds: [],
       eventIds: [],
     });
@@ -588,7 +597,7 @@ export function buildSilences(events: Event[], minimumDays = SILENCE_THRESHOLD_D
 export function buildTimeline(input: ReportInput): TimelineGroup[] {
   const { events, claims } = input;
   const eventsById = eventMap(events);
-  const rows: TimelineClaimRow[] = verified(claims)
+  const rows: TimelineClaimRow[] = visibleClaims(claims)
     .map((claim) => {
       const event = cited(claim, eventsById);
       return {
@@ -601,6 +610,7 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
         status: claim.status,
         flagged: claim.skepticFlag,
         judged: claim.type !== "root_cause" || claim.skepticFlag,
+        verification: verificationOf(claim),
       };
     })
     .filter((row) => row.ts.length > 0);
@@ -681,6 +691,7 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
       outcome: claim.status,
       daysLate,
       source: event?.source ?? null,
+      verification: verificationOf(claim),
       mergedClaims: cluster.members.length > 1 ? cluster.members.length : undefined,
     };
   });
@@ -720,7 +731,7 @@ export function buildAudit({ notes, events }: ReportInput): AuditRow[] {
 export function buildLanes(input: ReportInput): Lane[] {
   const { claims, events } = input;
   const eventsById = eventMap(events);
-  const citedItems = verified(claims)
+  const citedItems = visibleClaims(claims)
     .map((claim) => cited(claim, eventsById))
     .filter((event): event is Event => Boolean(event));
   const ordered = sortedByTs(citedItems);
@@ -773,16 +784,21 @@ export function buildTrust(input: ReportInput): {
     flagged: claim.skepticFlag,
     quote: claim.quote,
     source: eventsById.get(claim.eventId)?.source ?? null,
+    verification: verificationOf(claim),
   });
 
   const safeToRepeat = claims
-    .filter((claim) => claim.verifyStatus === "kept" && !claim.skepticFlag)
+    .filter((claim) => claim.verifyStatus === "verified" && !claim.skepticFlag)
     .map(signature);
   const checkWithHuman = claims
-    .filter((claim) => claim.verifyStatus === "kept" && claim.skepticFlag)
+    .filter(
+      (claim) =>
+        claim.verifyStatus === "supported" ||
+        (claim.verifyStatus === "verified" && claim.skepticFlag),
+    )
     .map(signature);
   const rejected = claims
-    .filter((claim) => claim.verifyStatus === "excluded")
+    .filter((claim) => claim.verifyStatus === "rejected")
     .map((claim) => ({
       claimId: claim.id,
       text: claim.text,

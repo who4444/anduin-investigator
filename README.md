@@ -10,7 +10,14 @@ to find and read items; the tool layer, not the agent, is the system of record
 (every retrieved item is normalised into the Evidence Registry with source, item
 id, UTC timestamp, author, full text and URL); agents cite an item id plus an
 exact quote; and a deterministic verifier checks that quote against the stored
-text. Trust never depends on what an agent claims it saw.
+text — it also checks that the claim's author and timestamp match the cited
+item. On top of that, one isolated model call per surviving claim sees only the
+claim and the quote and judges whether the quote supports it. Findings land in
+three states: **verified** (all checks pass), **supported** (the quote is
+verbatim but a softer check did not fully pass — shown wearing a "check before
+repeating" label), and **rejected** (quote not found or item missing — kept
+visible, never used). A model can only ever downgrade a finding, never reject
+it. Trust never depends on what an agent claims it saw.
 
 ## How it works
 
@@ -21,19 +28,24 @@ intake (escalation + sources)
        ─► investigators in parallel, split by QUESTION
             · root cause   · commitments   · decisions & ownership
        ─► skeptic (contradictions, weak support, silences, angles never searched)
-       ─► verifier (CODE: whitespace-normalised verbatim quote check)
+       ─► verifier (CODE: verbatim quote + author/time; then one isolated
+                   model call per claim: does the quote support the claim?)
        ─► assemble (timeline, commitments ledger, gaps, coverage, stats)
-       ─► one retry pass when a question group has no verified claim (max 2 iterations)
+       ─► one retry pass when a question group has no verified or supported claim (max 2 iterations)
 ```
 
 Non-negotiables enforced in code:
 
 - Everything shown is produced live from the retrieved items. The answer key
   below exists only in this README and is never imported by the app.
-- Every claim links to a stored item and an exact quote; verification is
-  deterministic (whitespace-normalised substring check), never a model.
+- Every claim links to a stored item and an exact quote; the quote against the
+  stored text and the claim's author and timestamp against the cited item are
+  checked deterministically, never by an agent. One isolated model call per
+  claim may downgrade a finding to "supported" for review, but only the
+  deterministic checks can reject one.
 - A claim whose quote fails verification is flagged and excluded from the
-  timeline and ledger.
+  timeline and ledger; a claim that passes the quote check but fails a softer
+  check stays visible with a "check before repeating" label.
 - Nothing is invented for events with no record — unknowns land in the gaps
   panel.
 - Judge-supplied exports work too, not just the built-in scenario.
@@ -220,8 +232,10 @@ Expected picture:
   call (`search_jira`, `get_issue`, `search_slack`, `get_slack_thread`,
   `search_email`, `get_email_thread`) and the registry tools
   (`verify_quote`, `submit_claim`).
-- `lib/pipeline/*` — deterministic claim verification, coverage (sources/queries
-  actually searched) and assembly (including the retry decision).
+- `lib/pipeline/*` — claim verification (deterministic quote + author/time
+  checks, then the isolated model support call; three states), coverage
+  (sources/queries actually searched) and assembly (including the retry
+  decision).
 - `lib/store.ts` + `migrations/` — the Postgres Evidence Registry (events,
   claims, skeptic notes, gaps, stage runs, identity resolutions).
 - `app/api/investigations/**` — one route per pipeline stage; `app/api/sources/**`

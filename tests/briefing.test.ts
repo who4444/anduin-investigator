@@ -20,7 +20,7 @@ const claim = (over: Partial<Claim> & { id: string; eventId: string }): Claim =>
   quote: "text",
   status: "n/a",
   confidence: 0.8,
-  verifyStatus: "kept",
+  verifyStatus: "verified",
   skepticFlag: false,
   ...over,
 });
@@ -89,9 +89,9 @@ describe("buildBriefing", () => {
   const briefing = buildBriefing({ events, claims });
 
   it("composes a factual narrative and reports confidence", () => {
-    expect(briefing.narrative).toContain("verified findings");
+    expect(briefing.narrative).toContain("source-backed findings");
     expect(briefing.narrative).toContain("promises read as broken");
-    expect(briefing.confidence).toEqual({ kept: 5, total: 5, flagged: 0 });
+    expect(briefing.confidence).toEqual({ verified: 5, supported: 0, rejected: 0, total: 5, flagged: 0 });
   });
 
   it("produces chapters split at long silences, with takeaways", () => {

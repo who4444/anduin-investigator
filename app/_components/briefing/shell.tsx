@@ -83,7 +83,8 @@ export function BriefingShell({
             <span className="tabular">Escalation {report.investigation.createdAt.slice(0, 10)}</span>
             <span aria-hidden>·</span>
             <span className="tabular">
-              {report.stats.kept} of {report.stats.total} claims verified
+              {report.stats.verified} of {report.stats.total} claims verified
+              {report.stats.supported > 0 ? ` · ${report.stats.supported} check before repeating` : ""}
             </span>
             <span aria-hidden>·</span>
             {sources.map((source) => (

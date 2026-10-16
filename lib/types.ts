@@ -14,7 +14,34 @@ export type StageStatus = "pending" | "running" | "done" | "error";
 
 export type ClaimStatus = "kept" | "broken" | "unclear" | "n/a";
 
-export type VerifyStatus = "kept" | "excluded" | "unverified";
+export type VerifyStatus = "verified" | "supported" | "rejected" | "unverified";
+
+export type EntailmentVerdict = "supports" | "partial" | "refutes" | "unavailable";
+
+export interface ClaimQuoteCheck {
+  ok: boolean;
+  error?: string;
+}
+
+export interface ClaimAttributionCheck {
+  ok: boolean;
+  reason?: string;
+  claimActor: string | null;
+  eventActor: string;
+  claimTs: string | null;
+  eventTs: string;
+}
+
+export interface ClaimEntailmentCheck {
+  verdict: EntailmentVerdict;
+  error?: string;
+}
+
+export interface ClaimChecks {
+  quote?: ClaimQuoteCheck | null;
+  attribution?: ClaimAttributionCheck | null;
+  entailment?: ClaimEntailmentCheck | null;
+}
 
 export type SkepticNoteKind = "contradiction" | "unsupported" | "silence" | "unanswered";
 
@@ -53,6 +80,7 @@ export interface Claim extends ClaimInput {
   investigationId: string;
   verifyStatus: VerifyStatus;
   verifyError?: string | null;
+  checks?: ClaimChecks;
   skepticFlag: boolean;
 }
 

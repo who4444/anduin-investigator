@@ -29,7 +29,7 @@ const claim = (over: Partial<Claim> & { id: string; eventId: string }): Claim =>
   quote: "text",
   status: "n/a",
   confidence: 0.8,
-  verifyStatus: "kept",
+  verifyStatus: "verified",
   skepticFlag: false,
   ...over,
 });
@@ -129,7 +129,7 @@ const claims: Claim[] = [
     id: "c6",
     eventId: "e2",
     text: "This claim should never appear anywhere.",
-    verifyStatus: "excluded",
+    verifyStatus: "rejected",
     verifyError: "quote_not_found",
     ts: "2024-09-23T04:00:00.000Z",
   }),
@@ -195,8 +195,12 @@ describe("report timeline", () => {
     expect(silence).toMatchObject({ days: 13 });
     expect(silence?.kind === "silence" && silence.label).toContain("13 days");
 
-    const ids = allRows.filter((row) => row.kind === "claim").map((row) => (row.kind === "claim" ? row.claimId : ""));
+    const claimRows = allRows.filter((row) => row.kind === "claim");
+    const ids = claimRows.map((row) => (row.kind === "claim" ? row.claimId : ""));
     expect(ids).not.toContain("c6");
+    expect(
+      claimRows.every((row) => row.kind === "claim" && row.verification === "verified"),
+    ).toBe(true);
   });
 });
 
@@ -318,9 +322,23 @@ describe("ledger and audit", () => {
   });
 
   it("splits verified findings into safe-to-repeat and check-with-human", () => {
-    const trust = buildTrust({ events, claims, notes });
+    const supported = claim({
+      id: "c7",
+      eventId: "e1",
+      verifyStatus: "supported",
+      verifyError: "ts_mismatch",
+      text: "A finding recorded while the contributor is unsure.",
+    });
+    const trust = buildTrust({ events, claims: [...claims, supported], notes });
+
     expect(trust.safeToRepeat.map((item) => item.claimId)).toEqual(["c1", "c2", "c3", "c5"]);
-    expect(trust.checkWithHuman.map((item) => item.claimId)).toEqual(["c4"]);
+    expect(trust.checkWithHuman.map((item) => item.claimId)).toEqual(["c4", "c7"]);
+    expect(
+      trust.checkWithHuman.find((item) => item.claimId === "c7")?.verification,
+    ).toBe("supported");
+    expect(
+      trust.safeToRepeat.every((item) => item.verification === "verified"),
+    ).toBe(true);
     expect(trust.rejected).toHaveLength(1);
     expect(trust.rejected[0].reason).toBe("quote_not_found");
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, colorFor, roleFor } from "@/app/_components/briefing/people";
+import { VerificationChip } from "@/app/_components/evidence";
 import type { Metric, ReportPayload } from "@/lib/report/build";
 import type { BriefingEvent, KeyMoment } from "@/lib/report/briefing";
 
@@ -36,8 +37,12 @@ export function StorySection({
       <div className="stack">
         <p className="section-lede">{briefing.narrative ?? "No narrative has been produced yet."}</p>
         <p className="small muted">
-          Confidence: {briefing.confidence.kept} of {briefing.confidence.total} claims verified against
-          their sources
+          Verification: {briefing.confidence.verified} of {briefing.confidence.total} claims verified
+          end-to-end
+          {briefing.confidence.supported > 0
+            ? ` · ${briefing.confidence.supported} check before repeating`
+            : ""}
+          {briefing.confidence.rejected > 0 ? ` · ${briefing.confidence.rejected} rejected` : ""}
           {briefing.confidence.flagged > 0
             ? ` · ${briefing.confidence.flagged} flagged in skeptic review`
             : ""}
@@ -64,6 +69,7 @@ export function StorySection({
                   <span className="chip judgment" title="System classification">
                     {TAG_LABEL[moment.tag] ?? moment.tag}
                   </span>
+                  <VerificationChip verification={moment.verification} />
                   {moment.people.map((name) => (
                     <span className="person" key={name}>
                       <Avatar name={name} colorIndex={colorFor(briefing.people, name)} />
@@ -151,6 +157,7 @@ export function EventRow({
               possible conflict
             </span>
           )}
+          <VerificationChip verification={event.verification} />
         </span>
       </span>
     </button>

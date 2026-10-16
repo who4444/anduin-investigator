@@ -22,6 +22,7 @@ export interface BriefingEvent {
   status: string;
   flagged: boolean;
   judged: boolean;
+  verification: "verified" | "supported";
 }
 
 export interface BriefingChapter {
@@ -40,6 +41,7 @@ export interface KeyMoment {
   tag: FindingTag;
   date: string;
   people: string[];
+  verification: "verified" | "supported";
 }
 
 export interface Person {
@@ -56,7 +58,13 @@ export interface BriefingSilence extends TimelineSilenceRow {
 
 export interface Briefing {
   narrative: string;
-  confidence: { kept: number; total: number; flagged: number };
+  confidence: {
+    verified: number;
+    supported: number;
+    rejected: number;
+    total: number;
+    flagged: number;
+  };
   chapters: BriefingChapter[];
   events: BriefingEvent[];
   keyMoments: KeyMoment[];
@@ -113,7 +121,9 @@ function roleFor(actor: string, kept: Claim[], eventsById: Map<string, Event>): 
 export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Briefing {
   const { events, claims } = input;
   const eventsById = new Map(events.map((event) => [event.id, event]));
-  const kept = claims.filter((claim) => claim.verifyStatus === "kept");
+  const isVisible = (claim: Claim) =>
+    claim.verifyStatus === "verified" || claim.verifyStatus === "supported";
+  const kept = claims.filter(isVisible);
 
   const ordered = kept
     .map((claim) => ({ claim, event: eventsById.get(claim.eventId) }))
@@ -167,6 +177,7 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
       status: claim.status,
       flagged: claim.skepticFlag,
       judged: claim.type !== "root_cause" || claim.skepticFlag,
+      verification: claim.verifyStatus === "verified" ? "verified" : "supported",
     };
   });
 
@@ -284,6 +295,7 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
             : ("process" as const),
       date: event.ts.slice(0, 10),
       people: [event.actor],
+      verification: event.verification,
     }));
 
   const brokenClusters = clusters.filter((cluster) => cluster.representative.status === "broken").length;
@@ -291,6 +303,7 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   const lastDay = eventsOut.length > 0 ? eventsOut[eventsOut.length - 1].dayNumber : 0;
   const sources = new Set(eventsOut.map((event) => event.source));
   const flagged = claims.filter((claim) => claim.skepticFlag).length;
+  const supportedCount = kept.filter((claim) => claim.verifyStatus === "supported").length;
   const longestSilence = silences.reduce((longest, silence) => Math.max(longest, silence.days), 0);
 
   const narrativeParts: string[] = [];
@@ -298,8 +311,13 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
     narrativeParts.push("No verified findings yet, so there is no story to tell from the records.");
   } else {
     narrativeParts.push(
-      `Across ${sources.size} source${sources.size === 1 ? "" : "s"}, ${eventsOut.length} verified findings cover day 1 to day ${lastDay} of the incident.`,
+      `Across ${sources.size} source${sources.size === 1 ? "" : "s"}, ${eventsOut.length} source-backed findings cover day 1 to day ${lastDay} of the incident.`,
     );
+    if (supportedCount > 0) {
+      narrativeParts.push(
+        `${supportedCount} of them still need a human check before repeating.`,
+      );
+    }
     if (clusters.length > 0) {
       narrativeParts.push(
         brokenClusters > 0
@@ -324,7 +342,9 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   return {
     narrative,
     confidence: {
-      kept: kept.length,
+      verified: claims.filter((claim) => claim.verifyStatus === "verified").length,
+      supported: claims.filter((claim) => claim.verifyStatus === "supported").length,
+      rejected: claims.filter((claim) => claim.verifyStatus === "rejected").length,
       total: claims.length,
       flagged: claims.filter((claim) => claim.skepticFlag).length,
     },

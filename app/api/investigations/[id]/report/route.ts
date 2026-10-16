@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { errorResponse, json, readId, readInvestigationOrDefault } from "@/lib/api/pipeline";
 import { buildResult } from "@/lib/pipeline/assemble";
+import { buildBriefing } from "@/lib/report/briefing";
 import { buildReportView } from "@/lib/report/build";
 import { getReportExtras } from "@/lib/store";
 
@@ -36,6 +37,10 @@ export async function GET(
       verdict: extras?.verdict ?? null,
       reply: extras?.reply ?? null,
       ...view,
+      briefing: buildBriefing({
+        events: assembled.timeline,
+        claims: assembled.claims,
+      }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

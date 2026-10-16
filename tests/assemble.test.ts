@@ -17,6 +17,8 @@ describeDb("verify + assemble", () => {
 
   beforeAll(async () => {
     const { createInvestigation, insertEvents, insertClaims } = await import("../lib/store");
+    const { setLlmClientForTests } = await import("../lib/llm");
+    setLlmClientForTests({ chat: async () => ({ content: '{"supports":"yes"}' }) });
     investigationId = await createInvestigation({
       title: `Assemble ${randomUUID()}`,
       escalationText: "",
@@ -43,7 +45,7 @@ describeDb("verify + assemble", () => {
       },
     ]);
 
-    // root_cause: one claim that verifies, one whose quote is wrong (excluded).
+    // root_cause: one claim that verifies, one whose quote is wrong (rejected).
     // commitments: one verifying commitment.
     // ownership: none — so it is "missing" and can trigger a retry.
     await insertClaims(investigationId, [
@@ -51,6 +53,7 @@ describeDb("verify + assemble", () => {
         agent: "root_cause",
         type: "root_cause",
         text: "The 4.12 timezone change introduced the defect.",
+        actor: "Lin Chen",
         quote: "Timezone change merged for release 4.12",
         eventId: jiraId,
         ts: "2024-09-10T03:00:00.000Z",
@@ -70,6 +73,7 @@ describeDb("verify + assemble", () => {
         agent: "commitments",
         type: "commitment",
         text: "A fix was promised for the Sep 24 release.",
+        actor: "Marcus",
         quote: "Fix is promised for the Sep 24 release.",
         eventId: slackId,
         ts: "2024-09-20T09:00:00.000Z",
@@ -80,23 +84,27 @@ describeDb("verify + assemble", () => {
   });
 
   afterAll(async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    setLlmClientForTests(null);
     const { deleteInvestigation } = await import("../lib/store");
     for (const id of created) {
       await deleteInvestigation(id);
     }
   });
 
-  it("verifies claims by quote, excludes failures, and reports stats", async () => {
+  it("verifies claims by quote, keeps the actor/time match, and reports three states", async () => {
     const { runClaimVerification } = await import("../lib/pipeline/verify-claims");
     const { getClaims } = await import("../lib/store");
 
     const summary = await runClaimVerification(investigationId);
 
-    expect(summary).toMatchObject({ total: 3, kept: 2, excluded: 1 });
+    expect(summary).toMatchObject({ total: 3, verified: 2, supported: 0, rejected: 1 });
 
     const claims = await getClaims(investigationId);
-    const excluded = claims.find((claim) => claim.verifyStatus === "excluded");
-    expect(excluded?.verifyError).toBe("quote_not_found");
+    const rejected = claims.find((claim) => claim.verifyStatus === "rejected");
+    expect(rejected?.verifyError).toBe("quote_not_found");
+    const verified = claims.filter((claim) => claim.verifyStatus === "verified");
+    expect(verified.every((claim) => claim.checks?.entailment?.verdict === "supports")).toBe(true);
   });
 
   it("assembles timeline, ledger, gaps and stats, and flags the missing investigator", async () => {
@@ -108,7 +116,7 @@ describeDb("verify + assemble", () => {
 
     expect(result.timeline.map((event) => event.id)).toEqual([jiraId, slackId]);
     expect(result.ledger.map((claim) => claim.type)).toEqual(["commitment"]);
-    expect(result.stats).toEqual({ total: 3, kept: 2, excluded: 1, flagged: 0 });
+    expect(result.stats).toEqual({ total: 3, verified: 2, supported: 0, rejected: 1, flagged: 0 });
     expect(result.missing).toEqual(["ownership"]);
     expect(result.pass).toBe(1);
     expect(result.needsRetry).toBe(true);
@@ -178,7 +186,7 @@ describeDb("verify + assemble", () => {
     await runClaimVerification(id);
     const result = await assemble(id);
 
-    expect(result.stats).toMatchObject({ total: 2, kept: 1, excluded: 1 });
+    expect(result.stats).toMatchObject({ total: 2, verified: 0, supported: 1, rejected: 1 });
     expect(result.ledger).toHaveLength(1);
     expect(result.ledger[0].quote).toBe("promised the fix for the Sep 24 release");
   });

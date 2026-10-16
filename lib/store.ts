@@ -3,6 +3,7 @@ import type { JSONValue } from "postgres";
 import { getPool } from "./db/pool";
 import type {
   Claim,
+  ClaimChecks,
   ClaimInput,
   ClaimStatus,
   Event,
@@ -100,10 +101,21 @@ interface ClaimRow {
   confidence: number;
   verify_status: string;
   verify_error: string | null;
+  verify_checks: Record<string, unknown> | null;
   skeptic_flag: boolean;
 }
 
+function mapVerifyStatus(raw: string): VerifyStatus {
+  if (raw === "kept") return "verified";
+  if (raw === "excluded") return "rejected";
+  return raw as VerifyStatus;
+}
+
 function mapClaim(row: ClaimRow): Claim {
+  const checks =
+    row.verify_checks && Object.keys(row.verify_checks).length > 0
+      ? (row.verify_checks as unknown as ClaimChecks)
+      : undefined;
   return {
     id: row.id,
     investigationId: row.investigation_id,
@@ -116,8 +128,9 @@ function mapClaim(row: ClaimRow): Claim {
     ts: toIso(row.ts) ?? undefined,
     status: row.status as ClaimStatus,
     confidence: row.confidence,
-    verifyStatus: row.verify_status as VerifyStatus,
+    verifyStatus: mapVerifyStatus(row.verify_status),
     verifyError: row.verify_error,
+    checks,
     skepticFlag: row.skeptic_flag,
   };
 }
@@ -338,7 +351,7 @@ export async function insertClaims(investigationId: string, claims: ClaimInput[]
   }));
   const inserted = await sql<ClaimRow[]>`
     insert into claims ${sql(rows, ...CLAIM_COLUMNS)}
-    returning id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, skeptic_flag
+    returning id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag
   `;
   return inserted.map(mapClaim);
 }
@@ -346,7 +359,7 @@ export async function insertClaims(investigationId: string, claims: ClaimInput[]
 export async function getClaims(investigationId: string): Promise<Claim[]> {
   const sql = getPool();
   const rows = await sql<ClaimRow[]>`
-    select id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, skeptic_flag
+    select id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag
     from claims
     where investigation_id = ${investigationId}
     order by seq asc
@@ -358,11 +371,22 @@ export async function setClaimVerification(
   claimId: string,
   verifyStatus: VerifyStatus,
   verifyError?: string | null,
+  checks?: ClaimChecks,
 ): Promise<void> {
   const sql = getPool();
+  if (checks === undefined) {
+    await sql`
+      update claims
+      set verify_status = ${verifyStatus}, verify_error = ${verifyError ?? null}
+      where id = ${claimId}
+    `;
+    return;
+  }
   await sql`
     update claims
-    set verify_status = ${verifyStatus}, verify_error = ${verifyError ?? null}
+    set verify_status = ${verifyStatus},
+        verify_error = ${verifyError ?? null},
+        verify_checks = ${sql.json(checks as unknown as JSONValue)}
     where id = ${claimId}
   `;
 }

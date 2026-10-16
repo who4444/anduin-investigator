@@ -1291,3 +1291,29 @@ table.data td {
 .stamp-unclear {
   color: var(--unclear);
 }
+
+/* Three-state verification: amber dashed for "check before repeating". */
+.chip-check {
+  border-color: var(--email);
+  color: var(--email);
+  border-style: dashed;
+}
+
+.drawer-checks {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.check-list {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 3px;
+}
+
+.marker[data-verification="supported"] {
+  outline: 2px dashed var(--email);
+  outline-offset: 1px;
+}

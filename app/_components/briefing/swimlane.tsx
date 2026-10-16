@@ -155,6 +155,7 @@ export function SwimlaneSection({
                         }}
                         data-importance={event.importance}
                         data-status={event.status}
+                        data-verification={event.verification}
                         onMouseEnter={() => setHovered(event.actor)}
                         onMouseLeave={() => setHovered(null)}
                         onFocus={() => setHovered(event.actor)}
@@ -171,7 +172,8 @@ export function SwimlaneSection({
           </div>
         </div>
         <p className="swimlane-note">
-          Markers are one per verified finding; key moments are larger. Shaded bands are silent periods
+          Markers are one per source-backed finding; key moments are larger, and dashed-ringed markers
+          carry a check-first label. Shaded bands are silent periods
           {report.lanes.length > 0 ? "; red bands in the owner lane are ownerless stretches" : ""}. Hovering
           highlights the same person&apos;s markers; the chapter list below carries the same events on small
           screens.

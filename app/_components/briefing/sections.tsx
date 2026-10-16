@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Avatar, colorFor } from "@/app/_components/briefing/people";
+import { VerificationChip } from "@/app/_components/evidence";
 import type { ReportPayload } from "@/lib/report/build";
 
 const STAMP_CLASS: Record<string, string> = {
@@ -35,7 +36,7 @@ export function PromisesSection({
       <h2 id="promises-title">Promises</h2>
       <div className="stack">
         {ledger.length === 0 ? (
-          <p className="empty">No verified promises were found in the records.</p>
+          <p className="empty">No source-backed promises were found in the records.</p>
         ) : (
           <div className="stack">
             {ledger.map((row) => {
@@ -61,6 +62,7 @@ export function PromisesSection({
                       {STATUS_WORD[row.outcome] ?? row.outcome}
                       {row.outcome === "broken" && deadlineDays > 0 ? `, ${deadlineDays} days late` : ""}
                     </span>
+                    <VerificationChip verification={row.verification} />
                     {row.mergedClaims && (
                       <span className="chip" title="Near-duplicate findings merged into this promise">
                         {row.mergedClaims} findings merged
@@ -195,7 +197,7 @@ export function CausesSection({
 
         <h3 className="section-title">Root cause and contributing factors</h3>
         {causes.length === 0 ? (
-          <p className="empty">No cause findings were verified.</p>
+          <p className="empty">No cause findings were source-backed.</p>
         ) : (
           <ul className="finding-list">
             {causes.map((cause) => (
@@ -291,13 +293,17 @@ export function GapsSection({
 
         <h3 className="section-title">Check with a human first</h3>
         {report.checkWithHuman.length === 0 ? (
-          <p className="empty">No verified finding needs a human check.</p>
+          <p className="empty">No source-backed finding needs a human check.</p>
         ) : (
           <ul className="finding-list">
             {report.checkWithHuman.map((item) => (
               <li key={item.claimId} className="finding">
                 <span className="finding-head">
-                  <span className="chip chip-flag">flagged in skeptic review</span>
+                  {item.verification === "supported" ? (
+                    <span className="chip chip-check">check before repeating</span>
+                  ) : (
+                    <span className="chip chip-flag">flagged in skeptic review</span>
+                  )}
                 </span>
                 <button type="button" className="btn btn-quiet" style={{ padding: 0, textAlign: "left" }} onClick={() => onClaim(item.claimId)}>
                   <span className="finding-text">{item.text}</span>
@@ -312,8 +318,8 @@ export function GapsSection({
             Rejected claims ({report.rejected.length})
           </summary>
           <p className="small muted">
-            These findings were excluded because their quoted words were not found in the cited record. They
-            are kept visible and never used.
+            These findings failed a hard code check — the quoted words were not found in the cited
+            record, or the cited record is missing. They are kept visible and never used.
           </p>
           {report.rejected.length === 0 ? (
             <p className="empty">No claim failed verification.</p>

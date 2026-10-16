@@ -22,6 +22,80 @@ export function SourceChip({ source }: { source: string }) {
   return <span className={SOURCE_CLASS[source] ?? "chip"}>{source}</span>;
 }
 
+export function VerificationChip({ verification }: { verification: "verified" | "supported" }) {
+  if (verification === "verified") return null;
+  return (
+    <span
+      className="chip chip-check"
+      title="One verification layer did not fully pass — check before repeating externally."
+    >
+      check before repeating
+    </span>
+  );
+}
+
+const VERIFY_LABEL: Record<string, string> = {
+  verified: "verified end-to-end",
+  supported: "check before repeating",
+  rejected: "rejected",
+  unverified: "not yet verified",
+};
+
+const VERIFY_CLASS: Record<string, string> = {
+  verified: "chip chip-verified",
+  supported: "chip chip-check",
+  rejected: "chip chip-broken",
+  unverified: "chip",
+};
+
+const ATTRIBUTION_NOTE: Record<string, string> = {
+  actor_mismatch: "The claim names a different author than the record.",
+  ts_mismatch: "The claim's timestamp does not match the record.",
+  invalid_ts: "The claim's timestamp could not be read.",
+};
+
+const ENTAILMENT_NOTE: Record<string, string> = {
+  supports: "supports the claim",
+  partial: "supports only part of the claim",
+  refutes: "does not support the claim",
+  unavailable: "did not run",
+};
+
+function ClaimChecks({ claim }: { claim: Claim }) {
+  const checks = claim.checks;
+  return (
+    <div className="drawer-checks">
+      <span className={VERIFY_CLASS[claim.verifyStatus] ?? "chip"}>
+        {VERIFY_LABEL[claim.verifyStatus] ?? claim.verifyStatus}
+      </span>
+      <ul className="check-list small muted">
+        {checks?.quote && (
+          <li>
+            Quote: {checks.quote.ok ? "found verbatim in this stored record" : "not found in this record"}.
+          </li>
+        )}
+        {checks?.attribution && (
+          <li>
+            Actor and time:{" "}
+            {checks.attribution.ok
+              ? `match this record (${checks.attribution.eventActor}).`
+              : `${ATTRIBUTION_NOTE[checks.attribution.reason ?? ""] ?? "do not match this record."} Claim said ${
+                  checks.attribution.claimActor ?? "nobody"
+                }; the record is by ${checks.attribution.eventActor}.`}
+          </li>
+        )}
+        {checks?.entailment && (
+          <li>
+            Isolated model check: {ENTAILMENT_NOTE[checks.entailment.verdict] ?? checks.entailment.verdict}
+            {checks.entailment.error ? ` (${checks.entailment.error})` : ""}.
+          </li>
+        )}
+        {claim.verifyError && <li>Recorded reason: {claim.verifyError}.</li>}
+      </ul>
+    </div>
+  );
+}
+
 export function OutcomeChip({ outcome, judged = true }: { outcome: string; judged?: boolean }) {
   const label = outcome === "n/a" ? "recorded" : outcome;
   return <span className={OUTCOME_CLASS[outcome] ?? "chip"} {...(judged ? { title: "System classification" } : {})}>{label}</span>;
@@ -58,7 +132,7 @@ export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: Dr
   }
 
   const relevant = claims.filter(
-    (claim) => claim.eventId === event.id && claim.verifyStatus !== "excluded",
+    (claim) => claim.eventId === event.id && claim.verifyStatus !== "rejected",
   );
   const focusClaim = claimId ? claims.find((claim) => claim.id === claimId) : undefined;
   const quotes = (focusClaim ? [focusClaim] : relevant).map((claim) => claim.quote);
@@ -107,6 +181,8 @@ export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: Dr
             Cited by: {focusClaim.text}
           </p>
         )}
+
+        {focusClaim && <ClaimChecks claim={focusClaim} />}
 
         {event.refs && event.refs.length > 0 && (
           <p className="small muted">Related tickets: {event.refs.join(", ")}</p>

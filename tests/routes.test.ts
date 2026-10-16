@@ -53,6 +53,9 @@ describeDb("pipeline routes", () => {
         if (system.includes("skeptic")) {
           return { content: JSON.stringify({ issues: [] }) };
         }
+        if (system.includes("one claim against one quote")) {
+          return { content: '{"supports":"yes"}' };
+        }
         if (messages.some((message) => message.role === "tool")) return { content: '{"claims":[],"notes":[]}' };
         return {
           content: "",
@@ -63,8 +66,10 @@ describeDb("pipeline routes", () => {
               args: {
                 type: "root_cause",
                 text: "Release 4.12 merged the timezone change.",
+                actor: "Lin Chen",
                 quote: "Timezone change merged for release 4.12",
                 event_id: "e_routes_00000001",
+                ts: "2024-09-10T03:00:00.000Z",
                 status: "n/a",
                 confidence: 0.9,
               },
@@ -157,7 +162,8 @@ describeDb("pipeline routes", () => {
     const verifyResponse = await verify(post("http://localhost/verify"), context(investigationId));
     expect(verifyResponse.status).toBe(200);
     const verifyBody = await verifyResponse.json();
-    expect(verifyBody.kept).toBeGreaterThanOrEqual(1);
+    expect(verifyBody.verified).toBe(1);
+    expect(verifyBody.supported).toBe(0);
 
     const assembleResponse = await assembleRoute(
       post("http://localhost/assemble", { pass: 1 }),
@@ -179,7 +185,7 @@ describeDb("pipeline routes", () => {
 
     expect(resultResponse.status).toBe(200);
     expect(resultBody.ledger).toEqual([]);
-    expect(resultBody.stats.kept).toBeGreaterThanOrEqual(1);
+    expect(resultBody.stats.verified).toBeGreaterThanOrEqual(1);
     expect(resultBody.investigation.escalationText).toContain("4.12");
 
     const afterLength = (await getStages(investigationId)).find(

@@ -55,7 +55,9 @@ export function validateReplyPayload(
 
 export async function generateReply(investigationId: string): Promise<ReplyDraft> {
   const claims = await getClaims(investigationId);
-  const verified = claims.filter((claim) => claim.verifyStatus === "kept");
+  const verified = claims.filter(
+    (claim) => claim.verifyStatus === "verified" && !claim.skepticFlag,
+  );
   if (verified.length === 0) {
     throw new Error("No verified findings yet — run verification before drafting a reply.");
   }

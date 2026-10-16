@@ -18,8 +18,9 @@ const MAX_RETRY_PASS = 2;
 
 export interface AssembledStats {
   total: number;
-  kept: number;
-  excluded: number;
+  verified: number;
+  supported: number;
+  rejected: number;
   flagged: number;
 }
 
@@ -61,6 +62,10 @@ function currentPass(stages: Stage[]): number {
   return investigatorPasses.length > 0 ? Math.max(...investigatorPasses) : 1;
 }
 
+function isVisibleClaim(claim: Claim): boolean {
+  return claim.verifyStatus === "verified" || claim.verifyStatus === "supported";
+}
+
 export async function buildResult(investigationId: string): Promise<AssembleOutcome> {
   const investigation = await getInvestigation(investigationId);
   if (!investigation) {
@@ -77,7 +82,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
   ]);
 
   const timeline = events.map(coalesceActor);
-  const visibleClaims = claims.filter((claim) => claim.verifyStatus !== "excluded");
+  const visibleClaims = claims.filter(isVisibleClaim);
 
   const ledger = visibleClaims
     .filter((claim) => LEDGER_TYPES.has(claim.type))
@@ -89,14 +94,15 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
 
   const stats: AssembledStats = {
     total: claims.length,
-    kept: claims.filter((claim) => claim.verifyStatus === "kept").length,
-    excluded: claims.filter((claim) => claim.verifyStatus === "excluded").length,
+    verified: claims.filter((claim) => claim.verifyStatus === "verified").length,
+    supported: claims.filter((claim) => claim.verifyStatus === "supported").length,
+    rejected: claims.filter((claim) => claim.verifyStatus === "rejected").length,
     flagged: claims.filter((claim) => claim.skepticFlag).length,
   };
 
   const missing = INVESTIGATOR_KINDS.filter((kind) => {
     const kindClaims = claims.filter((claim) => claim.agent === kind);
-    return !kindClaims.some((claim) => claim.verifyStatus === "kept");
+    return !kindClaims.some(isVisibleClaim);
   });
 
   const pass = currentPass(stages);

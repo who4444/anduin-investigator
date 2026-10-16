@@ -41,6 +41,12 @@ stored raw text. Trust never depends on what an agent claims it saw.
 is the user-facing name for the same thing. Agent tools take `item_id`; the
 stored claim field is `eventId` and both spellings are accepted on input.)
 
+(In code the registry rows are the `events` table and the `Event` type; "item"
+is the user-facing name for the same thing. Agent tools take `item_id`; the
+stored claim field is `eventId` and both spellings are accepted on input.
+Verification states are `verified | supported | rejected | unverified`, stored
+in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
+
 ### Pipeline
 1. Escalation intake: the manager pastes the client's escalation message and
    selects the project sources (Jira project key, Slack channels, mailbox filter).
@@ -56,11 +62,23 @@ stored claim field is `eventId` and both spellings are accepted on input.)
 5. Skeptic (runs after the investigators): finds contradictions, claims with weak
    support, suspicious silences, unanswered questions, and sources or angles
    that were never searched. Feeds the "could not determine" list.
-6. Verifier (CODE, not a model): for each claim, check that the whitespace-
-   normalized quote appears verbatim in the cited item. Failures are flagged
-   and excluded from the timeline. If key questions remain open, allow one
+6. Verifier, two layers. Layer 1 (CODE): the whitespace-normalized quote must
+   appear verbatim in the cited item, and the claim's actor and timestamp must
+   match the item's author and time (normalized identity comparison; ts within
+   60s or a date-only claim ts on the item's UTC date; a missing claim ts is
+   nothing to check). Layer 2 (isolated model call): one call per code-surviving
+   claim that sees ONLY the claim text and the quote and answers whether the
+   quote supports the claim (`lib/pipeline/entailment.ts`; concurrency 8, 10s
+   per call, ~40s budget, degrades to `unavailable`). Three states:
+   **verified** (quote + actor/time + model support), **supported** (quote
+   verified but any soft check failed or the model check didn't run — shown in
+   the timeline wearing a "check before repeating" label), **rejected** (quote
+   not found or item missing — excluded from the timeline; a model can only
+   downgrade, never reject). If key questions remain open, allow one
    retry pass (max 2 iterations total), then finish with the gaps listed.
-7. Assemble: timeline, commitments ledger, gaps, and stats (claims verified/total).
+7. Assemble: timeline, commitments ledger, gaps, and three-state stats
+   (verified/supported/rejected); a question group counts as answered when it
+   has at least one verified or supported claim.
 
 ### Source tools (agents call these)
 search_jira(jql_or_text), get_issue(key) (comments + changelog),
@@ -90,7 +108,7 @@ never in the app runtime.
 Next.js (App Router) on Vercel; tool-use LLM API with the model name in an env
 var — this build runs DeepSeek through its OpenAI-compatible endpoint
 (`DEEPSEEK_BASE_URL`/`DEEPSEEK_MODEL`, no vendor SDK); Postgres for the registry
-(Docker locally, hosted `DATABASE_URL` on Vercel); deterministic verifier.
+(Docker locally, hosted `DATABASE_URL` on Vercel); two-layer verifier (deterministic quote + author/time checks, then an isolated model support call; three states).
 Constraints: Vercel function timeouts (one API route per stage, stream progress,
 keep the dataset under a few hundred items); credentials only in env vars,
 read-only scopes, sandbox workspaces only.
@@ -117,10 +135,10 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`) + `run.ts` (shared ingest flow used by both uploads and live pulls).
 - `lib/sources/*`: the Source implementations — `jira.ts`, `slack.ts`, `gmail.ts` (live, read-only), with the upload path as the export fallback.
 - `lib/agents/*`: `tools.ts` (per-source tools + registry tools + `submit_claim`), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
-- `lib/pipeline/*`: `verify-claims.ts` (code verifier), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero verified claims and only one retry pass remains).
+- `lib/pipeline/*`: `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
 - `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route; `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
 - `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → 3 investigators in parallel → skeptic → verify → assemble, then one retry for only the missing kinds). Stage progress is client-driven; `/api/investigations/[id]/events` streams stage/log changes over SSE for the progress screen.
-- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` table). `migrations/002_report_extras.sql`.
+- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` table). `migrations/002_report_extras.sql`.
 - UI (plain CSS in `app/globals.css`, tokens at the top; fonts via next/font — Atkinson Hyperlegible for UI, Source Serif 4 for evidence): `app/page.tsx` (start: escalation + source scopes + synthetic scenario), `app/upload/page.tsx` (exports fallback), `app/investigations/[id]/progress/page.tsx` (summary-first counts, stages, activity behind a "Show activity" toggle; also the read-only "How this was produced" review), `app/investigations/[id]/page.tsx` (report: one scrolling briefing via `app/_components/briefing/*` — story + key moments + metrics, swimlane board, chapters, promises, causes, gaps, draft reply; shared evidence drawer in `app/_components/evidence.tsx`). No Tailwind — do not reintroduce preset-style classes; use the existing CSS classes.
 
 ## Testing quirks

@@ -161,13 +161,13 @@ describeDb("event store", () => {
     expect(inserted[0].verifyStatus).toBe("unverified");
     expect(inserted[0].skepticFlag).toBe(false);
 
-    await setClaimVerification(inserted[0].id, "excluded", "quote not found");
+    await setClaimVerification(inserted[0].id, "rejected", "quote not found");
     await setClaimSkepticFlag(inserted[1].id, true);
 
     const claims = await getClaims(investigationId);
     expect(claims).toHaveLength(2);
     const first = claims.find((claim) => claim.id === inserted[0].id);
-    expect(first?.verifyStatus).toBe("excluded");
+    expect(first?.verifyStatus).toBe("rejected");
     expect(first?.verifyError).toBe("quote not found");
     const second = claims.find((claim) => claim.id === inserted[1].id);
     expect(second?.skepticFlag).toBe(true);
