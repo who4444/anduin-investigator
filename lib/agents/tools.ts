@@ -42,7 +42,7 @@ function toolSpecs(): ToolSpec[] {
     tool(
       "get_issue",
       "Read one Jira issue in order: its creation, every comment, and every status/assignee transition.",
-      { key: { type: "string", description: "Issue key, e.g. MER-101." } },
+      { key: { type: "string", description: "Issue key, e.g. PROJ-123." } },
       ["key"],
     ),
     tool(

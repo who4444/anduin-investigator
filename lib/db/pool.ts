@@ -11,7 +11,11 @@ export function getPool(): postgres.Sql {
     if (!url) {
       throw new Error("DATABASE_URL is not set");
     }
-    pool = postgres(url, { max: 10, onnotice: () => {} });
+    pool = postgres(url, {
+      max: Number(process.env.DATABASE_POOL_MAX ?? "5"),
+      prepare: process.env.DATABASE_PREPARE === "true",
+      onnotice: () => {},
+    });
   }
   return pool;
 }

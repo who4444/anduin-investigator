@@ -126,13 +126,24 @@ npm run demo:gen     # regenerate the synthetic exports into public/demo/
 
 The demo is built for the Vercel Hobby plan (≤60s per function, small uploads).
 
-1. Create a hosted Postgres (Neon/Supabase/etc.) and set `DATABASE_URL`.
-2. Set `DEEPSEEK_API_KEY` (plus `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL` if you
-   point at a different OpenAI-compatible endpoint) in the project's env vars.
-3. Run the migration against the hosted database once (`npm run db:migrate` with
-   `DATABASE_URL` exported).
-4. `vercel deploy`. Each pipeline stage is its own request, and the client
-   drives them in order, so no single function runs the whole pipeline.
+1. **Hosted Postgres — Neon (recommended).** Install it from the Vercel Marketplace:
+   `vercel install neon --plan free` (works on Hobby; $0). Vercel injects
+   `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct) into the project.
+   Neon's free plan (100 CU-hours/project, 1 GB storage, scale-to-zero with
+   automatic wake) is far more than this app needs, and it resumes on its own —
+   unlike Supabase Free, which pauses after a week idle and needs a manual resume.
+   Supabase also works: use its pooler connection string (port 6543) as
+   `DATABASE_URL`; the Postgres client already disables prepared statements,
+   which transaction-mode poolers require.
+2. **Migrations.** Run once against the *direct* URL (poolers are fine for the
+   app, not for DDL):
+   `DATABASE_URL="$DATABASE_URL_UNPOOLED" npm run db:migrate`
+3. **Env vars** — `DATABASE_URL`, `DEEPSEEK_API_KEY` (+ optional `DEEPSEEK_BASE_URL`,
+   `DEEPSEEK_MODEL`), and any live-source credentials (`JIRA_*`, `SLACK_TOKEN`,
+   `GMAIL_*`). Optional tuning: `DATABASE_POOL_MAX` (default 5) and
+   `DATABASE_PREPARE=true` only against a direct (non-pooled) endpoint.
+4. `vercel deploy`. Each pipeline stage is its own request and the client drives
+   them in order, so no single function runs the whole pipeline.
 5. Keep uploads under ~4 MB — the Vercel Hobby request-body limit. The built-in
    demo bundle is well under that.
 
