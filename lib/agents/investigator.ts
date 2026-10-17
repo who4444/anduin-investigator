@@ -187,11 +187,21 @@ export async function runInvestigator(
         ],
         { forceJson: true },
       );
-      // Concatenating two JSON objects produces text that no longer parses, so
-      // only append the forced reply when the loop content yielded nothing.
-      const yielded =
-        collectClaims(finalContent, kind).length > 0 || collectNotes(finalContent, kind).length > 0;
-      if (!yielded) finalContent = `${finalContent}\n${forced.content}`;
+      // Merge the forced reply into the loop content as JSON — string
+      // concatenation of two objects no longer parses.
+      const forcedParsed = extractJson(forced.content);
+      if (isPlainObject(forcedParsed)) {
+        const baseParsed = extractJson(finalContent);
+        if (!isPlainObject(baseParsed)) {
+          finalContent = forced.content;
+        } else {
+          const merge = (key: string): unknown[] => [
+            ...(Array.isArray(baseParsed[key]) ? (baseParsed[key] as unknown[]) : []),
+            ...(Array.isArray(forcedParsed[key]) ? (forcedParsed[key] as unknown[]) : []),
+          ];
+          finalContent = JSON.stringify({ claims: merge("claims"), notes: merge("notes") });
+        }
+      }
     } catch {
       // The loop's own content is still parsed below.
     }

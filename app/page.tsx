@@ -23,11 +23,20 @@ interface ScopeState {
 const SCENARIO_ESCALATION =
   "Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.";
 
+interface RecentInvestigation {
+  id: string;
+  title: string;
+  createdAt: string;
+  origin: string;
+  complete: boolean;
+}
+
 export default function StartPage() {
   const router = useRouter();
   const [escalation, setEscalation] = useState("");
   const [client, setClient] = useState("");
   const [synthetic, setSynthetic] = useState(false);
+  const [recent, setRecent] = useState<RecentInvestigation[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
   const [scopes, setScopes] = useState<Record<string, ScopeState>>({});
@@ -50,6 +59,11 @@ export default function StartPage() {
         }
       })
       .catch(() => setSources([]));
+
+    fetch("/api/investigations")
+      .then((response) => (response.ok ? response.json() : { investigations: [] }))
+      .then((body: { investigations?: RecentInvestigation[] }) => setRecent(body.investigations ?? []))
+      .catch(() => undefined);
   }, []);
 
   const setScope = (sourceId: string, patch: Partial<ScopeState>) => {
@@ -258,6 +272,24 @@ export default function StartPage() {
         )}
         {error && <p className="alert alert-error">{error}</p>}
       </div>
+
+      {recent.length > 0 && (
+        <section className="panel stack">
+          <h2 style={{ marginBottom: 4 }}>Recent investigations</h2>
+          <ul className="stack" style={{ gap: 6 }}>
+            {recent.map((entry) => (
+              <li key={entry.id} className="row small">
+                <a href={`/investigations/${entry.id}`}>
+                  {entry.title || entry.id.slice(0, 8)}
+                </a>
+                <span className="muted tabular">{entry.createdAt.slice(0, 10)}</span>
+                {entry.origin === "demo" && <span className="chip chip-broken">synthetic</span>}
+                {!entry.complete && <span className="chip">in progress</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

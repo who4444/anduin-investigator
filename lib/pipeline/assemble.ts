@@ -22,6 +22,9 @@ export interface AssembledStats {
   verified: number;
   supported: number;
   rejected: number;
+  /** Claims that never went through verification (a crashed verify stage) —
+      they are the reason total can exceed verified+supported+rejected. */
+  unverified: number;
   flagged: number;
 }
 
@@ -116,6 +119,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     verified: claims.filter((claim) => claim.verifyStatus === "verified").length,
     supported: claims.filter((claim) => claim.verifyStatus === "supported").length,
     rejected: claims.filter((claim) => claim.verifyStatus === "rejected").length,
+    unverified: claims.filter((claim) => claim.verifyStatus === "unverified").length,
     flagged: claims.filter((claim) => claim.skepticFlag).length,
   };
 

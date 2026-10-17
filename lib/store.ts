@@ -59,8 +59,16 @@ function mapScope(value: unknown): InvestigationScope | null {
   const scope = value as Partial<InvestigationScope>;
   const strings = (list: unknown): string[] =>
     Array.isArray(list) ? list.filter((entry): entry is string => typeof entry === "string") : [];
+  // Missing confidence (pre-tier rows) means a verified-anchors scope;
+  // a present-but-unreadable value is corruption: fail OPEN to unfiltered.
   const confidence =
-    scope.confidence === "partial" || scope.confidence === "none" ? scope.confidence : "scoped";
+    scope.confidence === "partial" || scope.confidence === "none"
+      ? scope.confidence
+      : scope.confidence === "scoped"
+        ? "scoped"
+        : scope.confidence === undefined || scope.confidence === null
+          ? "scoped"
+          : "none";
   return {
     client: typeof scope.client === "string" ? scope.client : null,
     project: typeof scope.project === "string" ? scope.project : null,
@@ -298,12 +306,21 @@ export function claimDedupeKey(eventId: string, text: string): string {
 
 export async function createInvestigation(input: NewInvestigation): Promise<string> {
   const sql = getPool();
-  const rows = await sql<{ id: string }[]>`
-    insert into investigations (title, escalation_text, content_hash, declared_client, origin)
-    values (${input.title}, ${input.escalationText}, ${input.contentHash}, ${input.declaredClient ?? null}, ${input.origin ?? "upload"})
-    returning id
-  `;
-  return rows[0].id;
+  try {
+    const rows = await sql<{ id: string }[]>`
+      insert into investigations (title, escalation_text, content_hash, declared_client, origin)
+      values (${input.title}, ${input.escalationText}, ${input.contentHash}, ${input.declaredClient ?? null}, ${input.origin ?? "upload"})
+      returning id
+    `;
+    return rows[0].id;
+  } catch (error) {
+    // A racing duplicate upload must land on the same investigation, not a
+    // second row with the same cache key.
+    if (!/duplicate key value/i.test(String(error))) throw error;
+    const existing = await findInvestigationByHash(input.contentHash);
+    if (!existing) throw error;
+    return existing.id;
+  }
 }
 
 export async function getInvestigation(id: string): Promise<Investigation | null> {
@@ -325,6 +342,41 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
 export async function setPlanData(id: string, data: PlanData | null): Promise<void> {
   const sql = getPool();
   await sql`update investigations set plan_data = ${data ? sql.json(data as unknown as JSONValue) : null} where id = ${id}`;
+}
+
+export interface InvestigationSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  origin: string;
+  complete: boolean;
+}
+
+export async function listInvestigations(limit = 20): Promise<InvestigationSummary[]> {
+  const sql = getPool();
+  const rows = await sql<{
+    id: string;
+    title: string;
+    created_at: Date | string;
+    origin: string | null;
+    done: boolean;
+  }[]>`
+    select i.id, i.title, i.created_at, i.origin,
+      exists (
+        select 1 from stages s
+        where s.investigation_id = i.id and s.stage = 'assemble' and s.status = 'done'
+      ) as done
+    from investigations i
+    order by i.created_at desc
+    limit ${limit}
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    createdAt: toIso(row.created_at) as string,
+    origin: row.origin ?? "upload",
+    complete: row.done,
+  }));
 }
 
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {

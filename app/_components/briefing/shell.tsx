@@ -101,7 +101,7 @@ export function BriefingShell({
             </span>
           </div>
           <div className="report-meta small muted">
-            <span className="tabular">Escalation {report.investigation.createdAt.slice(0, 10)}</span>
+            <span className="tabular">Logged {report.investigation.createdAt.slice(0, 10)}</span>
             <span aria-hidden>·</span>
             {sources.map((source) => (
               <span key={source} className={`source-label source-${source}`}>

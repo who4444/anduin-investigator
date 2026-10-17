@@ -34,8 +34,20 @@ function cleanList(value: unknown, maxItems: number, maxChars: number): string[]
 
 function cleanDate(value: unknown): string | null {
   if (typeof value !== "string" || !ISO_DATE.test(value.trim())) return null;
-  const parsed = new Date(`${value.trim()}T00:00:00.000Z`);
-  return Number.isNaN(parsed.getTime()) ? null : value.trim();
+  const [year, month, day] = value.trim().split("-").map(Number);
+  const check = new Date(Date.UTC(year, month - 1, day));
+  // Reject impossible dates (2024-02-30) and out-of-range years (0000-…):
+  // the UTC components must round-trip exactly.
+  if (
+    Number.isNaN(check.getTime()) ||
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day ||
+    year < 1970
+  ) {
+    return null;
+  }
+  return value.trim();
 }
 
 function cleanWindow(value: unknown): PlanDateWindow {

@@ -303,7 +303,8 @@ describeDb("agent tools", () => {
     const fromTs = JSON.parse(
       await tools.exec("search_slack", { from: "2024-09-24T00:00:00.000Z" }),
     ) as { items: { id: string }[] };
-    expect(fromTs.items.map((item) => item.id)).toEqual([slackId, replyId]);
+    // An open-ended listing shows the most recent first.
+    expect(fromTs.items.map((item) => item.id)).toEqual([replyId, slackId]);
   });
 
   it("caps get_issue output so a long issue cannot blow the model context", async () => {
@@ -448,6 +449,52 @@ describeDb("agent tools", () => {
       items: { id: string }[];
     };
     expect(result.items.map((item) => item.id)).toContain("e_ref_only");
+  });
+
+  it("lists newest-first when the query is empty", async () => {
+    const { insertEvents } = await import("../lib/store");
+    await insertEvents(investigationId, [
+      {
+        id: "e_order_old",
+        source: "slack",
+        ts: "2024-09-01T00:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "order-check",
+        text: "oldest note",
+      },
+      {
+        id: "e_order_new",
+        source: "slack",
+        ts: "2024-09-28T00:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "order-check",
+        text: "newest note",
+      },
+    ]);
+
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(await tools.exec("search_slack", { channel: "order-check" })) as {
+      items: { id: string }[];
+    };
+    expect(result.items.map((item) => item.id)).toEqual(["e_order_new", "e_order_old"]);
+  });
+
+  it("honors a window bound written without milliseconds", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(
+      await tools.exec("search_jira", { query: "release 4.12", from: "2024-09-10T03:00:00Z" }),
+    ) as { items: { id: string }[] };
+    // The jira fixture event sits exactly at 2024-09-10T03:00:00.000Z — the
+    // no-millisecond bound must not exclude it.
+    expect(result.items.map((item) => item.id)).toContain(issueId);
+  });
+
+  it("does not throw on a non-numeric slack ts for thread fallback", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(
+      await tools.exec("get_slack_thread", { channel: "meridian-billing", ts: "not-epoch" }),
+    ) as { error?: string };
+    expect(result.error).toMatch(/No stored thread/);
   });
 
   it("rejects a submit_claim without a valid status", async () => {

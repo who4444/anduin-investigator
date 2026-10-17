@@ -52,6 +52,7 @@ export async function GET(
       }),
       scope: assembled.scope,
       complete: assembled.complete,
+      missing: assembled.missing,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

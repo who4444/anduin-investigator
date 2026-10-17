@@ -52,6 +52,38 @@ describeDb("event store", () => {
     expect(inv?.id).toBe(investigationId);
   });
 
+  it("createInvestigation recovers a duplicate content-hash instead of duplicating rows", async () => {
+    const { createInvestigation, deleteInvestigation } = await import("../lib/store");
+    const sharedHash = `hash-${randomUUID()}`;
+    const firstId = await createInvestigation({
+      title: `Dup ${randomUUID()}`,
+      escalationText: "",
+      contentHash: sharedHash,
+    });
+    const secondId = await createInvestigation({
+      title: `Dup ${randomUUID()}`,
+      escalationText: "",
+      contentHash: sharedHash,
+    });
+    expect(secondId).toBe(firstId);
+    await deleteInvestigation(firstId);
+  });
+
+  it("maps a corrupt scope confidence to the unfiltered none state", async () => {
+    const { createInvestigation, getInvestigation, deleteInvestigation } = await import("../lib/store");
+    const { getPool } = await import("../lib/db/pool");
+    const id = await createInvestigation({
+      title: `Corrupt ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    const sql = getPool();
+    await sql`update investigations set scope = ${sql.json({ client: "X", ticketPrefixes: ["MER"], channels: [], senderDomains: [], confidence: "banana", anchors: [] })} where id = ${id}`;
+    const stored = await getInvestigation(id);
+    expect(stored?.scope?.confidence).toBe("none");
+    await deleteInvestigation(id);
+  });
+
   it("insertClaims treats the same event plus normalized text as one claim", async () => {
     const { createInvestigation, insertClaims, getClaims, deleteInvestigation } = await import(
       "../lib/store"

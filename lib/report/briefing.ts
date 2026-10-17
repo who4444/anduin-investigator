@@ -1,5 +1,5 @@
 import type { Claim, Event, SourceKind } from "../types";
-import { buildSilences, clusterCommitments, type TimelineSilenceRow } from "./build";
+import { buildSilences, clusterCommitments, effectiveTs, type TimelineSilenceRow } from "./build";
 
 export type Importance = "key" | "normal" | "routine";
 export type Lane = "client" | "promises" | "owner" | "ticket" | "engineering";
@@ -129,8 +129,8 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
     .map((claim) => ({ claim, event: eventsById.get(claim.eventId) }))
     .filter((entry): entry is { claim: Claim; event: Event } => entry.event !== undefined)
     .sort((a, b) => {
-      const left = a.claim.ts ?? a.event.ts;
-      const right = b.claim.ts ?? b.event.ts;
+      const left = effectiveTs(a.claim, a.event);
+      const right = effectiveTs(b.claim, b.event);
       return left < right ? -1 : left > right ? 1 : 0;
     });
 
@@ -155,7 +155,7 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   const mentionCounts = new Map<string, { role: string; mentions: number }>();
   const rawTsByClaim = new Map<string, string>();
   const eventsOut: BriefingEvent[] = ordered.map(({ claim, event }) => {
-    const ts = claim.ts ?? event.ts;
+    const ts = effectiveTs(claim, event);
     rawTsByClaim.set(claim.id, event.ts);
     const actor = event.actorResolved ?? event.actor;
     const role = roleFor(actor, kept, eventsById);

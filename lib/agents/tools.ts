@@ -114,19 +114,30 @@ function toolSpecs(): ToolSpec[] {
 }
 
 /* A date-only bound means the whole calendar day, not midnight-exact —
-   "2026-09-24" as `to` must include events later that day. */
+   "2026-09-24" as `to` must include events later that day. Bounds written
+   without milliseconds (or with offsets) compare numerically, since a
+   lexicographic compare would drop events at exactly the boundary. */
 const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function compareTs(left: string, bound: string): number {
+  const leftMs = Date.parse(left);
+  const boundMs = Date.parse(bound);
+  if (Number.isFinite(leftMs) && Number.isFinite(boundMs)) {
+    return leftMs === boundMs ? 0 : leftMs < boundMs ? -1 : 1;
+  }
+  return left === bound ? 0 : left < bound ? -1 : 1;
+}
 
 function matchesWindow(event: Event, from?: string, to?: string): boolean {
   if (from) {
     if (DAY_ONLY.test(from)) {
       if (event.ts.slice(0, 10) < from) return false;
-    } else if (event.ts < from) return false;
+    } else if (compareTs(event.ts, from) < 0) return false;
   }
   if (to) {
     if (DAY_ONLY.test(to)) {
       if (event.ts.slice(0, 10) > to) return false;
-    } else if (event.ts > to) return false;
+    } else if (compareTs(event.ts, to) > 0) return false;
   }
   return true;
 }
@@ -148,7 +159,9 @@ function searchResult(
   matches: Event[],
   query: string | undefined,
 ): { count: number; items: Record<string, unknown>[]; truncated: boolean } {
-  const ordered = query && query.trim() ? rankEvents(matches, query) : matches;
+  // A ranked query orders by relevance; a bare listing shows the most
+  // recent records first (the tools describe this as listing recent).
+  const ordered = query && query.trim() ? rankEvents(matches, query) : [...matches].reverse();
   return {
     count: matches.length,
     items: ordered.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event) as unknown as Record<string, unknown>),
@@ -298,7 +311,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const threadId = `slack:${channel}:${ts}`;
         const slack = await sourceItems("slack");
         let items = slack.filter((event) => event.threadId === threadId);
-        if (items.length === 0) {
+        if (items.length === 0 && /^\d+(\.\d+)?$/.test(ts)) {
           const day = new Date(Number(ts) * 1000).toISOString().slice(0, 10);
           items = slack.filter(
             (event) => event.channel.toLowerCase() === channel.toLowerCase() && event.ts.startsWith(day),

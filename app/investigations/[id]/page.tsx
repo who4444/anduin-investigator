@@ -61,6 +61,7 @@ export default async function ReportPage({
       }),
       scope: assembled.scope,
       complete: assembled.complete,
+      missing: assembled.missing,
     };
   } catch (error) {
     // Only a genuinely unknown investigation is a 404; anything else (database

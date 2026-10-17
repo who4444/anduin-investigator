@@ -16,7 +16,9 @@ export interface VocabularyDigest {
 
 const TICKET_ANYWHERE = /\b[A-Z][A-Z0-9]{1,9}-\d+\b/g;
 const TICKET_EXACT = /^[A-Z][A-Z0-9]{1,9}-\d+$/;
-const VERSION = /\b\d+\.\d+(?:\.\d+)?\b/g;
+/* A leading lookbehind plus a trailing lookahead keep an IP like 192.168.0.1
+   from matching as "192.168.0" or "168.0.1". */
+const VERSION = /(?<![\d.])\bv?\d+\.\d+(?:\.\d+)?\b(?!\.\d)/gi;
 const EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
 
 const MAX_TICKETS = 40;
@@ -56,7 +58,7 @@ export function buildVocabularyDigest(events: Event[]): VocabularyDigest {
     }
 
     for (const match of event.text.matchAll(VERSION)) {
-      versions.add(match[0]);
+      versions.add(match[0].replace(/^v/i, ""));
     }
 
     if (event.source === "slack" && event.channel && event.channel !== "slack") {
@@ -66,10 +68,15 @@ export function buildVocabularyDigest(events: Event[]): VocabularyDigest {
     const domain = event.actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
     if (domain) domains.add(domain);
 
+    // Document frequency: a term counts once per record, so one repetitive
+    // document cannot dominate the seed terms.
+    const seenInEvent = new Set<string>();
     for (const token of event.text.toLowerCase().split(/[^a-z0-9]+/)) {
       if (token.length < MIN_TERM_LENGTH) continue;
       if (/^\d+$/.test(token)) continue;
       if (STOPWORDS.has(token)) continue;
+      if (seenInEvent.has(token)) continue;
+      seenInEvent.add(token);
       termCounts.set(token, (termCounts.get(token) ?? 0) + 1);
     }
   }

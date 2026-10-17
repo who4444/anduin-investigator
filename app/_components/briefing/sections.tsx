@@ -260,6 +260,12 @@ export function GapsSection({
           </p>
         )}
 
+        {report.missing.length > 0 && report.complete && (
+          <p className="small muted">
+            No verified finding answered: {report.missing.join(", ")}. Those question groups are
+            listed as gaps above.
+          </p>
+        )}
         {report.gaps.length === 0 ? (
           <p className="empty">The retrieved sources left no obvious gaps.</p>
         ) : (

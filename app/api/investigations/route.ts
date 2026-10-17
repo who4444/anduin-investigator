@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 
 import type { IngestFile } from "@/lib/ingest/detect";
 import { ingestFiles } from "@/lib/ingest/run";
-import { findInvestigationByHash, getStages } from "@/lib/store";
+import { findInvestigationByHash, getStages, listInvestigations } from "@/lib/store";
 
 export const maxDuration = 60;
 
@@ -41,6 +41,16 @@ async function readFiles(form: FormData): Promise<IngestFile[]> {
   );
 }
 
+export async function GET(): Promise<Response> {
+  try {
+    const investigations = await listInvestigations();
+    return json({ investigations });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return json({ error: `Could not list investigations: ${message}` }, 500);
+  }
+}
+
 export async function POST(request: NextRequest): Promise<Response> {
   let form: FormData;
   try {
@@ -72,6 +82,10 @@ export async function POST(request: NextRequest): Promise<Response> {
       if (stages.some((stage) => stage.stage === "assemble" && stage.status === "done")) {
         return json({ investigationId: existing.id, eventCount: 0, cached: true, warnings: [] });
       }
+      // A half-finished run keeps its identity: the pipeline re-runs over the
+      // evidence already stored instead of minting a second row with the same
+      // cache key.
+      return json({ investigationId: existing.id, eventCount: 0, cached: false, warnings: [] }, 200);
     }
 
     const result = await ingestFiles({

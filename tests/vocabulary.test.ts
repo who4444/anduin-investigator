@@ -48,11 +48,28 @@ describe("buildVocabularyDigest", () => {
     expect(digest.terms).not.toContain("the");
   });
 
-  it("ignores clock times and epoch numbers when reading versions", () => {
+  it("ignores clock times, epoch numbers and IP addresses when reading versions", () => {
     const digest = buildVocabularyDigest([
-      event({ id: "a", text: "Rollout at 09:30:00 on 1727251200 with build 2.0." }),
+      event({ id: "a", text: "Rollout at 09:30:00 on 1727251200 from 192.168.0.1 with build 2.0." }),
     ]);
     expect(digest.versions).toEqual(["2.0"]);
+  });
+
+  it("reads a v-prefixed build tag", () => {
+    const digest = buildVocabularyDigest([
+      event({ id: "a", text: "Shipped as v4.12 yesterday." }),
+    ]);
+    expect(digest.versions).toEqual(["4.12"]);
+  });
+
+  it("counts document frequency, not raw repetitions", () => {
+    const repetitive = event({ id: "a", text: "invoice invoice invoice invoice invoice" });
+    const normal = event({ id: "b", text: "invoice totals drifted" });
+    const other = event({ id: "c", text: "quiet day" });
+    const digest = buildVocabularyDigest([repetitive, normal, other]);
+    // "invoice" appears in two documents, "totals" in one — the repetition
+    // inside a single record must not dominate the seed terms.
+    expect(digest.terms.indexOf("invoice")).toBeLessThan(digest.terms.indexOf("totals"));
   });
 
   it("returns empty lists for an empty store", () => {

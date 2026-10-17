@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { highlightSegments } from "@/lib/highlight";
 import type { Claim, Event } from "@/lib/types";
@@ -111,14 +111,42 @@ interface DrawerProps {
 
 export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: DrawerProps) {
   const [copied, setCopied] = useState(false);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
   const event = events.find((candidate) => candidate.id === eventId);
 
   useEffect(() => {
+    restoreRef.current = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
     const onKey = (keyboardEvent: KeyboardEvent) => {
-      if (keyboardEvent.key === "Escape") onClose();
+      if (keyboardEvent.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Focus trap: claimed aria-modal focus must stay inside the drawer.
+      if (keyboardEvent.key !== "Tab") return;
+      const drawer = closeRef.current?.closest("aside");
+      if (!drawer) return;
+      const focusables = drawer.querySelectorAll<HTMLElement>(
+        'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (keyboardEvent.shiftKey && (active === first || !drawer.contains(active))) {
+        keyboardEvent.preventDefault();
+        last.focus();
+      } else if (!keyboardEvent.shiftKey && (active === last || !drawer.contains(active))) {
+        keyboardEvent.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      restoreRef.current?.focus?.();
+    };
   }, [onClose]);
 
   if (!event) {
@@ -161,7 +189,7 @@ export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: Dr
           <span className="small muted">
             {event.ts} · {event.actorResolved ?? event.actor} · {event.channel} · <SourceChip source={event.source} />
           </span>
-          <button type="button" className="btn btn-quiet drawer-close" onClick={onClose} aria-label="Close evidence">
+          <button type="button" ref={closeRef} className="btn btn-quiet drawer-close" onClick={onClose} aria-label="Close evidence">
             Close
           </button>
         </div>

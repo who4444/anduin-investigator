@@ -339,6 +339,43 @@ describeDb("runInvestigator", () => {
     expect(seenUserPrompt).toContain("MER-101");
   });
 
+  it("merges the forced reply instead of concatenating unparseable fragments", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getClaims } = await import("../lib/store");
+
+    const finalJson = JSON.stringify({
+      claims: [],
+      notes: ["Nothing certain yet."],
+    });
+    setLlmClientForTests(
+      scriptedClient([
+        // Stray braces in the loop content: concatenation would break parsing.
+        { content: `Here is what I saw { note: partial }.\n${finalJson}` },
+        {
+          content: JSON.stringify({
+            claims: [
+              {
+                type: "process_failure",
+                text: "Forced reply survivor claim.",
+                quote: "fix is in the Sep 24 build",
+                event_id: slackId,
+                status: "n/a",
+                confidence: 0.6,
+              },
+            ],
+            notes: ["Forced reply note."],
+          }),
+        },
+      ]),
+    );
+
+    await runInvestigator(investigationId, "ownership", "1. Process failures.");
+
+    const claims = (await getClaims(investigationId)).filter((claim) => claim.agent === "ownership");
+    expect(claims.some((claim) => claim.text === "Forced reply survivor claim.")).toBe(true);
+  });
+
   it("rejects an unknown investigator kind", async () => {
     const { runInvestigator } = await import("../lib/agents/investigator");
     await expect(

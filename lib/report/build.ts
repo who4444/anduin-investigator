@@ -149,6 +149,8 @@ export interface ReportPayload extends ReportView {
   bottomLine: BottomLine;
   scope: ReportScope | null;
   complete: boolean;
+  /** Question groups with no verified/supported findings after all passes. */
+  missing: string[];
 }
 
 export interface ReportInput {
@@ -168,6 +170,14 @@ export function tagForClaim(claim: Claim): FindingTag {
   if (claim.type === "root_cause") return "technical";
   if (/no reply|respond|responded|acknowledg|chaser|update|told/i.test(claim.text)) return "communication";
   return "process";
+}
+
+/* A date-only claim ts is a day assertion, not an instant: when ordering or
+   grouping, fall back to the record's own instant so date-only claims don't
+   all pile at midnight ahead of same-day timestamps. */
+export function effectiveTs(claim: Claim, event: Event | undefined): string {
+  if (claim.ts && claim.ts.includes("T")) return claim.ts;
+  return event?.ts ?? claim.ts ?? "";
 }
 
 function visibleClaims(claims: Claim[]): Claim[] {
@@ -631,7 +641,7 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
       return {
         kind: "claim" as const,
         claimId: claim.id,
-        ts: claim.ts ?? event.ts,
+        ts: effectiveTs(claim, event),
         actor: event.actorResolved ?? event.actor,
         source: event.source,
         text: claim.text,
@@ -705,16 +715,23 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
     const claim = cluster.representative;
     const event = cited(claim, eventsById);
     const deadline = extractDeadline(claim.text, claim.ts ?? event?.ts ?? null);
-    const toWhomMatch = claim.text.match(/\bto ([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*)?)/);
+    const named = claim.text.match(/\bto ([A-Z][\w.-]*(?:\s+[A-Z][\w.-]*)?)/);
+    const emailed = claim.text.match(/\bto\s+([\w.+-]+@[\w.-]+\.[A-Za-z]{2,})/i);
+    const toWhom =
+      named?.[1] ??
+      (emailed?.[1] ? `<${emailed[1]}>` : /\bto the client\b/i.test(claim.text) ? "the client" : null);
+    // Lateness is anchored on the record that carries the promise, not on
+    // whenever a later claim restated it.
+    const proofTs = event?.ts ?? claim.ts ?? null;
     const daysLate =
-      claim.status === "broken" && deadline?.iso && claim.ts
-        ? Math.max(0, Math.floor((Date.parse(claim.ts) - Date.parse(deadline.iso)) / DAY_MS))
+      claim.status === "broken" && deadline?.iso && proofTs
+        ? Math.max(0, Math.floor((Date.parse(proofTs) - Date.parse(deadline.iso)) / DAY_MS))
         : null;
     return {
       claimId: claim.id,
       promise: claim.text,
       who: claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
-      toWhom: toWhomMatch ? toWhomMatch[1] : null,
+      toWhom,
       madeAt: event?.ts ?? claim.ts ?? null,
       deadline: deadline ? deadline.label : null,
       outcome: claim.status,

@@ -288,7 +288,7 @@ describeDb("three-state verification", () => {
     );
     const assembleBody = await assembleResponse.json();
     expect(assembleResponse.status).toBe(200);
-    expect(assembleBody.stats).toEqual({ total: 6, verified: 1, supported: 3, rejected: 2, flagged: 0 });
+    expect(assembleBody.stats).toEqual({ total: 6, verified: 1, supported: 3, rejected: 2, flagged: 0, unverified: 0 });
     expect(assembleBody.missing).toEqual(["root_cause"]);
 
     const resultResponse = await resultRoute(

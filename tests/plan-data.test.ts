@@ -41,6 +41,12 @@ describe("parsePlanData", () => {
     );
     expect(junkDates?.dateWindow).toEqual({ from: null, to: "2024-09-24" });
 
+    // Impossible calendar dates are rejected, not rolled over.
+    const impossible = parsePlanData(
+      JSON.stringify({ framing: "x", dateWindow: { from: "2024-02-30", to: "0000-01-01" } }),
+    );
+    expect(impossible?.dateWindow).toEqual({ from: null, to: null });
+
     expect(parsePlanData(JSON.stringify({ framing: "", hypotheses: [] }))).toBeNull();
     expect(parsePlanData("just prose, no JSON")).toBeNull();
   });

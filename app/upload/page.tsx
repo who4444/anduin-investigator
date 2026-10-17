@@ -4,6 +4,43 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+/* A dropped folder surfaces as a single File with no children; read the
+   real entries recursively so a Slack export folder keeps its channel paths
+   (the zip and folder-picker paths never had this problem). */
+async function readDropped(dataTransfer: DataTransfer): Promise<File[]> {
+  const entries = Array.from(dataTransfer.items ?? [])
+    .map((item) => (typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null))
+    .filter((entry): entry is FileSystemEntry => entry !== null);
+  if (entries.length === 0) return Array.from(dataTransfer.files);
+
+  const out: File[] = [];
+  const walk = async (entry: FileSystemEntry, prefix: string): Promise<void> => {
+    if (entry.isFile) {
+      const file = await new Promise<File | null>((resolve) =>
+        (entry as FileSystemFileEntry).file(resolve, () => resolve(null)),
+      );
+      if (file) {
+        const name = prefix ? `${prefix}/${file.name}` : file.name;
+        out.push(new File([file], name, { type: file.type }));
+      }
+      return;
+    }
+    const reader = (entry as FileSystemDirectoryEntry).createReader();
+    const children: FileSystemEntry[] = [];
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((resolve) =>
+        reader.readEntries(resolve, () => resolve([])),
+      );
+      if (batch.length === 0) break;
+      children.push(...batch);
+    }
+    const next = prefix ? `${prefix}/${entry.name}` : entry.name;
+    for (const child of children) await walk(child, next);
+  };
+  for (const entry of entries) await walk(entry, "");
+  return out.length > 0 ? out : Array.from(dataTransfer.files);
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const directoryInput = useRef<HTMLInputElement | null>(null);
@@ -98,8 +135,9 @@ export default function UploadPage() {
           onDrop={(event) => {
             event.preventDefault();
             setDragging(false);
-            const dropped = Array.from(event.dataTransfer.files);
-            if (dropped.length > 0) setFiles(dropped);
+            void readDropped(event.dataTransfer).then((dropped) => {
+              if (dropped.length > 0) setFiles(dropped);
+            });
           }}
         >
           <div className="row">
