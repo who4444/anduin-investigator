@@ -7,6 +7,7 @@ import {
   readInvestigationOrDefault,
   readJsonBody,
   readPass,
+  readWorker,
   runStage,
 } from "@/lib/api/pipeline";
 
@@ -29,6 +30,7 @@ export async function POST(
   }
 
   const pass = readPass(body);
+  const worker = readWorker(body);
   const plan = found.investigation.plan ?? "";
 
   return runStage(id, kind as InvestigatorKind, pass, async () => {
@@ -40,5 +42,5 @@ export async function POST(
       toolCalls: result.log.map((entry) => entry.name),
       title: found.investigation.title,
     };
-  });
+  }, worker);
 }

@@ -23,6 +23,9 @@ const post = (url: string, body: unknown = {}): NextRequest =>
 describeDb("pipeline routes", () => {
   let investigationId: string;
   const created: string[] = [];
+  // A run-unique client name: learned scopes are global state (by design),
+  // and this suite must not couple to whatever other suites have learned.
+  const routesClient = `Routes Client ${randomUUID().slice(0, 8)}`;
 
   beforeAll(async () => {
     const { createInvestigation, insertEvents } = await import("../lib/store");
@@ -32,7 +35,7 @@ describeDb("pipeline routes", () => {
       title: `Routes ${randomUUID()}`,
       escalationText: "Totals are wrong since 4.12.",
       contentHash: `hash-${randomUUID()}`,
-      declaredClient: "Northwind Logistics",
+      declaredClient: routesClient,
     });
     created.push(investigationId);
 
@@ -132,14 +135,14 @@ describeDb("pipeline routes", () => {
     expect(investigation?.planData?.framing).toContain("Trace 4.12");
     expect(investigation?.planData?.hypotheses[0].statement).toContain("4.12 merge");
     expect(investigation?.scope).toEqual({
-      client: "Northwind Logistics",
+      client: routesClient,
       project: "Meridian Billing",
       ticketPrefixes: ["MER"],
       channels: [],
       senderDomains: [],
       confidence: "partial",
       anchors: [
-        { kind: "declared-client", value: "Northwind Logistics", source: "declared" },
+        { kind: "declared-client", value: routesClient, source: "declared" },
         { kind: "ticket-prefix", value: "MER", source: "model" },
       ],
     });
@@ -202,11 +205,16 @@ describeDb("pipeline routes", () => {
     const { acquireStageLease, clearStageLease } = await import("../lib/store");
 
     try {
-      expect(await acquireStageLease(investigationId, 60)).toBe(true);
+      expect(await acquireStageLease(investigationId, "other-run", 60)).toBe(true);
 
       const blocked = await plan(post("http://localhost/plan"), context(investigationId));
       expect(blocked.status).toBe(409);
       expect((await blocked.json()).error).toMatch(/already running/i);
+
+      // The run that holds the lease may keep running its own stages — the
+      // parallel investigators of one pipeline share the worker id.
+      const sameRun = await plan(post("http://localhost/plan", { worker: "other-run" }), context(investigationId));
+      expect(sameRun.status).toBe(200);
     } finally {
       await clearStageLease(investigationId);
     }

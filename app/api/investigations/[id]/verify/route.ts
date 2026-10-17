@@ -5,6 +5,7 @@ import {
   readInvestigationOrDefault,
   readJsonBody,
   readPass,
+  readWorker,
   runStage,
 } from "@/lib/api/pipeline";
 import { runClaimVerification } from "@/lib/pipeline/verify-claims";
@@ -19,7 +20,9 @@ export async function POST(
   const found = await readInvestigationOrDefault(id);
   if ("response" in found) return found.response;
 
-  const pass = readPass(await readJsonBody(request));
+  const body = await readJsonBody(request);
+  const pass = readPass(body);
+  const worker = readWorker(body);
 
-  return runStage(id, "verify", pass, async () => runClaimVerification(id, pass));
+  return runStage(id, "verify", pass, async () => runClaimVerification(id, pass), worker);
 }

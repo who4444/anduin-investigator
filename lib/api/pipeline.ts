@@ -44,15 +44,27 @@ export function readPass(body: unknown, fallback = 1): number {
   return Number.isInteger(value) && value >= 1 && value <= 3 ? value : fallback;
 }
 
+/** The orchestrator sends one worker id per pipeline run so its parallel
+    stages share a lease; direct callers get an anonymous one-shot holder. */
+export function readWorker(body: unknown): string {
+  if (typeof body !== "object" || body === null) return "";
+  const raw = (body as Record<string, unknown>).worker;
+  return typeof raw === "string" ? raw.slice(0, 64) : "";
+}
+
 export async function runStage<T>(
   investigationId: string,
   stage: StageName,
   pass: number,
   work: () => Promise<T>,
+  worker = "",
 ): Promise<Response> {
-  // One stage at a time per investigation: without this, a second tab (or a
-  // reload mid-run) would run parallel LLM pipelines and interleave passes.
-  const leased = await acquireStageLease(investigationId);
+  // One pipeline RUN at a time per investigation. Stages from the same worker
+  // (the parallel investigators of a single run) share the lease; a second
+  // tab with its own worker id is refused until the run ends or the lease
+  // expires.
+  const holder = worker || `direct-${crypto.randomUUID()}`;
+  const leased = await acquireStageLease(investigationId, holder);
   if (!leased) {
     return errorResponse(
       "A stage is already running for this investigation. Wait for it to finish, then reload.",
@@ -69,11 +81,17 @@ export async function runStage<T>(
     await upsertStage(investigationId, stage, pass, "error", message).catch(() => {
       // Surfacing the original failure matters more than recording it.
     });
+    // The run is over: release so the advised reload can retry immediately.
+    await clearStageLease(investigationId).catch(() => {});
     return errorResponse(message, 500);
   } finally {
-    await clearStageLease(investigationId).catch(() => {
-      // The lease also expires on its own; never mask the stage's outcome.
-    });
+    // Anonymous direct calls are one-shot: release immediately. A worker run
+    // (the orchestrator) keeps its lease across stages until assemble ends.
+    if (!worker || stage === "assemble") {
+      await clearStageLease(investigationId).catch(() => {
+        // The lease also expires on its own; never mask the stage's outcome.
+      });
+    }
   }
 }
 

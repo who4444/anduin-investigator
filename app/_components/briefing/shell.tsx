@@ -59,6 +59,7 @@ export function BriefingShell({
   const [reply, setReply] = useState(report.reply);
   const [replyState, setReplyState] = useState<"idle" | "loading" | "error">("idle");
   const [replyError, setReplyError] = useState<string | null>(null);
+  const [appendixOpen, setAppendixOpen] = useState(false);
   const active = useScrollSpy();
 
   const sources = [...new Set(report.events.map((event) => event.source))];
@@ -119,6 +120,7 @@ export function BriefingShell({
               href={`#${section.id}`}
               className={active === section.id ? "is-active" : undefined}
               aria-current={active === section.id ? "true" : undefined}
+              onClick={section.id === "timeline-detail" ? () => setAppendixOpen(true) : undefined}
             >
               {section.label}
             </a>
@@ -160,7 +162,14 @@ export function BriefingShell({
           onClaim={openClaim}
         />
 
-        <details className="briefing-section appendix" id="timeline-detail">
+        <details
+          className="briefing-section appendix"
+          id="timeline-detail"
+          open={appendixOpen}
+          onToggle={(toggleEvent) =>
+            setAppendixOpen((toggleEvent.target as HTMLDetailsElement).open)
+          }
+        >
           <summary>
             <span className="appendix-title">Timeline detail</span>
             <span className="small muted">swimlane board with every finding, silence and lapse</span>

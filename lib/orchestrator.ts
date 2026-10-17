@@ -41,6 +41,13 @@ export async function runPipeline(
   const fetchImpl = options.fetchImpl ?? fetch;
   const maxRetryPasses = options.maxRetryPasses ?? DEFAULT_MAX_RETRY_PASSES;
   const base = `/api/investigations/${investigationId}`;
+  // One lease per pipeline RUN: the server lets concurrent stages through when
+  // they come from the same worker, so the parallel investigators keep working
+  // while a second tab is still refused.
+  const workerId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `w-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   const notify = (stage: StageName, pass: number, status: StageStatus, error?: string | null) => {
     options.onStage?.({ stage, pass, status, error });
@@ -58,7 +65,7 @@ export async function runPipeline(
       response = await fetchImpl(`${base}/${stage}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pass, ...body }),
+        body: JSON.stringify({ pass, worker: workerId, ...body }),
       });
     } catch (error) {
       throw new StageError(notifyName, pass, error instanceof Error ? error.message : String(error));

@@ -594,17 +594,19 @@ const STALE_RUNNING_SECONDS = 180;
 
 export async function acquireStageLease(
   investigationId: string,
+  holder: string,
   ttlSeconds = STAGE_LEASE_SECONDS,
 ): Promise<boolean> {
   const sql = getPool();
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
   const rows = await sql<{ id: string }[]>`
     update investigations
-    set lease = ${sql.json({ expiresAt } as unknown as JSONValue)}
+    set lease = ${sql.json({ holder, expiresAt } as unknown as JSONValue)}
     where id = ${investigationId}
       and (
         lease is null
         or (lease ->> 'expiresAt')::timestamptz < now()
+        or lease ->> 'holder' = ${holder}
       )
     returning id
   `;

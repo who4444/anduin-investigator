@@ -6,6 +6,7 @@ import {
   readInvestigationOrDefault,
   readJsonBody,
   readPass,
+  readWorker,
   runStage,
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
@@ -22,7 +23,9 @@ export async function POST(
   const found = await readInvestigationOrDefault(id);
   if ("response" in found) return found.response;
 
-  const pass = readPass(await readJsonBody(request));
+  const body = await readJsonBody(request);
+  const pass = readPass(body);
+  const worker = readWorker(body);
 
   return runStage(id, "plan", pass, async () => {
     // Identify which client and project this escalation concerns, verified
@@ -46,5 +49,5 @@ export async function POST(
 
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);
     return { plan, scope };
-  });
+  }, worker);
 }
