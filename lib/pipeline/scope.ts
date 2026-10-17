@@ -134,9 +134,10 @@ function anchorKey(anchor: ScopeAnchor): string {
 }
 
 const SOURCE_PRECEDENCE: Record<ScopeAnchor["source"], number> = {
-  declared: 4,
-  escalation: 3,
-  learned: 2,
+  declared: 5,
+  escalation: 4,
+  learned: 3,
+  linked: 2,
   model: 1,
 };
 
@@ -341,6 +342,33 @@ async function proposeFromModel(
   };
 }
 
+/* The declared client is manager ground truth: link it to the registry's
+   features deterministically instead of hoping the model does. A feature
+   whose name STARTS with a declared token ("northwind.example" with
+   "Northwind Logistics", "brightmarket.example" with "Bright Market") belongs
+   to that client; a token merely appearing mid-name is not enough (a channel
+   named vertex-billing must not match a declared "Billing Team"). */
+function linkedToDeclared(declared: string, universe: ScopeUniverse): ScopeAnchor[] {
+  const tokens = declared
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4);
+  if (tokens.length === 0) return [];
+
+  const anchors: ScopeAnchor[] = [];
+  for (const channel of universe.channels) {
+    if (tokens.some((token) => channel.startsWith(token))) {
+      anchors.push({ kind: "channel", value: channel, source: "linked" });
+    }
+  }
+  for (const domain of universe.senderDomains) {
+    if (tokens.some((token) => domain.startsWith(token))) {
+      anchors.push({ kind: "sender-domain", value: domain, source: "linked" });
+    }
+  }
+  return anchors;
+}
+
 /* Two anchors are bridged when their record sets share a record, or share an
    email thread — a reply that cites no ticket still ties its sender's domain
    to the ticket its root discusses. */
@@ -439,7 +467,13 @@ export async function resolveScope(
     ? { kind: "declared-client", value: declared, source: "declared" }
     : null;
 
-  const registryAnchors = dedupeAnchors([...escalationAnchors, ...learnedAnchors, ...modelAnchors]);
+  const linkedAnchors = declared ? linkedToDeclared(declared, universe) : [];
+  const registryAnchors = dedupeAnchors([
+    ...escalationAnchors,
+    ...learnedAnchors,
+    ...linkedAnchors,
+    ...modelAnchors,
+  ]);
 
   if (registryAnchors.length === 0) {
     if (!declared) return null;

@@ -275,6 +275,32 @@ export async function applyLlmMerges(
     if (!byAlias.has(suggestion.alias)) byAlias.set(suggestion.alias, suggestion);
   }
 
+  /* The model chooses the display name; the code decides whether an email
+     address survives. An address-bearing alias must never merge into a bare
+     name — the address is what links people across tools (and what
+     domain-based scoping depends on). */
+  const effectiveCanonical = (alias: string, canonical: string): string => {
+    const aliasEmail = alias.match(EMAIL_PATTERN);
+    if (aliasEmail && !EMAIL_PATTERN.test(canonical)) {
+      return `${canonical} <${aliasEmail[0].toLowerCase()}>`;
+    }
+    return canonical;
+  };
+
+  /* Suggestions can chain (L. Chen -> Lin Chen -> Lin Chen <addr>); follow
+     them to the final canonical so one pass fully merges a chain. */
+  const finalCanonical = (alias: string): string => {
+    let current = alias;
+    const seen = new Set<string>([alias]);
+    for (let step = 0; step < 5; step += 1) {
+      const next = byAlias.get(current);
+      if (!next || seen.has(next.canonical)) break;
+      seen.add(next.canonical);
+      current = next.canonical;
+    }
+    return current;
+  };
+
   const out: EventInput[] = [];
   const recorded = new Set<string>();
 
@@ -285,17 +311,18 @@ export async function applyLlmMerges(
       continue;
     }
 
+    const canonical = effectiveCanonical(event.actor, finalCanonical(event.actor));
     const applied =
       suggestion.confidence >= LLM_MERGE_MIN_CONFIDENCE &&
       hasSignalOverlap(suggestion.alias, suggestion.canonical);
 
-    out.push(applied ? { ...event, actor: suggestion.canonical } : event);
+    out.push(applied ? { ...event, actor: canonical } : event);
 
     if (!recorded.has(event.actor)) {
       recorded.add(event.actor);
       await store.upsertIdentity({
         alias: suggestion.alias,
-        canonical: suggestion.canonical,
+        canonical,
         method: "llm",
         confidence: suggestion.confidence,
         applied,

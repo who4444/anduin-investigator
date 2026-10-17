@@ -65,9 +65,12 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
    (client, project, ticket prefixes, Slack channels, sender domains) from the
    escalation, and CODE keeps only identifiers that actually exist in the
    registry (a key mentioned or referenced in any record exists — an
-   engagement may live entirely in Slack/email). Anchors (declared client,
-   escalation sender/ticket evidence, previously learned identifiers, model
-   proposals) are graded: >2 convergent anchors -> `scoped`, 1-2 -> `partial`
+   engagement may live entirely in Slack/email). The declared client also
+   links deterministically to registry features whose names start with one of
+   its tokens (`northwind.example` with "Northwind Logistics"; a token merely
+   appearing mid-name never links). Anchors (declared client, escalation
+   sender/ticket evidence, deterministic links, previously learned
+   identifiers, model proposals) are graded: >2 convergent anchors -> `scoped`, 1-2 -> `partial`
    (runs scoped but the report shows an "unconfirmed scope" warning with the
    linking evidence), 0 -> unscoped with an honest "every stored record was
    searched" line. Convergence is bridged by shared records AND shared email
@@ -170,10 +173,11 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `npm run lint`, `npm run typecheck`, `npm run build` — build must stay green; Next requires `export const maxDuration = 60` as a LITERAL in every route (an imported constant breaks the build).
 - `npm run demo:gen` — regenerates the synthetic exports into `public/demo/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-demo.ts`.
 - `npm run realistic:gen` — regenerates the four-tenant scattered-data workspace into `public/realistic/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-realistic.ts`.
+- `npm run real:smoke [demo|realistic|vague|all]` — drives a RUNNING app (`npm run start` on :3000 with REAL LLM credentials) through the browser: demo start-page flow, realistic four-tenant zip upload, and a vague escalation; prints stage timings, saves screenshots to `test-results/real/`, fails on any error state. Costs real tokens; not part of the offline suite.
 - `npm run dev` — local app. `.env.local` (never committed) supplies `DATABASE_URL`, `DEEPSEEK_*`, and the optional live-source credentials (`JIRA_*`, `SLACK_TOKEN`, `GMAIL_*`); `lib/db/env.ts` loads it for scripts and tests.
 
 ## Layout & wiring
-- `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`) + `run.ts` (shared ingest flow used by both uploads and live pulls).
+- `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`; suggestions are chained and can never strip an email address out of a canonical — the address is what links people across tools) + `run.ts` (shared ingest flow used by both uploads and live pulls).
 - `lib/sources/*`: the Source implementations — `jira.ts`, `slack.ts`, `gmail.ts` (live, read-only), with the upload path as the export fallback.
 - `lib/agents/*`: `tools.ts` (per-source tools + registry tools + `submit_claim`; searches match text, channel, actor and ticket refs, and results are relevance-ordered via `ranking.ts` — cited refs > literal phrase > tokens, recency tiebreak — before the cap), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
 - `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).

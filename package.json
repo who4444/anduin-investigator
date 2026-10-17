@@ -14,7 +14,8 @@
     "sandbox:seed": "tsx sandbox/seed/engine/index.ts",
     "test": "vitest run",
     "test:ui": "playwright test",
-    "realistic:gen": "tsx scripts/gen-realistic.ts"
+    "realistic:gen": "tsx scripts/gen-realistic.ts",
+    "real:smoke": "tsx scripts/real-smoke.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",

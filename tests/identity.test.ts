@@ -169,6 +169,32 @@ describe("applyLlmMerges", () => {
     });
   });
 
+  it("cannot strip an email address when merging an alias to a bare name", async () => {
+    const events = [event("Dana Okoro <dana@northwind.example>"), event("Dana Okoro")];
+    const { store } = makeStore();
+
+    const out = await applyLlmMerges(
+      events,
+      [{ alias: "Dana Okoro <dana@northwind.example>", canonical: "Dana Okoro", confidence: 0.95 }],
+      store,
+    );
+
+    // The model picked the display name; the code keeps the address, because
+    // cross-source linking and domain-based scoping depend on it. The bare
+    // alias is a different actor and stays untouched in this pass.
+    expect(out.map((e) => e.actor)).toEqual([
+      "Dana Okoro <dana@northwind.example>",
+      "Dana Okoro",
+    ]);
+    expect(store.upsertIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alias: "Dana Okoro <dana@northwind.example>",
+        canonical: "Dana Okoro <dana@northwind.example>",
+        applied: true,
+      }),
+    );
+  });
+
   it("does not apply low-confidence suggestions but records them", async () => {
     const events = [event("L. Chen")];
     const { store } = makeStore();
@@ -207,7 +233,7 @@ describe("applyLlmMerges", () => {
 });
 
 describe("resolveIdentities", () => {
-  it("combines deterministic merges with LLM suggestions", async () => {
+  it("combines deterministic merges with LLM suggestions through a chain", async () => {
     const events = [
       event("l.chen@northwind.com"),
       event("L. Chen"),
@@ -216,14 +242,21 @@ describe("resolveIdentities", () => {
     const { store } = makeStore();
     const client = clientReturning({
       merges: [
+        { alias: "l.chen@northwind.com", canonical: "Lin Chen <l.chen@northwind.com>", confidence: 0.95 },
         { alias: "L. Chen", canonical: "Lin Chen", confidence: 0.95 },
-        { alias: "l.chen@northwind.com", canonical: "Lin Chen", confidence: 0.95 },
+        { alias: "Lin Chen", canonical: "Lin Chen <l.chen@northwind.com>", confidence: 0.95 },
       ],
     });
 
     const out = await resolveIdentities(events, client, store);
 
-    expect(out.map((e) => e.actor)).toEqual(["Lin Chen", "Lin Chen", "Lin Chen"]);
+    // The address-bearing canonical is the identity every form resolves to,
+    // and the chain L. Chen -> Lin Chen -> Lin Chen <addr> resolves in one pass.
+    expect(out.map((e) => e.actor)).toEqual([
+      "Lin Chen <l.chen@northwind.com>",
+      "Lin Chen <l.chen@northwind.com>",
+      "Lin Chen <l.chen@northwind.com>",
+    ]);
   });
 
   it("degrades gracefully when the LLM call fails", async () => {

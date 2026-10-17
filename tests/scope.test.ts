@@ -225,12 +225,13 @@ describe("resolveScope", () => {
       project: "Meridian Billing",
       ticketPrefixes: ["MER"],
       channels: ["meridian-billing"],
-      senderDomains: [],
+      senderDomains: ["northwind.example"],
       confidence: "scoped",
     });
     expect(resolved?.anchors.map((anchor) => anchor.source).sort()).toEqual([
       "declared",
       "escalation",
+      "linked",
       "model",
     ]);
   });
@@ -273,6 +274,41 @@ describe("resolveScope", () => {
       confidence: "none",
     });
     expect(resolved?.anchors).toEqual([{ kind: "declared-client", value: "Ghost Corp", source: "declared" }]);
+  });
+
+  it("links the declared client to its registry features deterministically", async () => {
+    const events = [
+      event({
+        id: "e-nw-mail",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okoro <dana@northwind.example>",
+        text: "Totals still wrong.",
+      }),
+    ];
+
+    // The model proposes nothing — the declared client still links its domain.
+    const resolved = await resolveScope(
+      "Something is broken.",
+      events,
+      scriptedClient({}),
+      "Northwind Logistics",
+    );
+
+    expect(resolved).toMatchObject({ confidence: "partial", senderDomains: ["northwind.example"] });
+    expect(resolved?.anchors.some((anchor) => anchor.source === "linked")).toBe(true);
+  });
+
+  it("does not link a declared token that only appears mid-feature-name", async () => {
+    const events = [
+      event({ id: "e-vertex", source: "slack", channel: "vertex-billing", text: "Vertex noise." }),
+    ];
+
+    const resolved = await resolveScope("Something is broken.", events, scriptedClient({}), "Billing Team");
+
+    // vertex-billing must NOT match a declared "Billing Team", and with no
+    // other evidence the scope stays none.
+    expect(resolved).toMatchObject({ confidence: "none", channels: [] });
   });
 
   it("re-uses re-verified learned anchors even when the model proposes nothing", async () => {
