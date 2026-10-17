@@ -1,0 +1,214 @@
+From Dana Okafor <billing@brightmarket.example> Mon Sep 30 09:01:00 2024
+From: Dana Okafor <billing@brightmarket.example>
+Subject: VAT invoice exports blank (LUM-811)
+Date: Mon, 02 Sep 2024 09:00:00 +0800
+Message-ID: <rw-1@brightmarket.example>
+
+Since the 5.3.0 upgrade our VAT export totals are blank. Finance is blocked.
+
+From Ravi Menon <ravi.menon@lumen.example> Mon Sep 30 09:02:00 2024
+From: Ravi Menon <ravi.menon@lumen.example>
+Subject: Re: VAT invoice exports blank (LUM-811)
+Date: Mon, 02 Sep 2024 12:30:00 +0800
+Message-ID: <rw-2@brightmarket.example>
+References: <rw-1@brightmarket.example>
+
+We have scheduled a fix for the Sep 20 release. Keeping LUM-811 updated.
+
+From Priya Nair <priya.nair@lumen.example> Mon Sep 30 09:03:00 2024
+From: Priya Nair <priya.nair@lumen.example>
+Subject: Re: VAT invoice exports blank (LUM-811)
+Date: Wed, 04 Sep 2024 10:00:00 +0800
+Message-ID: <rw-3@brightmarket.example>
+References: <rw-1@brightmarket.example>
+
+Also tracking in 5.3.3; the billing-v2 piece is separate. Confirm receipt.
+
+From Dana Okafor <billing@brightmarket.example> Mon Sep 30 09:04:00 2024
+From: Dana Okafor <billing@brightmarket.example>
+Subject: Chasing: VAT invoice exports (5 of 12 days)
+Date: Mon, 23 Sep 2024 09:00:00 +0800
+Message-ID: <rw-4@brightmarket.example>
+References: <rw-2@brightmarket.example>
+
+Fourth follow-up since Sep 2. No confirmation on Sep 20.
+
+From Nadia Chen <nadia.chen@lumen.example> Mon Sep 30 09:05:00 2024
+From: Nadia Chen <nadia.chen@lumen.example>
+Subject: Re: VAT invoice exports blank (LUM-811)
+Date: Thu, 26 Sep 2024 18:20:00 +0800
+Message-ID: <rw-5@brightmarket.example>
+References: <rw-2@brightmarket.example>
+
+Correct root found: the VAT rounding change in 5.3.0. Fixed properly in 5.3.4 tomorrow.
+
+From Dana Okafor <billing@brightmarket.example> Mon Sep 30 09:06:00 2024
+From: Dana Okafor <billing@brightmarket.example>
+Subject: Confirmed: VAT totals fixed in 5.3.4
+Date: Sat, 28 Sep 2024 10:00:00 +0800
+Message-ID: <rw-6@brightmarket.example>
+References: <rw-5@brightmarket.example>
+
+Imports verified. Thank you — this took longer than it should have.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:07:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-301 closed: rate-limit bump
+Date: Tue, 03 Sep 2024 09:00:00 +0800
+Message-ID: <rw-7@brightmarket.example>
+
+Acme's rate limits raised to the contracted level.
+
+From Sam Rivera <sam@racm.example> Mon Sep 30 09:08:00 2024
+From: Sam Rivera <sam@racm.example>
+Subject: Re: KST-301 quarterly usage
+Date: Wed, 04 Sep 2024 11:00:00 +0800
+Message-ID: <rw-8@brightmarket.example>
+References: <rw-7@brightmarket.example>
+
+Usage graphs attached for the quarter.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:09:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-401 webhook queue drained
+Date: Thu, 05 Sep 2024 09:00:00 +0800
+Message-ID: <rw-9@brightmarket.example>
+
+Halcyon's payment webhook backlog cleared.
+
+From Tiberiu Stan <support@vertex.example> Mon Sep 30 09:00:00 2024
+From: Tiberiu Stan <support@vertex.example>
+Subject: RAV-501 go-live prep
+Date: Fri, 06 Sep 2024 09:00:00 +0800
+Message-ID: <rw-10@brightmarket.example>
+
+Vertex go-live checklist attached.
+
+From Sam Rivera <sam.rivera@vertex.example> Mon Sep 30 09:01:00 2024
+From: Sam Rivera <sam.rivera@vertex.example>
+Subject: Re: RAV-501 billing roles
+Date: Fri, 06 Sep 2024 15:00:00 +0800
+Message-ID: <rw-11@brightmarket.example>
+References: <rw-10@brightmarket.example>
+
+Adding the finance role mapping today.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:02:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: Your recent support request
+Date: Tue, 10 Sep 2024 09:00:00 +0800
+Message-ID: <rw-12@brightmarket.example>
+
+Thank you for reaching out to our support team. We reviewed your case and confirmed the item you referenced. Please reply if anything differs.
+
+From Tiberiu Stan <support@vertex.example> Mon Sep 30 09:03:00 2024
+From: Tiberiu Stan <support@vertex.example>
+Subject: Your recent support request
+Date: Tue, 10 Sep 2024 09:05:00 +0800
+Message-ID: <rw-13@brightmarket.example>
+
+Thank you for reaching out to our support team. We reviewed your case and confirmed the item you referenced. Please reply if anything differs.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:04:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-402 churn poll
+Date: Sun, 27 Oct 2024 02:40:00 +0200
+Message-ID: <rw-14@brightmarket.example>
+
+VAT totals recheck this morning after the clock change.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:05:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-407 routine update
+Date: Wed, 08 Oct 2024 09:00:00 +0800
+Message-ID: <rw-15@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:06:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-308 routine update
+Date: Wed, 01 Oct 2024 09:00:00 +0800
+Message-ID: <rw-16@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:07:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-409 routine update
+Date: Wed, 02 Oct 2024 09:00:00 +0800
+Message-ID: <rw-17@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:08:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-301 routine update
+Date: Wed, 03 Oct 2024 09:00:00 +0800
+Message-ID: <rw-18@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:09:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-402 routine update
+Date: Wed, 04 Oct 2024 09:00:00 +0800
+Message-ID: <rw-19@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:00:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-303 routine update
+Date: Wed, 05 Oct 2024 09:00:00 +0800
+Message-ID: <rw-20@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:01:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-404 routine update
+Date: Wed, 06 Oct 2024 09:00:00 +0800
+Message-ID: <rw-21@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:02:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-305 routine update
+Date: Wed, 07 Oct 2024 09:00:00 +0800
+Message-ID: <rw-22@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:03:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-406 routine update
+Date: Wed, 08 Oct 2024 09:00:00 +0800
+Message-ID: <rw-23@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:04:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-307 routine update
+Date: Wed, 01 Oct 2024 09:00:00 +0800
+Message-ID: <rw-24@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.
+
+From Noor Haddad <ops@halcyon.example> Mon Sep 30 09:05:00 2024
+From: Noor Haddad <ops@halcyon.example>
+Subject: VEG-408 routine update
+Date: Wed, 02 Oct 2024 09:00:00 +0800
+Message-ID: <rw-25@brightmarket.example>
+
+Churn figures steady; webhook retries nominal.
+
+From Ravi Patel <ops@acme.example> Mon Sep 30 09:06:00 2024
+From: Ravi Patel <ops@acme.example>
+Subject: KST-309 routine update
+Date: Wed, 03 Oct 2024 09:00:00 +0800
+Message-ID: <rw-26@brightmarket.example>
+
+Weekly status unchanged; nothing to escalate.

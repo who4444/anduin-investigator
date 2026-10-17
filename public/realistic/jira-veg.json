@@ -1,0 +1,48 @@
+{
+  "issues": [
+    {
+      "key": "VEG-401",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/VEG-401",
+      "fields": {
+        "summary": "Halcyon webhook backlog",
+        "created": "2024-09-05T09:00:00.000+0000",
+        "reporter": {
+          "displayName": "Noor Haddad"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-05T09:00:00.000+0000",
+              "author": {
+                "displayName": "Noor Haddad"
+              },
+              "body": "Queue drained; Halcyon confirmed payments fine."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "VEG-402",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/VEG-402",
+      "fields": {
+        "summary": "Halcyon churn poll automation",
+        "created": "2024-09-12T09:00:00.000+0000",
+        "reporter": {
+          "displayName": "Noor Haddad"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-12T09:00:00.000+0000",
+              "author": {
+                "displayName": "Noor Haddad"
+              },
+              "body": "Poll cron moved to Sunday."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

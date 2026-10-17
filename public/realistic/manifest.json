@@ -1,0 +1,18 @@
+{
+  "files": [
+    "jira-lumen.json",
+    "jira-kst.json",
+    "jira-veg.json",
+    "jira-rav.json",
+    "workspace-mailbox.mbox",
+    "escalation.eml",
+    "slack/users.json",
+    "slack/channels.json",
+    "slack/lumen-general/messages.json",
+    "slack/kst-rotas/messages.json",
+    "slack/vega-payments/messages.json",
+    "slack/rav-core/messages.json",
+    "slack/vertex-billing/messages.json",
+    "slack/general/messages.json"
+  ]
+}

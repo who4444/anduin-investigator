@@ -104,7 +104,9 @@ export function deterministicAliases(events: EventInput[]): Map<string, string> 
     const unambiguous = [...names.entries()].filter(([name]) => !ambiguousNames.has(name));
     if (unambiguous.length === 0) continue;
     const canonical = pickCanonical(new Map(unambiguous));
-    if (canonical) canonicalByEmail.set(email, canonical);
+    // Email senders keep their address in the canonical actor — cross-source
+    // linking (and any domain-based scoping) depends on it surviving merges.
+    if (canonical) canonicalByEmail.set(email, `${canonical} <${email}>`);
   }
 
   const canonicalByName = new Map<string, string>();

@@ -47,9 +47,9 @@ describe("deterministicAliases", () => {
 
     const aliases = deterministicAliases(events);
 
-    expect(aliases.get("L. Chen <l.chen@northwind.com>")).toBe("Lin Chen");
-    expect(aliases.get("l.chen@northwind.com")).toBe("Lin Chen");
-    expect(aliases.get("Lin Chen <l.chen@northwind.com>")).toBe("Lin Chen");
+    expect(aliases.get("L. Chen <l.chen@northwind.com>")).toBe("Lin Chen <l.chen@northwind.com>");
+    expect(aliases.get("l.chen@northwind.com")).toBe("Lin Chen <l.chen@northwind.com>");
+    expect(aliases.get("Lin Chen <l.chen@northwind.com>")).toBeUndefined();
   });
 
   it("merges exact name matches regardless of case", () => {
@@ -65,14 +65,14 @@ describe("deterministicAliases", () => {
     expect(aliases.size).toBe(0);
   });
 
-  it("picks a clean display name as canonical even when the address form is more frequent", () => {
+  it("keeps the address in the canonical actor even when the name form is more frequent", () => {
     const aliases = deterministicAliases([
       event("Priya Nair"),
       event("Priya Nair <priya.nair@northwind.example>"),
       event("Priya Nair <priya.nair@northwind.example>", "second message"),
     ]);
 
-    expect(aliases.get("Priya Nair <priya.nair@northwind.example>")).toBe("Priya Nair");
+    expect(aliases.get("Priya Nair <priya.nair@northwind.example>")).toBeUndefined();
     expect(aliases.get("Priya Nair")).toBeUndefined();
   });
   it("does not collapse two different people who share a display name", () => {
@@ -96,8 +96,8 @@ describe("deterministicAliases", () => {
 
     const aliases = deterministicAliases(events);
 
-    expect(aliases.get("L. Chen <l.chen@northwind.com>")).toBe("Lin Chen");
-    expect(aliases.get("Lin Chen <l.chen@northwind.com>")).toBe("Lin Chen");
+    expect(aliases.get("L. Chen <l.chen@northwind.com>")).toBe("Lin Chen <l.chen@northwind.com>");
+    expect(aliases.get("Lin Chen <l.chen@northwind.com>")).toBeUndefined();
   });
 });
 
@@ -241,9 +241,9 @@ describe("resolveIdentities", () => {
 
     const out = await resolveIdentities(events, client, store);
 
-    expect(out.map((e) => e.actor)).toEqual(["Lin Chen", "Lin Chen", "Marcus Webb"]);
+    expect(out.map((e) => e.actor)).toEqual(["Lin Chen <l.chen@northwind.com>", "Lin Chen <l.chen@northwind.com>", "Marcus Webb"]);
     expect(store.upsertIdentity).toHaveBeenCalledWith(
-      expect.objectContaining({ alias: "l.chen@northwind.com", canonical: "Lin Chen" }),
+      expect.objectContaining({ alias: "l.chen@northwind.com", canonical: "Lin Chen <l.chen@northwind.com>" }),
     );
   });
 });

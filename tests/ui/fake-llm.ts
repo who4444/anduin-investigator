@@ -137,6 +137,15 @@ function decide(system: string, messages: ChatMessage[]) {
     ).toLowerCase();
     if (user.includes("billing module")) return content({ channels: ["meridian-billing"] });
     if (user.includes("ghost client")) return content({});
+    if (user.includes("lum-811")) {
+      return content({
+        client: "Bright Market",
+        project: "Lumen Ledger",
+        ticketPrefixes: ["LUM"],
+        channels: ["lumen-general"],
+        senderDomains: ["brightmarket.example"],
+      });
+    }
     return content({
       client: "Northwind Logistics",
       project: "Meridian Billing",

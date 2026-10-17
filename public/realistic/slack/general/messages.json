@@ -1,0 +1,62 @@
+[
+  {
+    "ts": "1726131600",
+    "user": "U31",
+    "text": "Quick sync later about the migration notes."
+  },
+  {
+    "ts": "1726181600",
+    "user": "U32",
+    "text": "Ran the nightly checks; nothing new to flag."
+  },
+  {
+    "ts": "1726231600",
+    "user": "U31",
+    "text": "Stats from the last deploy look stable."
+  },
+  {
+    "ts": "1726281600",
+    "user": "U32",
+    "text": "Please review the packet before Thursday's call."
+  },
+  {
+    "ts": "1726331600",
+    "user": "U31",
+    "text": "Ticket triage done for the week."
+  },
+  {
+    "ts": "1726381600",
+    "user": "U32",
+    "text": "Customer pinged about historical records; routed to standard flow."
+  },
+  {
+    "ts": "1726431600",
+    "user": "U31",
+    "text": "Quick sync later about the migration notes."
+  },
+  {
+    "ts": "1726481600",
+    "user": "U32",
+    "text": "Ran the nightly checks; nothing new to flag."
+  },
+  {
+    "ts": "1726531600",
+    "user": "U31",
+    "text": "Stats from the last deploy look stable."
+  },
+  {
+    "ts": "1726999200",
+    "user": "U30",
+    "text": "Dana Okafor here (Bright Market) — still nothing on the VAT totals fix?"
+  },
+  {
+    "ts": "1727026800",
+    "user": "U30",
+    "text": "Second chase on the VAT invoice exports. Day six."
+  },
+  {
+    "ts": "1727082300",
+    "user": "U30",
+    "text": "Third chase. We escalate to procurement Monday if nothing moves."
+  }
+]

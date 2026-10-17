@@ -1,0 +1,114 @@
+[
+  {
+    "ts": "1725440400",
+    "user": "U4",
+    "text": "Quick sync later about the migration notes."
+  },
+  {
+    "ts": "1725476400",
+    "user": "U6",
+    "text": "Ran the nightly checks; nothing new to flag."
+  },
+  {
+    "ts": "1725512400",
+    "user": "U7",
+    "text": "Stats from the last deploy look stable."
+  },
+  {
+    "ts": "1725548400",
+    "user": "U4",
+    "text": "Please review the packet before Thursday's call."
+  },
+  {
+    "ts": "1725584400",
+    "user": "U6",
+    "text": "Ticket triage done for the week."
+  },
+  {
+    "ts": "1725620400",
+    "user": "U7",
+    "text": "Customer pinged about historical records; routed to standard flow."
+  },
+  {
+    "ts": "1725656400",
+    "user": "U4",
+    "text": "Quick sync later about the migration notes."
+  },
+  {
+    "ts": "1725692400",
+    "user": "U6",
+    "text": "Ran the nightly checks; nothing new to flag."
+  },
+  {
+    "ts": "1725728400",
+    "user": "U7",
+    "text": "Stats from the last deploy look stable."
+  },
+  {
+    "ts": "1725764400",
+    "user": "U4",
+    "text": "Please review the packet before Thursday's call."
+  },
+  {
+    "ts": "1725800400",
+    "user": "U6",
+    "text": "Ticket triage done for the week."
+  },
+  {
+    "ts": "1725836400",
+    "user": "U7",
+    "text": "Customer pinged about historical records; routed to standard flow."
+  },
+  {
+    "ts": "1725872400",
+    "user": "U4",
+    "text": "Quick sync later about the migration notes."
+  },
+  {
+    "ts": "1725908400",
+    "user": "U6",
+    "text": "Ran the nightly checks; nothing new to flag."
+  },
+  {
+    "ts": "1725944400",
+    "user": "U7",
+    "text": "Stats from the last deploy look stable."
+  },
+  {
+    "ts": "1725980400",
+    "user": "U4",
+    "text": "Please review the packet before Thursday's call."
+  },
+  {
+    "ts": "1726016400",
+    "user": "U6",
+    "text": "Ticket triage done for the week."
+  },
+  {
+    "ts": "1726052400",
+    "user": "U7",
+    "text": "Customer pinged about historical records; routed to standard flow."
+  },
+  {
+    "ts": "1725791400",
+    "user": "U2",
+    "text": "For the Bright Market escalation (LUM-811): we will ship the export fix in the Sep 20 release.",
+    "thread_ts": "1725791100"
+  },
+  {
+    "ts": "1726848120",
+    "username": "releasebot",
+    "text": "Release 5.3.3 is live: includes billing-v2 fixes across tenants."
+  },
+  {
+    "ts": "1726910100",
+    "user": "U5",
+    "text": "Re-ran finance sandbox: VAT exports are still blank. 5.3.3 did not fix it; reopening soon.",
+    "thread_ts": "1725791100"
+  },
+  {
+    "ts": "1725871800",
+    "user": "U1",
+    "text": "Nadia Chen here: on leave until the 25th; Ravi Menon took over the KESTREL coverage."
+  }
+]

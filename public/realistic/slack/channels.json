@@ -1,0 +1,26 @@
+[
+  {
+    "id": "C1",
+    "name": "lumen-general"
+  },
+  {
+    "id": "C2",
+    "name": "kst-rotas"
+  },
+  {
+    "id": "C3",
+    "name": "vega-payments"
+  },
+  {
+    "id": "C4",
+    "name": "rav-core"
+  },
+  {
+    "id": "C5",
+    "name": "vertex-billing"
+  },
+  {
+    "id": "C6",
+    "name": "general"
+  }
+]

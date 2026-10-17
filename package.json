@@ -13,7 +13,8 @@
     "demo:gen": "tsx scripts/gen-demo.ts",
     "sandbox:seed": "tsx sandbox/seed/engine/index.ts",
     "test": "vitest run",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "realistic:gen": "tsx scripts/gen-realistic.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",

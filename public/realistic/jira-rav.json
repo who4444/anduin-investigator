@@ -1,0 +1,48 @@
+{
+  "issues": [
+    {
+      "key": "RAV-501",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/RAV-501",
+      "fields": {
+        "summary": "Vertex go-live prep",
+        "created": "2024-09-06T09:00:00.000+0000",
+        "reporter": {
+          "displayName": "Tiberiu Stan"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-06T09:00:00.000+0000",
+              "author": {
+                "displayName": "Tiberiu Stan"
+              },
+              "body": "Checklist circulating for review."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "RAV-502",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/RAV-502",
+      "fields": {
+        "summary": "Vertex billing roles sheet",
+        "created": "2024-09-09T09:00:00.000+0000",
+        "reporter": {
+          "displayName": "Sam Rivera"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-09T09:00:00.000+0000",
+              "author": {
+                "displayName": "Sam Rivera"
+              },
+              "body": "Finance role mapping added by Sam Rivera."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

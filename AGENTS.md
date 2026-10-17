@@ -123,6 +123,20 @@ a 13-day Jira silence, a premature "Resolved" contradicting Slack, an
 undocumented client call, ~30% noise. The answer key lives in the README only,
 never in the app runtime.
 
+### Realistic scattered-data scenario (`npm run realistic:gen`)
+`scripts/gen-realistic.ts` emits `public/realistic/` (`+ manifest.json`): a
+276-record four-tenant workspace (Bright Market / Lumen Ledger LUM-* as the
+target engagement; Acme KST-*, Halcyon VEG-*, Vertex RAV-* as distractors,
+~85% of records unrelated) where every answer is a cross-source fragment:
+root cause only in a linked ticket's comment, premature "Resolved"
+challenged in a Slack thread, leave in Slack + handoff only in an assignee
+changelog, client chases inside the vendor's shared `general` room, the
+promise in email, a canned-template twin pair and a distractor channel
+named `vertex-billing` for vague-escalation pressure. Tests: fixture
+roundtrip/trap checks in `tests/realistic.test.ts`, offline full-pipeline
+UI coverage in `tests/ui/realistic.spec.ts` (fake LLM has a LUM branch).
+Live verification protocol + answer key: README.
+
 ### Tech stack
 Next.js (App Router) on Vercel; tool-use LLM API with the model name in an env
 var — this build runs DeepSeek through its OpenAI-compatible endpoint
@@ -149,6 +163,7 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `npm run test:ui` — Playwright UI tests (`tests/ui/**`) against the real built app on port 3100; run `npm run build` first. A deterministic fake OpenAI-compatible LLM (`tests/ui/fake-llm.ts`, started by globalSetup on 9401) serves every agent call, so the full pipeline runs free and offline; seeds hit the content-hash cache across runs, so specs must tolerate both fresh (201) and cached (200) states.
 - `npm run lint`, `npm run typecheck`, `npm run build` — build must stay green; Next requires `export const maxDuration = 60` as a LITERAL in every route (an imported constant breaks the build).
 - `npm run demo:gen` — regenerates the synthetic exports into `public/demo/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-demo.ts`.
+- `npm run realistic:gen` — regenerates the four-tenant scattered-data workspace into `public/realistic/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-realistic.ts`.
 - `npm run dev` — local app. `.env.local` (never committed) supplies `DATABASE_URL`, `DEEPSEEK_*`, and the optional live-source credentials (`JIRA_*`, `SLACK_TOKEN`, `GMAIL_*`); `lib/db/env.ts` loads it for scripts and tests.
 
 ## Layout & wiring

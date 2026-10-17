@@ -1,0 +1,48 @@
+{
+  "issues": [
+    {
+      "key": "KST-301",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/KST-301",
+      "fields": {
+        "summary": "Acme rate-limit increase",
+        "created": "2024-09-03T08:00:00.000+0000",
+        "reporter": {
+          "displayName": "Ravi Patel"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-03T08:00:00.000+0000",
+              "author": {
+                "displayName": "Ravi Patel"
+              },
+              "body": "Raised to the contracted level; monitoring latency."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "KST-302",
+      "self": "https://workspace.atlassian.net/rest/api/2/issue/KST-302",
+      "fields": {
+        "summary": "Acme onboarding cohort sync",
+        "created": "2024-09-08T08:00:00.000+0000",
+        "reporter": {
+          "displayName": "Sam Rivera"
+        },
+        "comment": {
+          "comments": [
+            {
+              "created": "2024-09-08T08:00:00.000+0000",
+              "author": {
+                "displayName": "Sam Rivera"
+              },
+              "body": "Cohort import scheduled for the weekend."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

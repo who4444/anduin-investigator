@@ -221,6 +221,49 @@ Expected picture:
 - **Noise** — roughly 30% of the events (unrelated tickets, chatter, marketing
   mail) carry no signal and should stay in the timeline without generating claims.
 
+## Realistic scattered-data scenario — answer key
+
+`npm run realistic:gen` builds `public/realistic/`: **276 records** across four
+tenant engagements in one evidence set. Bright Market / Lumen Ledger (`LUM-*`)
+is the target; Acme (`KST-*`), Halcyon (`VEG-*`) and Vertex (`RAV-*`) are
+distractors (~85% of records unrelated). All facts below exist only as
+cross-source fragments — check the report against this list.
+
+**The story (Bright Market vs Lumen Ledger, "LUM-811"):**
+
+1. **Root cause** — VAT invoice exports show blank totals since release 5.3.0.
+   The cause is ONLY stated in a comment on the linked ticket **LUM-804**
+   ("KESTREL refactor: billing-v2"): the refactor moved VAT rounding to
+   integer math in 5.3.0 and drops fractional cents on export. The escalation
+   and LUM-811 never mention KESTREL.
+2. **The promise** — Sep 2 (email, Ravi Menon) and Sep 18 (Slack
+   `lumen-general` + Jira): *"fix scheduled for the Sep 20 release"* — status
+   **broken**.
+3. **The premature resolution** — after releasebot announces "5.3.3 is live:
+   includes billing-v2 fixes" (a *contradicting claim*), Priya Nair marks
+   LUM-811 RESOLVED on Sep 21 ("exports verified on our side") while Sam
+   Rivera's QA re-run in `lumen-general` shows VAT exports still blank.
+4. **The real fix** — Sep 26: reopened, correct cause identified; Sep 28:
+   fixed in **5.3.4** and confirmed by Bright Market by email.
+5. **The silence** — Sep 9 → Sep 17: no records at all (an 8-day gap).
+6. **The handoff** — Nadia Chen's leave is stated only in Slack
+   (`lumen-general`, Sep 9); the handoff itself (assignee Alex Weinstein →
+   **Ravi Menon**) is recorded only in the LUM-811 assignee changelog (Sep 22).
+7. **The unanswered chases** — Bright Market (Dana Okafor) chases three times
+   (Sep 22 ×2, Sep 23) in the vendor's **shared `general` room**, plus the
+   Sep 23 email — no reply until Sep 26.
+
+**Expected system behavior:**
+
+- Variants: named + declared → `scoped`; named only → `partial`; vague
+  ("your billing thing broke") + declared → `partial` with caution; vague +
+  nothing → unsolved/unscoped honest line. The distractor channel
+  `vertex-billing` and the twin canned-support emails exist to test that a
+  vague escalation is never confidently anchored to a wrong client.
+- Scope should exclude ~230+ records; every visible claim must cite in-scope
+  records only; bottom-line cells all determined; zero cross-tenant mentions.
+- Live checks of this protocol (real LLM) are manual, per the demo protocol.
+
 ## Architecture notes
 
 - `lib/ingest/*` — parsers (never throw; malformed input degrades to fewer
