@@ -73,6 +73,8 @@ export interface ClaimInput {
   ts?: string;
   status: ClaimStatus;
   confidence: number;
+  /** Which independent issue this finding belongs to (G-23). */
+  issueId?: string | null;
 }
 
 export interface Claim extends ClaimInput {
@@ -94,6 +96,8 @@ export interface Investigation {
   createdAt: string;
   scope: InvestigationScope | null;
   declaredClient: string | null;
+  /** Registry record ids the manager added back from the excluded list (G-01). */
+  scopeOverrides: string[];
   planData: PlanData | null;
   ingestWarnings: string[];
   origin: string;
@@ -147,6 +151,7 @@ export interface GapInput {
   question: string;
   note: string;
   eventIds: string[];
+  issueId?: string | null;
 }
 
 export interface Gap {
@@ -155,6 +160,7 @@ export interface Gap {
   question: string;
   note: string;
   eventIds: string[];
+  issueId?: string | null;
 }
 
 export type InvestigationOrigin = "upload" | "pull" | "demo";
@@ -205,6 +211,13 @@ export interface PlanDateWindow {
   to: string | null;
 }
 
+export interface PlanIssue {
+  title: string;
+  ask: string;
+  summary: string;
+  confidence: number;
+}
+
 export interface PlanData {
   framing: string;
   hypotheses: PlanHypothesis[];
@@ -213,4 +226,28 @@ export interface PlanData {
   people: string[];
   dateWindow: PlanDateWindow;
   unknowns: string[];
+  issues: PlanIssue[];
+  /** Independent issues the model detected beyond the cap (3). */
+  issueOverflow: number;
+}
+
+/** One investigation can contain up to three independent issues (G-23). */
+export interface Issue {
+  id: string;
+  investigationId: string;
+  seq: number;
+  title: string;
+  ask: string;
+  summary: string;
+  confidence: number;
+  confirmed: boolean;
+  createdAt: string;
+}
+
+export interface IssueInput {
+  id?: string;
+  title: string;
+  ask: string;
+  summary: string;
+  confidence: number;
 }

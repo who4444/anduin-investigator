@@ -1,9 +1,10 @@
 import { extractJson, isPlainObject } from "../json";
-import type { PlanData, PlanDateWindow, PlanHypothesis, PlanSource } from "../types";
+import type { PlanData, PlanDateWindow, PlanHypothesis, PlanIssue, PlanSource } from "../types";
 
 /* Structured plans: the analyst returns JSON with hypotheses to test, a source
-   plan, seed terms, people, a focus window and the unknowns; CODE normalizes
-   and caps it. Anything unusable degrades back to free text. */
+   plan, seed terms, people, a focus window, the unknowns, and the independent
+   issues the escalation contains. CODE normalizes and caps it. Anything
+   unusable degrades back to free text. */
 
 const MAX_FRAMING_CHARS = 600;
 const MAX_TEXT_CHARS = 300;
@@ -14,6 +15,10 @@ const MAX_SOURCES = 6;
 const MAX_TERMS = 20;
 const MAX_PEOPLE = 10;
 const MAX_UNKNOWNS = 8;
+const MAX_ISSUES = 3;
+const MAX_ISSUE_TITLE_CHARS = 120;
+const MAX_ISSUE_ASK_CHARS = 600;
+const MAX_ISSUE_SUMMARY_CHARS = 600;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function cleanString(value: unknown, maxChars: number): string {
@@ -91,16 +96,49 @@ export function normalizePlanData(value: unknown): PlanData | null {
   const unknowns = cleanList(value.unknowns, MAX_UNKNOWNS, MAX_TEXT_CHARS);
   const dateWindow = cleanWindow(value.dateWindow);
 
+  // G-23: independent issues. The model may over-split; code caps at three and
+  // reports the overflow separately so the plan can say so honestly.
+  const rawIssues = Array.isArray(value.issues) ? value.issues : [];
+  const issues: PlanIssue[] = [];
+  for (const entry of rawIssues) {
+    if (!isPlainObject(entry)) continue;
+    const title = cleanString(entry.title, MAX_ISSUE_TITLE_CHARS);
+    if (!title) continue;
+    const confidence =
+      typeof entry.confidence === "number" && Number.isFinite(entry.confidence)
+        ? Math.min(1, Math.max(0, entry.confidence))
+        : 0.5;
+    issues.push({
+      title,
+      ask: cleanString(entry.ask, MAX_ISSUE_ASK_CHARS),
+      summary: cleanString(entry.summary, MAX_ISSUE_SUMMARY_CHARS),
+      confidence,
+    });
+    if (issues.length >= MAX_ISSUES) break;
+  }
+  const issueOverflow = Math.max(0, rawIssues.length - issues.length);
+
   const usable =
     Boolean(framing) ||
     hypotheses.length > 0 ||
     sources.length > 0 ||
     searchTerms.length > 0 ||
     people.length > 0 ||
-    unknowns.length > 0;
+    unknowns.length > 0 ||
+    issues.length > 0;
   if (!usable) return null;
 
-  return { framing, hypotheses, sources, searchTerms, people, dateWindow, unknowns };
+  return {
+    framing,
+    hypotheses,
+    sources,
+    searchTerms,
+    people,
+    dateWindow,
+    unknowns,
+    issues,
+    issueOverflow,
+  };
 }
 
 export function parsePlanData(content: string): PlanData | null {
@@ -110,6 +148,23 @@ export function parsePlanData(content: string): PlanData | null {
 export function renderPlan(data: PlanData): string {
   const parts: string[] = [];
   if (data.framing) parts.push(data.framing);
+
+  if (data.issues.length > 0) {
+    parts.push(
+      [
+        `Issues in this escalation (${data.issues.length}):`,
+        ...data.issues.map(
+          (issue, index) =>
+            `${index + 1}. ${issue.title}${issue.ask ? ` — the client asks: ${issue.ask}` : ""}`,
+        ),
+        ...(data.issueOverflow > 0
+          ? [
+              `The escalation appears to contain ${data.issues.length + data.issueOverflow} independent issues; only the first ${data.issues.length} are in scope here. Ask the manager to split the rest.`,
+            ]
+          : []),
+      ].join("\n"),
+    );
+  }
 
   if (data.hypotheses.length > 0) {
     parts.push(

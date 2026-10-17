@@ -17,8 +17,11 @@ test("the built-in scenario runs end to end and lands on the answer-first report
 
   // The answer comes first: scoreboard, verdict context and actions.
   await expect(page.locator("#answer")).toBeVisible();
+  // A cached investigation keeps the scope resolved by the run that created
+  // it (a real-LLM smoke run may resolve differently), so assert only the
+  // invariant — the declared client. Scope resolution itself is covered by
+  // scope.spec.ts on fresh runs.
   await expect(page.locator(".scope-line")).toContainText("Northwind Logistics");
-  await expect(page.locator(".scope-line")).toContainText("Meridian Billing");
   await expect(page.locator(".scoreboard-cell")).toHaveCount(5);
   await expect(page.locator(".client-says")).toContainText("The client says");
   await expect(page.locator(".do-now .action-card").first()).toBeVisible();

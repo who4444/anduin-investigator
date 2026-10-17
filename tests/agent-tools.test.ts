@@ -395,6 +395,60 @@ describeDb("agent tools", () => {
     }
   });
 
+  it("surfaces a client message posted in a shared channel (G-01 recall guard)", async () => {
+    const { createInvestigation, insertEvents, setScope } = await import("../lib/store");
+    const id = await createInvestigation({
+      title: `Tools chase ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+
+    await insertEvents(id, [
+      // The client chases in the vendor's shared room; the identity link is
+      // the actor's own address (the same signal identity resolution fills
+      // in via actor_resolved at ingest).
+      {
+        id: "e_chase_general",
+        source: "slack",
+        ts: "2024-09-26T09:00:00.000Z",
+        actor: "Dana Okoro <dana.okafor@northwind.example>",
+        channel: "general",
+        text: "Northwind here — invoice totals are still wrong. Anyone?",
+      },
+      {
+        id: "e_noise_foreign",
+        source: "slack",
+        ts: "2024-09-25T09:00:00.000Z",
+        actor: "Ravi Patel <ravi@acme.example>",
+        channel: "kestrel-eng",
+        text: "Acme deploy done.",
+      },
+    ]);
+    await setScope(id, {
+      client: "Northwind Logistics",
+      project: "Meridian Billing",
+      ticketPrefixes: ["MER"],
+      channels: ["meridian-billing"],
+      senderDomains: ["northwind.example"],
+      confidence: "scoped",
+      anchors: [],
+    });
+
+    try {
+      const tools = buildAgentTools(id, "root_cause");
+      const slack = JSON.parse(await tools.exec("search_slack", { query: "" })) as {
+        items: { id: string; channel: string }[];
+      };
+      const ids = slack.items.map((item) => item.id);
+      expect(ids).toContain("e_chase_general");
+      // Another tenant's channel stays hidden.
+      expect(ids).not.toContain("e_noise_foreign");
+    } finally {
+      await setScope(id, null);
+    }
+  });
+
   it("returns the on-point record first instead of the oldest matches", async () => {
     const { insertEvents } = await import("../lib/store");
     const filler = Array.from({ length: 35 }, (_, index) => ({

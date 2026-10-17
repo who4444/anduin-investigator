@@ -45,12 +45,14 @@ function useScrollSpy(): string {
 export function BriefingShell({
   report,
   progressHref,
+  rerunHref,
   synthetic,
   cached,
   live,
 }: {
   report: ReportPayload;
   progressHref: string;
+  rerunHref: string;
   synthetic: boolean;
   cached: boolean;
   live: boolean;
@@ -63,6 +65,29 @@ export function BriefingShell({
   const active = useScrollSpy();
 
   const sources = [...new Set(report.events.map((event) => event.source))];
+  const multi = report.issues.length > 1;
+  const activeIssue = report.issues.find((issue) => issue.id === report.activeIssueId) ?? null;
+
+  // G-01: excluded client evidence outranks every other drafting restriction.
+  const excludedClientRecords = report.scope?.excludedClientRecords ?? 0;
+  const replyDisabledReason =
+    excludedClientRecords > 0
+      ? `${excludedClientRecords} record${excludedClientRecords === 1 ? "" : "s"} authored by the client ${
+          excludedClientRecords === 1 ? "is" : "are"
+        } excluded from this investigation — a reply could contradict evidence that was never searched, so drafting is blocked until the scope is resolved.`
+      : multi && !report.activeIssueId
+        ? "Open an issue tab to draft its reply; the combined view mixes issues."
+        : null;
+
+  const issueHref = (issueId: string | null) => {
+    const query = new URLSearchParams();
+    if (issueId) query.set("issue", issueId);
+    else query.set("issue", "all");
+    if (synthetic) query.set("synthetic", "1");
+    if (cached) query.set("cached", "1");
+    if (live) query.set("live", "1");
+    return `/investigations/${report.investigation.id}?${query.toString()}`;
+  };
 
   const openClaim = (claimId: string | undefined) => {
     if (!claimId) return;
@@ -75,7 +100,11 @@ export function BriefingShell({
     setReplyState("loading");
     setReplyError(null);
     try {
-      const response = await fetch(`/api/investigations/${report.investigation.id}/reply`, { method: "POST" });
+      const response = await fetch(`/api/investigations/${report.investigation.id}/reply`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ issueId: report.activeIssueId }),
+      });
       const payload = (await response.json().catch(() => ({}))) as {
         sentences?: { text: string; claimIds: string[] }[];
         error?: string;
@@ -94,7 +123,7 @@ export function BriefingShell({
       <div className="briefing-top">
         <div className="report-header-inner">
           <div className="spread">
-            <h1 style={{ fontSize: 20, fontWeight: 700 }}>{report.investigation.title}</h1>
+            <h1 className="report-title">{report.investigation.title}</h1>
             <span className="row">
               {synthetic && <span className="chip chip-broken">synthetic data</span>}
               {live && <span className="chip">pulled live</span>}
@@ -112,6 +141,49 @@ export function BriefingShell({
             <span aria-hidden>·</span>
             <a href={progressHref}>How this was produced</a>
           </div>
+          {multi && (
+            <div className="issue-heading">
+              <span className="chip">
+                {activeIssue ? `Issue ${activeIssue.seq} of ${report.issues.length}` : "All issues"}
+              </span>
+              <span className="issue-heading-title">
+                {activeIssue ? activeIssue.title : "Combined view — findings from every issue"}
+              </span>
+            </div>
+          )}
+          {multi && activeIssue?.ask && (
+            <p className="small muted issue-ask">
+              <strong>The client asks on this issue:</strong> {activeIssue.ask}
+            </p>
+          )}
+          {multi && report.activeIssueId && report.unassignedClaims > 0 && (
+            <p className="alert alert-warn">
+              {report.unassignedClaims} finding{report.unassignedClaims === 1 ? "" : "s"} could not
+              be attributed to an issue and appear only in <a href={issueHref(null)}>All issues</a>.
+            </p>
+          )}
+          {multi && (
+            <nav className="issue-index" aria-label="Issues in this escalation">
+              <a
+                href={issueHref(null)}
+                className={report.activeIssueId ? undefined : "is-active"}
+                aria-current={report.activeIssueId ? undefined : "page"}
+              >
+                All issues
+              </a>
+              {report.issues.map((issue) => (
+                <a
+                  key={issue.id}
+                  href={issueHref(issue.id)}
+                  className={report.activeIssueId === issue.id ? "is-active" : undefined}
+                  aria-current={report.activeIssueId === issue.id ? "page" : undefined}
+                  title={issue.title}
+                >
+                  <span className="tabular">{issue.seq}</span> {issue.title}
+                </a>
+              ))}
+            </nav>
+          )}
         </div>
         <nav className="section-index" aria-label="Report sections">
           {SECTIONS.map((section) => (
@@ -135,6 +207,15 @@ export function BriefingShell({
             <a href={progressHref}>Watch the run</a> and reload afterwards.
           </p>
         )}
+        {multi && !report.activeIssueId && (
+          <IssueOverview report={report} hrefFor={issueHref} />
+        )}
+        {multi && !report.activeIssueId && (
+          <p className="alert alert-warn">
+            Combined view: findings from {report.issues.length} independent issues are shown
+            together below. Open an issue above for its own timeline, promises and reply.
+          </p>
+        )}
         <AnswerSection report={report} onClaim={openClaim} onEvent={openEvent} />
 
         <section className="briefing-section" id="story" aria-labelledby="story-title">
@@ -153,13 +234,14 @@ export function BriefingShell({
 
         <PromisesSection report={report} onClaim={openClaim} onEvent={openEvent} />
         <CausesSection report={report} onClaim={openClaim} />
-        <GapsSection report={report} onClaim={openClaim} onEvent={openEvent} />
+        <GapsSection report={report} onClaim={openClaim} onEvent={openEvent} rerunHref={rerunHref} />
         <ReplySection
           sentences={reply?.sentences ?? null}
           state={replyState}
           error={replyError}
           onDraft={draftReply}
           onClaim={openClaim}
+          disabledReason={replyDisabledReason}
         />
 
         <details
@@ -193,5 +275,53 @@ export function BriefingShell({
         />
       )}
     </div>
+  );
+}
+
+function IssueOverview({
+  report,
+  hrefFor,
+}: {
+  report: ReportPayload;
+  hrefFor: (issueId: string | null) => string;
+}) {
+  return (
+    <section className="briefing-section issue-overview" id="issues" aria-labelledby="issues-title">
+      <h2 id="issues-title">Issues in this escalation</h2>
+      <p className="small muted">
+        {report.issues.length} independent issues were investigated in one evidence set. Each has
+        its own timeline, promises and draft reply; nothing is merged across them.
+      </p>
+      <div className="issue-grid">
+        {report.issues.map((issue) => (
+          <a className="issue-card" key={issue.id} href={hrefFor(issue.id)}>
+            <span className="row">
+              <span className="small muted tabular">Issue {issue.seq}</span>
+              <span className="chip">
+                {issue.verified} verified · {issue.supported} check
+                {issue.flagged > 0 ? ` · ${issue.flagged} flagged` : ""}
+              </span>
+            </span>
+            <strong>{issue.title}</strong>
+            {issue.ask && <span className="small">{issue.ask}</span>}
+            {issue.topFinding && (
+              <span className="small muted issue-card-finding">
+                Top finding: {issue.topFinding}
+              </span>
+            )}
+            <span className="small muted">
+              {issue.total} finding{issue.total === 1 ? "" : "s"} · open issue →
+            </span>
+          </a>
+        ))}
+      </div>
+      {report.unassignedClaims > 0 && (
+        <p className="alert alert-warn">
+          {report.unassignedClaims} finding{report.unassignedClaims === 1 ? "" : "s"} could not be
+          assigned to an issue. They appear in the combined view only; open an issue to see the
+          findings that were attributed.
+        </p>
+      )}
+    </section>
   );
 }

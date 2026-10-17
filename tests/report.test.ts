@@ -12,6 +12,7 @@ import {
   buildTrust,
 } from "../lib/report/build";
 import type { Claim, Event, SkepticNote } from "../lib/types";
+import { duplicatePromise } from "./fixtures/p0";
 
 const event = (over: Partial<Event> & { id: string; ts: string }): Event => ({
   investigationId: "inv",
@@ -454,6 +455,17 @@ describe("report view", () => {
     expect(view.audit).toHaveLength(2);
     expect(view.lanes.length).toBeGreaterThan(0);
     expect(view.causes.length).toBeGreaterThan(0);
+  });
+});
+
+/* G-05 ratchet: one promise is one ledger row even when three tools word it
+   differently and disagree on status; a failing outcome outweighs a "kept"
+   reading. Flip to `it` when the commitment entity/dedupe lands. */
+describe("commitment dedupe (G-05)", () => {
+  it.fails("renders one row for one promise spread across three tools", () => {
+    const rows = buildLedger(duplicatePromise);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].outcome).toBe("broken");
   });
 });
 

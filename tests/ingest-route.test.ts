@@ -180,6 +180,28 @@ describeDb("POST /api/investigations", () => {
     expect(stored?.ingestWarnings.some((warning) => warning.includes("readme.txt"))).toBe(true);
   });
 
+  it.fails("does not serve a cached run produced by a different model version", async () => {
+    const originalModel = process.env.DEEPSEEK_MODEL;
+    try {
+      process.env.DEEPSEEK_MODEL = "model-a";
+      const first = await POST(request(buildForm()));
+      const firstBody = await first.json();
+      if (firstBody.investigationId) created.push(firstBody.investigationId);
+      const { upsertStage } = await import("../lib/store");
+      await upsertStage(firstBody.investigationId, "assemble", 1, "done");
+
+      // Same files, same escalation, same declared client — but the run that
+      // produced the cache entry used a different model. Serving it would
+      // hand back findings this model never produced (G-08).
+      process.env.DEEPSEEK_MODEL = "model-b";
+      const second = await POST(request(buildForm()));
+      expect(second.status).toBe(201);
+    } finally {
+      if (originalModel === undefined) delete process.env.DEEPSEEK_MODEL;
+      else process.env.DEEPSEEK_MODEL = originalModel;
+    }
+  });
+
   it("rejects an upload with no files", async () => {
     const response = await POST(request(new FormData()));
     expect(response.status).toBe(400);

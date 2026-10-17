@@ -53,3 +53,4 @@ sandbox/
 /test-results/
 /playwright-report/
 /blob-report/
+.eval

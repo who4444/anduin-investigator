@@ -113,6 +113,20 @@ export interface RejectedClaim {
   source: SourceKind | null;
 }
 
+/** G-23: one card per independent issue on the case overview. */
+export interface IssueSummary {
+  id: string;
+  seq: number;
+  title: string;
+  ask: string;
+  confidence: number;
+  total: number;
+  verified: number;
+  supported: number;
+  flagged: number;
+  topFinding: string | null;
+}
+
 export interface ReportView {
   metrics: Metric[];
   failures: Finding[];
@@ -137,6 +151,8 @@ export interface ReportPayload extends ReportView {
     ingestWarnings: string[];
   };
   events: Event[];
+  /** Scope-excluded records offered for the manager's review/add-back (G-01). */
+  excludedEvents: Event[];
   claims: Claim[];
   stats: { total: number; verified: number; supported: number; rejected: number; flagged: number };
   stages: Stage[];
@@ -148,6 +164,9 @@ export interface ReportPayload extends ReportView {
   briefing: Briefing;
   bottomLine: BottomLine;
   scope: ReportScope | null;
+  issues: IssueSummary[];
+  activeIssueId: string | null;
+  unassignedClaims: number;
   complete: boolean;
   /** Question groups with no verified/supported findings after all passes. */
   missing: string[];
@@ -690,7 +709,7 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
 const MONTHS = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec";
 const DATE_TOKEN = new RegExp(`(?:${MONTHS})\\s+\\d{1,2}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2} ${MONTHS}`, "i");
 
-function extractDeadline(text: string, referenceIso: string | null): { label: string; iso: string | null } | null {
+export function extractDeadline(text: string, referenceIso: string | null): { label: string; iso: string | null } | null {
   const match = text.match(DATE_TOKEN);
   if (!match) return null;
   const label = match[0];

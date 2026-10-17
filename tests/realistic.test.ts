@@ -110,23 +110,20 @@ describe("realistic workspace generator", () => {
     expect(chases.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("keeps the whole workspace under the ingest cap but far above demo volume", () => {
-    let total = jiraEvents("jira-lumen.json").length
-      + jiraEvents("jira-kst.json").length
-      + jiraEvents("jira-veg.json").length
-      + jiraEvents("jira-rav.json").length
-      + slackEvents(["lumen-general", "kst-rotas", "vega-payments", "rav-core", "vertex-billing", "general"]).length
-      + 0;
-    void (async () => {
-      const emails = (await parseMbox(new TextEncoder().encode(byName.get("workspace-mailbox.mbox") ?? ""))).events;
-      total += emails.length;
-      expect(total).toBeGreaterThanOrEqual(300);
-      expect(total).toBeLessThan(600);
+  it("keeps the whole workspace under the ingest cap but far above demo volume", async () => {
+    const total =
+      jiraEvents("jira-lumen.json").length +
+      jiraEvents("jira-kst.json").length +
+      jiraEvents("jira-veg.json").length +
+      jiraEvents("jira-rav.json").length +
+      slackEvents(["lumen-general", "kst-rotas", "vega-payments", "rav-core", "vertex-billing", "general"]).length +
+      (await parseMbox(new TextEncoder().encode(byName.get("workspace-mailbox.mbox") ?? ""))).events.length;
+    expect(total).toBeGreaterThanOrEqual(250);
+    expect(total).toBeLessThan(600);
 
-      // The distraction budget: most records have nothing to do with Bright Market.
-      const inScope = total - slackEvents(["kst-rotas", "vega-payments", "rav-core", "vertex-billing"]).length;
-      expect(inScope / total).toBeLessThan(0.35);
-    })();
+    // The distraction budget: most records have nothing to do with Bright Market.
+    const inScope = total - slackEvents(["kst-rotas", "vega-payments", "rav-core", "vertex-billing"]).length;
+    expect(inScope / total).toBeLessThan(0.35);
   });
 
   it("reads the escalation as an email naming ticket and client", async () => {

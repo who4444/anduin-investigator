@@ -27,6 +27,38 @@ const PLAN = [
   "- Ownership: trace who owned the release, the leave handoff, and the unanswered chasers.",
 ].join("\n");
 
+const MULTI_PLAN = JSON.stringify({
+  issues: [
+    {
+      title: "VAT invoice totals blank after 2.1.0",
+      ask: "Explain why VAT totals stayed blank and when the fix actually shipped.",
+      summary: "Billing-v2 rounding regression in 2.1.0; the fix slipped past the Sep 20 promise.",
+      confidence: 0.9,
+    },
+    {
+      title: "SSO login fails for finance after identity migration",
+      ask: "Explain why finance could not sign in and when SSO actually worked.",
+      summary: "Identity-service 3.4 dropped the SAML signing certificate; fixed in 3.4.1.",
+      confidence: 0.9,
+    },
+  ],
+  issueOverflow: 0,
+  framing: "Two independent failures: billing totals and SSO authentication.",
+  hypotheses: [
+    { statement: "The billing-v2 refactor caused the blank VAT totals.", test: "Read ORB-150 and ORB-101.", falsify: "Totals worked on 2.1.0." },
+    { statement: "The identity migration dropped the SAML certificate.", test: "Read ORB-160 and ORB-140.", falsify: "SSO worked after the migration." },
+  ],
+  sources: [
+    { source: "jira", approach: "Read ORB-101, ORB-140, ORB-150 and ORB-160 fully." },
+    { source: "email", approach: "Read both Contoso threads." },
+    { source: "slack", approach: "Search general and orbit-support." },
+  ],
+  searchTerms: ["VAT", "invoice", "SSO", "SAML", "2.1.0", "ORB-101", "ORB-140"],
+  people: ["Dana Okafor", "Ravi Menon", "Leo Park", "Maya Rao", "Sam Ortiz"],
+  dateWindow: { from: "2024-09-01", to: null },
+  unknowns: ["Who approved each release?"],
+});
+
 function content(value: unknown) {
   return {
     role: "assistant",
@@ -50,6 +82,17 @@ function investigatorTurn(
   kind: "root_cause" | "commitments" | "ownership",
   messages: ChatMessage[],
 ) {
+  const userText = messages
+    .filter((message) => message.role === "user")
+    .map((message) => String(message.content ?? ""))
+    .join("\n");
+  const issueIds = [
+    ...new Set(
+      [...userText.matchAll(/issue_id=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
   const toolMessages = messages.filter((message) => message.role === "tool");
   if (toolMessages.length === 0) {
     return toolCalls([
@@ -86,6 +129,38 @@ function investigatorTurn(
   const status = kind === "commitments" ? "broken" : "n/a";
   const label =
     kind === "root_cause" ? "Root cause" : kind === "commitments" ? "Commitment" : "Ownership";
+
+  // G-23 fixture: when the prompt names more than one issue, submit one finding
+  // per issue so both report tabs have evidence.
+  if (issueIds.length > 1) {
+    const isInvoice = (text: string) => /vat|invoice|billing|2\.1\.0/i.test(text);
+    const isSso = (text: string) => /sso|saml|identity|login|3\.4/i.test(text);
+    const picks = [
+      usable.find((item) => isInvoice(item.text ?? "")),
+      usable.find((item) => isSso(item.text ?? "")),
+    ];
+    const calls = picks.flatMap((item, index) => {
+      if (!item || !item.text || !issueIds[index]) return [];
+      const quote = item.text.slice(0, Math.min(60, item.text.length));
+      return [
+        {
+          name: "submit_claim",
+          args: {
+            type,
+            text: `${label} finding: ${quote}`,
+            quote,
+            item_id: item.id,
+            actor: item.actor,
+            status,
+            confidence: 0.9,
+            issue_id: issueIds[index],
+          },
+        },
+      ];
+    });
+    if (calls.length > 0) return toolCalls(calls);
+  }
+
   return toolCalls([
     {
       name: "submit_claim",
@@ -137,6 +212,15 @@ function decide(system: string, messages: ChatMessage[]) {
     ).toLowerCase();
     if (user.includes("billing module")) return content({ channels: ["meridian-billing"] });
     if (user.includes("ghost client")) return content({});
+    if (user.includes("contoso") || user.includes("sso login")) {
+      return content({
+        client: "Contoso",
+        project: "Orbit",
+        ticketPrefixes: ["ORB"],
+        channels: ["orbit-support", "general"],
+        senderDomains: ["contoso.example"],
+      });
+    }
     if (user.includes("lum-811")) {
       return content({
         client: "Bright Market",
@@ -156,7 +240,13 @@ function decide(system: string, messages: ChatMessage[]) {
   }
   if (system.includes("check one claim against one quote")) return content({ supports: "yes" });
   if (system.includes("skeptic")) return content({ issues: [] });
-  if (system.includes("issue analyst")) return content(PLAN);
+  if (system.includes("issue analyst")) {
+    const user = String(
+      messages.find((message) => message.role === "user")?.content ?? "",
+    ).toLowerCase();
+    if (user.includes("contoso") || user.includes("sso login")) return content(MULTI_PLAN);
+    return content(PLAN);
+  }
   if (system.includes("drafting the client reply")) return replyTurn(messages);
   if (system.includes("investigator")) {
     const kind = system.includes("root cause")

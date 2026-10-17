@@ -69,6 +69,13 @@ export function AnswerSection({
           {scope.confidence === "partial" && (
             <span className="small muted"> — verify before relying on it.</span>
           )}
+          {scope.includedByReview > 0 && (
+            <span className="small muted">
+              {" "}
+              · {scope.includedByReview} reviewed record{scope.includedByReview === 1 ? "" : "s"} added
+              back into scope
+            </span>
+          )}
         </p>
       )}
 
@@ -77,6 +84,15 @@ export function AnswerSection({
           {scope?.client
             ? `No scope could be confirmed for ${scope.client} — every stored record was searched.`
             : "No client or project could be identified from the escalation — every stored record was searched."}
+        </p>
+      )}
+
+      {scope && scope.excludedClientRecords > 0 && (
+        <p className="alert alert-error">
+          {scope.excludedClientRecords} record{scope.excludedClientRecords === 1 ? "" : "s"} authored
+          by the client {scope.excludedClientRecords === 1 ? "is" : "are"} excluded from this
+          investigation — a reply could contradict evidence that was never searched, so drafting is
+          blocked until the scope is resolved.
         </p>
       )}
 

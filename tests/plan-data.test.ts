@@ -51,6 +51,36 @@ describe("parsePlanData", () => {
     expect(parsePlanData("just prose, no JSON")).toBeNull();
   });
 
+  it("caps independent issues at three and reports the overflow", () => {
+    const parsed = parsePlanData(
+      JSON.stringify({
+        framing: "Two unrelated failures.",
+        issues: [
+          { title: "Invoice totals", ask: "Why blank?", summary: "Billing rounding.", confidence: 0.9 },
+          { title: "SSO login", ask: "Why blocked?", summary: "SAML certificate.", confidence: 0.8 },
+          { title: "Third", ask: "?", summary: "", confidence: 0.5 },
+          { title: "Fourth", ask: "?", summary: "", confidence: 0.5 },
+        ],
+      }),
+    );
+
+    expect(parsed?.issues).toHaveLength(3);
+    expect(parsed?.issues[0].title).toBe("Invoice totals");
+    expect(parsed?.issues[0].confidence).toBe(0.9);
+    expect(parsed?.issueOverflow).toBe(1);
+  });
+
+  it("drops issue entries without a title", () => {
+    const parsed = parsePlanData(
+      JSON.stringify({
+        framing: "x",
+        issues: [{ title: "", ask: "no title" }, { title: "Valid", ask: "ok" }],
+      }),
+    );
+    expect(parsed?.issues.map((issue) => issue.title)).toEqual(["Valid"]);
+    expect(parsed?.issueOverflow).toBe(1);
+  });
+
   it("caps oversized arrays and drops unusable entries", () => {
     const parsed = parsePlanData(
       JSON.stringify({
@@ -81,6 +111,8 @@ describe("renderPlan", () => {
       people: ["Priya"],
       dateWindow: { from: "2024-09-01", to: null },
       unknowns: ["Who approved?"],
+      issues: [],
+      issueOverflow: 0,
     });
 
     expect(text).toContain("Framing text.");

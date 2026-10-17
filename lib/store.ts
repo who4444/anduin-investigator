@@ -17,6 +17,8 @@ import type {
   IdentityResolutionInput,
   Investigation,
   InvestigationScope,
+  Issue,
+  IssueInput,
   NewInvestigation,
   PlanData,
   ScopeAnchor,
@@ -52,6 +54,7 @@ interface InvestigationRow {
   plan_data: unknown;
   ingest_warnings: unknown;
   origin: string | null;
+  scope_overrides: unknown;
 }
 
 function mapScope(value: unknown): InvestigationScope | null {
@@ -105,6 +108,35 @@ function mapInvestigation(row: InvestigationRow): Investigation {
       ? (row.ingest_warnings as unknown[]).filter((entry): entry is string => typeof entry === "string")
       : [],
     origin: row.origin ?? "upload",
+    scopeOverrides: Array.isArray(row.scope_overrides)
+      ? (row.scope_overrides as unknown[]).filter((entry): entry is string => typeof entry === "string")
+      : [],
+  };
+}
+
+interface IssueRow {
+  id: string;
+  investigation_id: string;
+  seq: number;
+  title: string;
+  ask: string;
+  summary: string;
+  confidence: number;
+  confirmed: boolean;
+  created_at: Date | string;
+}
+
+function mapIssue(row: IssueRow): Issue {
+  return {
+    id: row.id,
+    investigationId: row.investigation_id,
+    seq: row.seq,
+    title: row.title,
+    ask: row.ask,
+    summary: row.summary,
+    confidence: row.confidence,
+    confirmed: row.confirmed,
+    createdAt: toIso(row.created_at) as string,
   };
 }
 
@@ -156,6 +188,7 @@ interface ClaimRow {
   verify_error: string | null;
   verify_checks: Record<string, unknown> | null;
   skeptic_flag: boolean;
+  issue_id: string | null;
 }
 
 function mapVerifyStatus(raw: string): VerifyStatus {
@@ -185,6 +218,7 @@ function mapClaim(row: ClaimRow): Claim {
     verifyError: row.verify_error,
     checks,
     skepticFlag: row.skeptic_flag,
+    issueId: row.issue_id ?? null,
   };
 }
 
@@ -194,6 +228,7 @@ interface GapRow {
   question: string;
   note: string;
   event_ids: string[] | null;
+  issue_id: string | null;
 }
 
 function mapGap(row: GapRow): Gap {
@@ -203,6 +238,7 @@ function mapGap(row: GapRow): Gap {
     question: row.question,
     note: row.note,
     eventIds: row.event_ids ?? [],
+    issueId: row.issue_id ?? null,
   };
 }
 
@@ -295,6 +331,7 @@ const CLAIM_COLUMNS = [
   "status",
   "confidence",
   "dedupe_key",
+  "issue_id",
 ] as const;
 
 /* Must match the migration's key: md5(event_id || '|' || btrim(lower(regexp_replace(text, '\s+', ' ', 'g')))) */
@@ -326,7 +363,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides
     from investigations
     where id = ${id}
     limit 1
@@ -339,9 +376,102 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
   await sql`update investigations set scope = ${scope ? sql.json(scope as unknown as JSONValue) : null} where id = ${id}`;
 }
 
+/* G-01 review: records the manager added back from the excluded list. The
+   route validates ids against the registry before this is called. */
+export async function setScopeOverrides(id: string, eventIds: string[]): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set scope_overrides = ${sql.json(eventIds as unknown as JSONValue)} where id = ${id}`;
+}
+
 export async function setPlanData(id: string, data: PlanData | null): Promise<void> {
   const sql = getPool();
   await sql`update investigations set plan_data = ${data ? sql.json(data as unknown as JSONValue) : null} where id = ${id}`;
+}
+
+/* G-23: the plan stage proposes up to three issues. They are replaced as a
+   unit before any claim exists; a single issue is auto-confirmed, multiple
+   issues wait for the manager's pre-run review. */
+export async function savePlanIssues(
+  investigationId: string,
+  inputs: IssueInput[],
+): Promise<Issue[]> {
+  const sql = getPool();
+  const confirmed = inputs.length <= 1;
+  const rows = await sql.begin(async (tx) => {
+    await tx`delete from issues where investigation_id = ${investigationId}`;
+    const inserted: IssueRow[] = [];
+    for (let index = 0; index < inputs.length; index += 1) {
+      const input = inputs[index];
+      const result = await tx<IssueRow[]>`
+        insert into issues (investigation_id, seq, title, ask, summary, confidence, confirmed)
+        values (
+          ${investigationId},
+          ${index + 1},
+          ${input.title},
+          ${input.ask ?? ""},
+          ${input.summary ?? ""},
+          ${Math.min(1, Math.max(0, input.confidence))},
+          ${confirmed}
+        )
+        returning id, investigation_id, seq, title, ask, summary, confidence, confirmed, created_at
+      `;
+      if (result[0]) inserted.push(result[0]);
+    }
+    return inserted;
+  });
+  return rows.map(mapIssue);
+}
+
+export async function confirmIssues(
+  investigationId: string,
+  inputs: IssueInput[],
+): Promise<Issue[]> {
+  const sql = getPool();
+  const rows = await sql.begin(async (tx) => {
+    await tx`delete from issues where investigation_id = ${investigationId}`;
+    const inserted: IssueRow[] = [];
+    for (let index = 0; index < inputs.length; index += 1) {
+      const input = inputs[index];
+      const result = await tx<IssueRow[]>`
+        insert into issues (investigation_id, seq, title, ask, summary, confidence, confirmed)
+        values (
+          ${investigationId},
+          ${index + 1},
+          ${input.title},
+          ${input.ask ?? ""},
+          ${input.summary ?? ""},
+          ${Math.min(1, Math.max(0, input.confidence))},
+          true
+        )
+        returning id, investigation_id, seq, title, ask, summary, confidence, confirmed, created_at
+      `;
+      if (result[0]) inserted.push(result[0]);
+    }
+    return inserted;
+  });
+  return rows.map(mapIssue);
+}
+
+export async function getIssues(investigationId: string): Promise<Issue[]> {
+  const sql = getPool();
+  const rows = await sql<IssueRow[]>`
+    select id, investigation_id, seq, title, ask, summary, confidence, confirmed, created_at
+    from issues
+    where investigation_id = ${investigationId}
+    order by seq asc
+  `;
+  return rows.map(mapIssue);
+}
+
+export async function getIssue(investigationId: string, issueId: string): Promise<Issue | null> {
+  const sql = getPool();
+  const rows = await sql<IssueRow[]>`
+    select id, investigation_id, seq, title, ask, summary, confidence, confirmed, created_at
+    from issues
+    where investigation_id = ${investigationId} and id = ${issueId}
+    limit 1
+  `;
+  return rows.length ? mapIssue(rows[0]) : null;
 }
 
 export async function upsertLearnedScope(declaredClient: string, scope: InvestigationScope): Promise<void> {
@@ -405,7 +535,7 @@ export async function listInvestigations(limit = 20): Promise<InvestigationSumma
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides
     from investigations
     where content_hash = ${hash}
     order by created_at desc
@@ -487,11 +617,12 @@ export async function insertClaims(investigationId: string, claims: ClaimInput[]
     status: claim.status,
     confidence: claim.confidence,
     dedupe_key: claimDedupeKey(claim.eventId, claim.text),
+    issue_id: claim.issueId ?? null,
   }));
   const inserted = await sql<ClaimRow[]>`
     insert into claims ${sql(rows, ...CLAIM_COLUMNS)}
     on conflict (investigation_id, dedupe_key) do nothing
-    returning id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag
+    returning id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag, issue_id
   `;
   return inserted.map(mapClaim);
 }
@@ -499,7 +630,7 @@ export async function insertClaims(investigationId: string, claims: ClaimInput[]
 export async function getClaims(investigationId: string): Promise<Claim[]> {
   const sql = getPool();
   const rows = await sql<ClaimRow[]>`
-    select id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag
+    select id, investigation_id, agent, type, text, actor, quote, event_id, ts, status, confidence, verify_status, verify_error, verify_checks, skeptic_flag, issue_id
     from claims
     where investigation_id = ${investigationId}
     order by seq asc
@@ -567,11 +698,13 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     return;
   }
   const sql = getPool();
-  const existing = await sql<{ question: string; note: string }[]>`
-    select question, note from gaps where investigation_id = ${investigationId}
+  const existing = await sql<{ question: string; note: string; issue_id: string | null }[]>`
+    select question, note, issue_id from gaps where investigation_id = ${investigationId}
   `;
-  const seen = new Set(existing.map((row) => `${row.question}|${row.note}`));
-  const fresh = gaps.filter((gap) => !seen.has(`${gap.question}|${gap.note}`));
+  const seen = new Set(existing.map((row) => `${row.question}|${row.note}|${row.issue_id ?? ""}`));
+  const fresh = gaps.filter(
+    (gap) => !seen.has(`${gap.question}|${gap.note}|${gap.issueId ?? ""}`),
+  );
   if (fresh.length === 0) {
     return;
   }
@@ -580,8 +713,9 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     question: gap.question,
     note: gap.note,
     event_ids: sql.array(gap.eventIds, 25),
+    issue_id: gap.issueId ?? null,
   }));
-  await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids")}`;
+  await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids", "issue_id")}`;
 }
 
 export async function setIngestWarnings(id: string, warnings: string[]): Promise<void> {
@@ -637,7 +771,7 @@ export async function sweepStaleStages(investigationId: string): Promise<void> {
 export async function getGaps(investigationId: string): Promise<Gap[]> {
   const sql = getPool();
   const rows = await sql<GapRow[]>`
-    select id, investigation_id, question, note, event_ids
+    select id, investigation_id, question, note, event_ids, issue_id
     from gaps
     where investigation_id = ${investigationId}
     order by seq asc
@@ -772,6 +906,42 @@ export async function getReportExtras(investigationId: string): Promise<ReportEx
   const sql = getPool();
   const rows = await sql<{ verdict: string | null; reply: { sentences?: ReplySentence[] } | null }[]>`
     select verdict, reply from report_extras where investigation_id = ${investigationId} limit 1
+  `;
+  if (rows.length === 0) return null;
+  const reply = rows[0].reply;
+  return {
+    verdict: rows[0].verdict,
+    reply:
+      reply && Array.isArray(reply.sentences)
+        ? { sentences: reply.sentences.filter((s) => typeof s?.text === "string") }
+        : null,
+  };
+}
+
+export async function upsertIssueReportExtras(
+  investigationId: string,
+  issueId: string,
+  extras: { verdict: string; reply: { sentences: ReplySentence[] } },
+): Promise<void> {
+  const sql = getPool();
+  await sql`
+    insert into issue_report_extras (issue_id, investigation_id, verdict, reply)
+    values (${issueId}, ${investigationId}, ${extras.verdict}, ${sql.json(extras.reply as unknown as JSONValue)})
+    on conflict (issue_id) do update set
+      verdict = excluded.verdict,
+      reply = excluded.reply
+  `;
+}
+
+export async function getIssueReportExtras(
+  investigationId: string,
+  issueId: string,
+): Promise<ReportExtras | null> {
+  const sql = getPool();
+  const rows = await sql<{ verdict: string | null; reply: { sentences?: ReplySentence[] } | null }[]>`
+    select verdict, reply from issue_report_extras
+    where investigation_id = ${investigationId} and issue_id = ${issueId}
+    limit 1
   `;
   if (rows.length === 0) return null;
   const reply = rows[0].reply;

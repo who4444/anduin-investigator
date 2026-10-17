@@ -31,6 +31,7 @@ export async function GET(
     return json({
       investigation: assembled.investigation,
       events: assembled.timeline,
+      excludedEvents: assembled.excludedEvents,
       claims: assembled.claims,
       stats: assembled.stats,
       stages: assembled.stages,

@@ -1,4 +1,4 @@
-import type { StageName, StageStatus } from "./types";
+import type { Issue, StageName, StageStatus } from "./types";
 
 export const INVESTIGATOR_KINDS = ["root_cause", "commitments", "ownership"] as const;
 export type InvestigatorKindName = (typeof INVESTIGATOR_KINDS)[number];
@@ -15,10 +15,17 @@ export interface RunPipelineOptions {
   fetchImpl?: typeof fetch;
   maxRetryPasses?: number;
   onMissingRetry?: (missing: string[], pass: number) => void;
+  /** G-23: pause after plan when more than one issue needs a manager review. */
+  stopForIssueReview?: boolean;
+  /** Resume a run whose plan and issue review are already done. */
+  startAt?: "plan" | "investigate";
+  /** Stable worker id; the issue review pauses and resumes on the same lease. */
+  workerId?: string;
 }
 
 export type PipelineOutcome =
   | { ok: true; retries: number }
+  | { ok: true; paused: true; issues: Issue[]; retries: number }
   | { ok: false; error: string; stage: string; pass: number };
 
 class StageError extends Error {
@@ -43,11 +50,30 @@ export async function runPipeline(
   const base = `/api/investigations/${investigationId}`;
   // One lease per pipeline RUN: the server lets concurrent stages through when
   // they come from the same worker, so the parallel investigators keep working
-  // while a second tab is still refused.
-  const workerId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `w-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // while a second tab is still refused. The G-23 issue review pauses the run;
+  // the resume must reuse the same worker id or the paused lease refuses it.
+  const workerKey = `anduin-worker:${investigationId}`;
+  let workerId = options.workerId;
+  if (!workerId && typeof window !== "undefined") {
+    try {
+      workerId = window.sessionStorage.getItem(workerKey) ?? undefined;
+    } catch {
+      // Storage can be unavailable; fall back to a fresh worker.
+    }
+  }
+  if (!workerId) {
+    workerId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `w-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.setItem(workerKey, workerId);
+      } catch {
+        // Ignore storage denial.
+      }
+    }
+  }
 
   const notify = (stage: StageName, pass: number, status: StageStatus, error?: string | null) => {
     options.onStage?.({ stage, pass, status, error });
@@ -102,9 +128,22 @@ export async function runPipeline(
   };
 
   let retries = 0;
+  const startAt = options.startAt ?? "plan";
 
   try {
-    await callStage("plan", 1);
+    if (startAt === "plan") {
+      const planPayload = await callStage("plan", 1);
+      const issues = Array.isArray(planPayload.issues)
+        ? (planPayload.issues as Issue[])
+        : [];
+      if (
+        options.stopForIssueReview &&
+        issues.length > 1 &&
+        issues.some((issue) => !issue.confirmed)
+      ) {
+        return { ok: true, paused: true, issues, retries: 0 };
+      }
+    }
 
     for (;;) {
       const pass = 1 + retries;

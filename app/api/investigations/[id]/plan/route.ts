@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
 import { resolveScope } from "@/lib/pipeline/scope";
-import { getEvents, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
+import { getEvents, getIssues, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
 
 export const maxDuration = 60;
 
@@ -28,6 +28,18 @@ export async function POST(
   const worker = readWorker(body);
 
   return runStage(id, "plan", pass, async () => {
+    // Re-entering the plan stage (a reload while the issue review is open)
+    // must not overwrite the manager's edits with a second model split.
+    const existingIssues = await getIssues(id);
+    if (found.investigation.plan && found.investigation.scope && existingIssues.length > 0) {
+      return {
+        plan: found.investigation.plan,
+        scope: found.investigation.scope,
+        issues: existingIssues,
+        reused: true,
+      };
+    }
+
     // Identify which client and project this escalation concerns, verified
     // against the registry, before any investigator searches it. Anchors
     // learned from earlier confirmed investigations for the same declared
@@ -48,6 +60,7 @@ export async function POST(
     }
 
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);
-    return { plan, scope };
+    const issues = await getIssues(id);
+    return { plan, scope, issues };
   }, worker);
 }

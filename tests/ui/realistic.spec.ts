@@ -98,3 +98,22 @@ test("retrieval stays inside the scoped engagement at volume", async ({ request 
     expect(cell.determined, cell.id).toBe(true);
   }
 });
+
+test("the excluded-records review adds a record back and re-runs the investigation", async ({ page }) => {
+  await page.goto(reportUrl);
+  await expect(page.locator("#gaps")).toBeVisible();
+
+  // Open the excluded list and add the first record back.
+  const panel = page.locator(".excluded-panel");
+  await panel.locator("summary").click();
+  const first = panel.locator(".excluded-row input[type=checkbox]").first();
+  await first.check();
+  await panel.getByRole("button", { name: "Re-run with 1 record included" }).click();
+
+  // The re-run streams on the progress page and lands back on the report…
+  await page.waitForURL(/\/progress\?rerun=1/, { timeout: 30_000 });
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+
+  // …where the reviewed record is disclosed as added back into scope.
+  await expect(page.locator(".scope-line")).toContainText("1 reviewed record added back into scope");
+});

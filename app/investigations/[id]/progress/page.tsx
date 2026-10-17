@@ -21,6 +21,7 @@ export default async function ProgressPage({
         live: query.live === "1",
       }}
       reviewOnly={query.review === "1"}
+      rerun={query.rerun === "1"}
     />
   );
 }

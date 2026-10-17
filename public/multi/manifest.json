@@ -1,0 +1,12 @@
+{
+  "files": [
+    "jira-orbit.json",
+    "mailbox.mbox",
+    "escalation.eml",
+    "slack/users.json",
+    "slack/channels.json",
+    "slack/orbit-support/messages.json",
+    "slack/general/messages.json",
+    "slack/orbit-eng/messages.json"
+  ]
+}

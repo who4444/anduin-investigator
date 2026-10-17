@@ -1,0 +1,5 @@
+[
+  { "ts": "1725972000.000000", "user": "U2", "text": "BILLING-V2 moved VAT rounding to integer math in 2.1.0; that is the invoice cause." },
+  { "ts": "1726837200.000000", "user": "U3", "text": "Identity-service 3.4 dropped the SAML signing certificate; that is the SSO cause." },
+  { "ts": "1727628000.000000", "user": "U5", "text": "3.4.1 restores the SAML certificate; SSO verified with finance." }
+]

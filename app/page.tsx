@@ -23,6 +23,9 @@ interface ScopeState {
 const SCENARIO_ESCALATION =
   "Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.";
 
+const MULTI_ESCALATION =
+  "Contoso has two independent issues. First, VAT invoice totals have been blank since the 2.1.0 upgrade; the fix was promised for the Sep 20 release and the ticket was closed while the totals were still blank. Second, finance users cannot sign in since the identity migration; the SSO fix was promised for the Sep 26 release and still fails. Our chases on 22 and 23 September went unanswered. Explain what happened on each issue and when each will actually be fixed.";
+
 interface RecentInvestigation {
   id: string;
   title: string;
@@ -36,6 +39,7 @@ export default function StartPage() {
   const [escalation, setEscalation] = useState("");
   const [client, setClient] = useState("");
   const [synthetic, setSynthetic] = useState(false);
+  const [scenario, setScenario] = useState<"northwind" | "multi">("northwind");
   const [recent, setRecent] = useState<RecentInvestigation[]>([]);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
@@ -95,16 +99,29 @@ export default function StartPage() {
     setEscalation(SCENARIO_ESCALATION);
     setClient("Northwind Logistics");
     setSynthetic(true);
+    setScenario("northwind");
+  }
+
+  function loadMultiScenario() {
+    setEscalation(MULTI_ESCALATION);
+    setClient("Contoso");
+    setSynthetic(true);
+    setScenario("multi");
   }
 
   async function startSynthetic() {
-    const manifestResponse = await fetch("/demo/manifest.json");
+    const base = scenario === "multi" ? "/multi" : "/demo";
+    const title =
+      scenario === "multi"
+        ? "Contoso — two independent issues after 2.1.0"
+        : "Northwind Logistics — invoice totals after release 4.12";
+    const manifestResponse = await fetch(`${base}/manifest.json`);
     if (!manifestResponse.ok) throw new Error("The built-in scenario files are unavailable.");
     const manifest = (await manifestResponse.json()) as { files: string[] };
 
     const form = new FormData();
     for (const name of manifest.files) {
-      const response = await fetch(`/demo/${name}`);
+      const response = await fetch(`${base}/${name}`);
       if (!response.ok) throw new Error(`Missing scenario file: ${name}`);
       const blob = await response.blob();
       form.append("files", new File([blob], name, { type: blob.type }));
@@ -112,7 +129,7 @@ export default function StartPage() {
     form.append("escalation", escalation);
     form.append("client", client);
     form.append("origin", "demo");
-    form.append("title", "Northwind Logistics — invoice totals after release 4.12");
+    form.append("title", title);
 
     const response = await fetch("/api/investigations", { method: "POST", body: form });
     const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string; cached?: boolean };
@@ -154,8 +171,8 @@ export default function StartPage() {
   const hasSources = connected.length > 0;
 
   return (
-    <div className="shell stack" style={{ maxWidth: 860 }}>
-      <h1 style={{ fontSize: 22 }}>Begin an investigation</h1>
+    <div className="shell shell-sm stack">
+      <h1>Begin an investigation</h1>
 
       <section className="panel stack">
         <label className="field">
@@ -183,12 +200,15 @@ export default function StartPage() {
           <button type="button" className="btn" onClick={loadScenario} disabled={busy}>
             Load Northwind scenario
           </button>
+          <button type="button" className="btn" onClick={loadMultiScenario} disabled={busy}>
+            Load multi-issue scenario
+          </button>
           <span className="chip chip-broken">synthetic data</span>
         </div>
       </section>
 
       <section className="panel">
-        <h2 style={{ marginBottom: 8 }}>Sources</h2>
+        <h2>Sources</h2>
         {sources.length === 0 && (
           <p className="small muted">Checking source connections…</p>
         )}
@@ -197,7 +217,7 @@ export default function StartPage() {
           const sourceTargets = targets[source.id] ?? [];
           return (
             <div className="source-row" key={source.id}>
-              <span style={{ fontWeight: 600 }}>{source.label}</span>
+              <span className="strong">{source.label}</span>
               <span>
                 {source.configured ? (
                   <span className="chip chip-verified">connected</span>
@@ -210,7 +230,7 @@ export default function StartPage() {
                   <>
                     {sourceTargets.length === 0 && <span className="small muted">Loading projects…</span>}
                     {sourceTargets.map((target) => (
-                      <label key={target.id} className="small row" style={{ gap: 4 }}>
+                      <label key={target.id} className="small row row-tight">
                         <input
                           type="checkbox"
                           checked={scope.targets.includes(target.id)}
@@ -225,7 +245,7 @@ export default function StartPage() {
                   <>
                     {sourceTargets.length === 0 && <span className="small muted">Loading channels…</span>}
                     {sourceTargets.slice(0, 24).map((target) => (
-                      <label key={target.id} className="small row" style={{ gap: 4 }}>
+                      <label key={target.id} className="small row row-tight">
                         <input
                           type="checkbox"
                           checked={scope.targets.includes(target.id)}
@@ -275,8 +295,8 @@ export default function StartPage() {
 
       {recent.length > 0 && (
         <section className="panel stack">
-          <h2 style={{ marginBottom: 4 }}>Recent investigations</h2>
-          <ul className="stack" style={{ gap: 6 }}>
+          <h2>Recent investigations</h2>
+          <ul className="stack stack-sm">
             {recent.map((entry) => (
               <li key={entry.id} className="row small">
                 <a href={`/investigations/${entry.id}`}>

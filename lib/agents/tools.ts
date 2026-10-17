@@ -2,7 +2,8 @@ import { asNumber, asString } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import type { ToolSpec } from "../llm";
 import { splitEventsByScope } from "../pipeline/scope";
-import { getClaims, getEvents, getInvestigation, insertClaims } from "../store";
+import { resolveIssueId } from "../pipeline/issues";
+import { getClaims, getEvents, getIssues, getInvestigation, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event, InvestigationScope, SourceKind } from "../types";
 import { verifyQuote } from "../verify";
 import { rankEvents } from "./ranking";
@@ -107,6 +108,11 @@ function toolSpecs(): ToolSpec[] {
         ts: { type: "string" },
         status: { type: "string", enum: CLAIM_STATUSES },
         confidence: { type: "number", description: "0-1." },
+        issue_id: {
+          type: "string",
+          description:
+            "The issue this finding belongs to, copied from the issue_id list in the prompt. Required when the escalation has more than one issue.",
+        },
       },
       ["type", "text", "quote", "item_id", "status", "confidence"],
     ),
@@ -236,6 +242,7 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
       ts,
       status: status as ClaimStatus,
       confidence: Math.min(1, Math.max(0, confidence)),
+      issueId: asString(args.issue_id) ?? null,
     },
   };
 }
@@ -250,7 +257,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
       getInvestigation(investigationId),
     ]);
     const scope: InvestigationScope | null = investigation?.scope ?? null;
-    const { inScope } = splitEventsByScope(events, scope);
+    const { inScope } = splitEventsByScope(events, scope, investigation?.scopeOverrides ?? []);
     return inScope.filter((event) => event.source === source);
   }
 
@@ -364,6 +371,9 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const { claim, error } = claimFromArgs(args);
         if (!claim) return JSON.stringify({ error });
 
+        const issues = await getIssues(investigationId);
+        const issueId = resolveIssueId(args.issue_id, claim.text, issues);
+
         const normalizedText = claim.text.toLowerCase().replace(/\s+/g, " ").trim();
         const existing = await getClaims(investigationId);
         const duplicate = existing.find(
@@ -373,11 +383,11 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
             stored.eventId === claim.eventId &&
             stored.text.toLowerCase().replace(/\s+/g, " ").trim() === normalizedText,
         );
-        if (duplicate) return JSON.stringify({ claimId: duplicate.id, duplicate: true });
+        if (duplicate) return JSON.stringify({ claimId: duplicate.id, duplicate: true, issueId: duplicate.issueId ?? null });
 
-        const inserted = await insertClaims(investigationId, [{ ...claim, agent: agentName }]);
+        const inserted = await insertClaims(investigationId, [{ ...claim, agent: agentName, issueId }]);
         const stored = inserted[0];
-        if (stored) return JSON.stringify({ claimId: stored.id });
+        if (stored) return JSON.stringify({ claimId: stored.id, issueId: stored.issueId ?? null });
 
         // Lost an insert race against a concurrent run — report the winner.
         const refreshed = await getClaims(investigationId);
@@ -386,7 +396,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
             candidate.eventId === claim.eventId &&
             candidate.text.toLowerCase().replace(/\s+/g, " ").trim() === normalizedText,
         );
-        if (winner) return JSON.stringify({ claimId: winner.id, duplicate: true });
+        if (winner) return JSON.stringify({ claimId: winner.id, duplicate: true, issueId: winner.issueId ?? null });
         return JSON.stringify({ error: "claim could not be stored." });
       }
 

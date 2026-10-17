@@ -277,7 +277,111 @@ describeDb("verify + assemble", () => {
         anchors: [],
         excludedRecords: 2,
         excludedClaims: 1,
+        excludedClientRecords: 0,
+        excludedClientEventIds: [],
+        includedByReview: 0,
       });
+    } finally {
+      await deleteInvestigation(id);
+    }
+  });
+
+  it("keeps the client's shared-channel chases in a scoped report (G-01 end to end)", async () => {
+    const {
+      createInvestigation,
+      deleteInvestigation,
+      insertClaims,
+      insertEvents,
+      setScope,
+    } = await import("../lib/store");
+    const { buildResult } = await import("../lib/pipeline/assemble");
+    const { runClaimVerification } = await import("../lib/pipeline/verify-claims");
+    const { buildMetrics } = await import("../lib/report/build");
+    const { sharedChannel } = await import("./fixtures/p0");
+
+    const id = await createInvestigation({
+      title: `Chase ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+
+    try {
+      // The registry stores the resolved identity on the actor (the same
+      // field identity resolution fills at ingest); the distractor is left
+      // out of this scenario — the tools test covers its exclusion.
+      const chaseEvents = sharedChannel.events.filter((event) => event.id !== "f1-distractor");
+      await insertEvents(
+        id,
+        chaseEvents.map((event) => ({
+          id: event.id,
+          source: event.source,
+          ts: event.ts,
+          actor: event.actorResolved ?? event.actor,
+          channel: event.channel,
+          text: event.text,
+          refs: event.refs,
+        })),
+      );
+      await setScope(id, {
+        client: "Northwind Logistics",
+        project: "Meridian Billing",
+        ticketPrefixes: ["MER"],
+        channels: ["meridian-billing"],
+        senderDomains: ["northwind.example"],
+        confidence: "scoped",
+        anchors: [],
+      });
+      await insertClaims(id, [
+        {
+          agent: "ownership",
+          type: "process_failure",
+          text: "Northwind chased the totals defect in the shared room.",
+          actor: "Dana Okoro",
+          quote: "invoice totals are still wrong after the Sep 24 release",
+          eventId: "f1-general-chase-1",
+          ts: "2024-09-26T09:00:00.000Z",
+          status: "n/a",
+          confidence: 0.9,
+        },
+        {
+          agent: "ownership",
+          type: "process_failure",
+          text: "Northwind chased again four days later with no reply.",
+          actor: "Dana Okoro",
+          quote: "Fourth message from Northwind. We still have no reply.",
+          eventId: "f1-general-chase-2",
+          ts: "2024-09-30T09:00:00.000Z",
+          status: "n/a",
+          confidence: 0.9,
+        },
+        {
+          agent: "root_cause",
+          type: "root_cause",
+          text: "The 4.12 timezone change introduced the invoice totals defect.",
+          actor: "Lin Chen",
+          quote: "Timezone change merged for release 4.12",
+          eventId: "f1-jira",
+          ts: "2024-09-10T03:00:00.000Z",
+          status: "n/a",
+          confidence: 0.9,
+        },
+      ]);
+      await runClaimVerification(id);
+
+      const result = await buildResult(id);
+
+      // The chase that anchor-only scoping used to drop is in the report…
+      expect(result.timeline.map((event) => event.id)).toContain("f1-general-chase-1");
+      expect(result.claims.map((claim) => claim.eventId)).toContain("f1-general-chase-1");
+      expect(result.scope?.excludedClientRecords).toBe(0);
+
+      // …and "unanswered chases" attributes the run to the client, not to an
+      // internal actor.
+      const metrics = buildMetrics({ events: result.timeline, claims: result.claims, notes: [] });
+      const chasers = metrics.find((metric) => metric.id === "chasers");
+      expect(chasers?.value).toContain("2 from");
+      expect(chasers?.value).toContain("Dana Okoro");
+      expect(chasers?.eventIds).toEqual(["f1-general-chase-1", "f1-general-chase-2"]);
     } finally {
       await deleteInvestigation(id);
     }

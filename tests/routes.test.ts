@@ -148,6 +148,77 @@ describeDb("pipeline routes", () => {
     });
   });
 
+  it("stores manager-reviewed records, drops unknown ids, and includes them in the report", async () => {
+    const { PUT } = await import("../app/api/investigations/[id]/scope/route");
+    const {
+      createInvestigation,
+      deleteInvestigation,
+      getInvestigation,
+      insertEvents,
+      setScope,
+    } = await import("../lib/store");
+    const { buildResult } = await import("../lib/pipeline/assemble");
+
+    const id = await createInvestigation({
+      title: `Scope review ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+
+    try {
+      await insertEvents(id, [
+        {
+          id: "e_scope_review_in",
+          source: "jira",
+          ts: "2024-09-10T03:00:00.000Z",
+          actor: "Lin Chen",
+          channel: "MER-101",
+          text: "Timezone change merged for release 4.12.",
+        },
+        {
+          id: "e_scope_review_out",
+          source: "slack",
+          ts: "2024-09-28T09:00:00.000Z",
+          actor: "Ravi Patel",
+          channel: "kestrel-eng",
+          text: "Acme noise, out of scope.",
+        },
+      ]);
+      await setScope(id, {
+        client: routesClient,
+        project: null,
+        ticketPrefixes: ["MER"],
+        channels: [],
+        senderDomains: [],
+        confidence: "partial",
+        anchors: [],
+      });
+
+      const response = await PUT(
+        new NextRequest("http://localhost/scope", {
+          method: "PUT",
+          body: JSON.stringify({ includeEventIds: ["e_scope_review_out", "e_scope_review_ghost"] }),
+          headers: { "content-type": "application/json" },
+        }),
+        context(id),
+      );
+      const body = (await response.json()) as { includeEventIds: string[] };
+
+      expect(response.status).toBe(200);
+      // The unknown id is dropped; the known one is kept and stored.
+      expect(body.includeEventIds).toEqual(["e_scope_review_out"]);
+      expect((await getInvestigation(id))?.scopeOverrides).toEqual(["e_scope_review_out"]);
+
+      // The reviewed record now reaches the report and is disclosed as such.
+      const result = await buildResult(id);
+      expect(result.timeline.map((event) => event.id)).toContain("e_scope_review_out");
+      expect(result.scope?.includedByReview).toBe(1);
+      expect(result.scope?.excludedRecords).toBe(0);
+    } finally {
+      await deleteInvestigation(id);
+    }
+  });
+
   it("runs an investigator and persists its claims", async () => {
     const { POST } = await import("../app/api/investigations/[id]/investigate/route");
     const { getClaims } = await import("../lib/store");
@@ -270,7 +341,6 @@ describeDb("pipeline routes", () => {
       scripted.setLlmClientForTests({
         chat: async (messages) => {
           const system = messages[0]?.content ?? "";
-          const user = messages.map((message) => message.content ?? "").join("\n").toLowerCase();
           if (system.includes("issue analyst")) return { content: "plan" };
           if (system.includes("identify which client and project")) {
             return {

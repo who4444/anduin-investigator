@@ -81,6 +81,18 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
    prior anchors on the next investigation. All source tools, agent prompts
    and the report are scoped accordingly (email replies follow their thread);
    excluded records AND claims are counted and disclosed in the report.
+2c. Issue decomposition (G-23, `lib/pipeline/issues.ts`, migration 012): the
+   analyst also decides how many **independent** issues the escalation
+   contains (1–3), and returns `issues[]` (title, client ask, summary,
+   confidence). Facets of one incident — root cause, a failed fix, a
+   premature closure, unanswered chases, an SLA consequence — are ONE issue,
+   not several. CODE persists the issues (`issues` table) and auto-confirms a
+   single issue; with more than one, the pipeline pauses after plan and the
+   progress page shows an editable review (rename, edit ask/summary, remove,
+   merge into one, add up to three) before any investigator runs. The cap is
+   three; beyond that the plan reports the overflow and the manager is asked to
+   split the escalation. Claims and gaps carry `issue_id`; the review is what
+   separates the timeline, promises and reply.
 3. Investigators run in PARALLEL, split by QUESTION, not by person. Each may
    search any source:
    - Root cause: what went wrong technically, when it first appeared, failed fixes
@@ -120,7 +132,8 @@ cross-references) run inside the tool layer on whatever is retrieved.
 
 ### Shared claim schema (all agents)
 { type, text (one sentence), actor, quote (exact substring), item_id, ts,
-  status (kept|broken|unclear|n/a), confidence }
+  status (kept|broken|unclear|n/a), confidence, issue_id (one of the confirmed
+  issues; required when the escalation has more than one) }
 
 ### Demo scenario (synthetic, labeled as such in the app)
 Northwind Logistics vs Meridian Billing: invoice totals wrong after a timezone
@@ -145,6 +158,20 @@ named `vertex-billing` for vague-escalation pressure. Tests: fixture
 roundtrip/trap checks in `tests/realistic.test.ts`, offline full-pipeline
 UI coverage in `tests/ui/realistic.spec.ts` (fake LLM has a LUM branch).
 Live verification protocol + answer key: README.
+
+### Multi-issue scenario (synthetic, G-23)
+`public/multi/` (manifest + Jira JSON + mbox + Slack folder) is a compact
+Contoso / Orbit case with **two independent issues**: blank VAT invoice totals
+after 2.1.0 and finance SSO failing after the identity migration. Each has its
+own root cause ticket, promise, owner and fix version; the shared `general`
+room holds the client chases. The start page's **Load multi-issue scenario**
+button runs it end to end (`origin=demo`, labelled synthetic). The plan must
+split exactly those two issues; the progress page pauses for the editable
+review; the report exposes `?issue=<id>` and an `?issue=all` combined view;
+drafts are per issue. A one-incident escalation (Northwind) must stay one issue
+— the analyst prompt explicitly treats a failed fix, a premature closure,
+unanswered chases and an SLA consequence as facets, not separate issues.
+Tests: `tests/ui/multi-issue.spec.ts` (fake LLM two-issue branch).
 
 ### Tech stack
 Next.js (App Router) on Vercel; tool-use LLM API with the model name in an env
@@ -180,15 +207,16 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`; suggestions are chained and can never strip an email address out of a canonical — the address is what links people across tools) + `run.ts` (shared ingest flow used by both uploads and live pulls).
 - `lib/sources/*`: the Source implementations — `jira.ts`, `slack.ts`, `gmail.ts` (live, read-only), with the upload path as the export fallback.
 - `lib/agents/*`: `tools.ts` (per-source tools + registry tools + `submit_claim`; searches match text, channel, actor and ticket refs, and results are relevance-ordered via `ranking.ts` — cited refs > literal phrase > tokens, recency tiebreak — before the cap), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
-- `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
-- `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route; `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
-- `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → 3 investigators in parallel → skeptic → verify → assemble, then one retry for only the missing kinds). Stage progress is client-driven; `/api/investigations/[id]/events` streams stage/log changes over SSE for the progress screen.
-- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` table). `migrations/002_report_extras.sql`.
-- UI (plain CSS in `app/globals.css`, tokens at the top; fonts via next/font — Atkinson Hyperlegible for UI, Source Serif 4 for evidence): `app/page.tsx` (start: escalation + source scopes + synthetic scenario), `app/upload/page.tsx` (exports fallback), `app/investigations/[id]/progress/page.tsx` (summary-first counts, stages, activity behind a "Show activity" toggle; also the read-only "How this was produced" review), `app/investigations/[id]/page.tsx` (report: one scrolling briefing via `app/_components/briefing/*` — story + key moments + metrics, swimlane board, chapters, promises, causes, gaps, draft reply; shared evidence drawer in `app/_components/evidence.tsx`). No Tailwind — do not reintroduce preset-style classes; use the existing CSS classes.
+- `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `issues.ts` (G-23 issue prompt block + issue-id resolution/fallback), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free and returns the case's `issues`; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
+- `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route + `issues` (GET/PUT the confirmed issue split before investigation) + `reply` (per-issue drafts); `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
+- `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → optional issue review → 3 investigators in parallel → skeptic → verify → assemble, then one retry for only the missing kinds). Stage progress is client-driven; `/api/investigations/[id]/events` streams stage/log changes over SSE for the progress screen. A multi-issue run pauses after plan (`paused`) and resumes with `startAt: "investigate"`; the worker id is kept in sessionStorage so the paused lease is reused.
+- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` for legacy/single-issue; `issue_report_extras` for per-issue G-23 drafts). The page selects an issue with `?issue=<id>` (or `?issue=all` for the combined view); per-issue claims/events/gaps drive the briefing, ledger, causes and reply, while coverage/scope stay case-level.
+- UI (plain CSS in `app/globals.css`, tokens at the top; fonts via next/font — Atkinson Hyperlegible for UI, Source Serif 4 for evidence): `app/page.tsx` (start: escalation + source scopes + Northwind and multi-issue synthetic scenarios), `app/upload/page.tsx` (exports fallback), `app/investigations/[id]/progress/page.tsx` (summary-first counts, stages, activity behind a "Show activity" toggle; the pre-run editable issue review; also the read-only "How this was produced" review), `app/investigations/[id]/page.tsx` (report: one scrolling briefing via `app/_components/briefing/*` — story + key moments + metrics, swimlane board, chapters, promises, causes, gaps, draft reply; issue tabs + case overview for multi-issue runs; shared evidence drawer in `app/_components/evidence.tsx`). No Tailwind — do not reintroduce preset-style classes; use the existing CSS classes.
 
 ## Testing quirks
 - **Prefer end-to-end tests for features.** A feature is not done until a test exercises it through its real interface — the HTTP route handler against a migrated Postgres with the real parsers/store (mocked LLM or mocked external sources only), asserting the observable outcome. Unit tests are for pure logic (verifier, metrics builders, parsers). When adding a feature, extend the e2e suite first; see `tests/routes.test.ts`, `tests/sources-route.test.ts` and `tests/ingest-route.test.ts` for the pattern.
 - Never call the real LLM in tests: inject a fake via `setLlmClientForTests` (lib/llm.ts) or mock global `fetch`. `tests/demo-roundtrip.test.ts` proves the generated exports parse through the real parsers.
 - Never call real Jira/Slack/Gmail in tests: adapters take an injected `fetchImpl`/`env` (`tests/sources.test.ts`); route tests swap the registry via `setSourcesForTests`.
+- G-23 UI coverage: `tests/ui/multi-issue.spec.ts` drives the upload page through plan → editable issue review → confirm → per-issue report/all-issues view with the fake LLM's two-issue branch. The unit coverage lives in `tests/plan-data.test.ts` (issue cap/normalization) and `tests/orchestrator.test.ts` (pause, confirmed continuation, `startAt: "investigate"`). The real-LLM check is the start page's **Load multi-issue scenario** flow (plan must split exactly two; Northwind must stay one); it is a manual smoke, not part of the offline suite.
 - Test outputs must be pristine (no lint warnings) — unused vars fail the gate even as warnings.
 - Email sender actors keep the address (`Name <addr>`) on purpose: it is what lets identity resolution link email senders to Jira/Slack people.

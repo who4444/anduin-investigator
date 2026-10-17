@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Anduin — sleek editorial preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap');
+
+/* ============ proposed tokens ============ */
+:root {
+  --page: #f7f8fa;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --ink-2: #1e293b;
+  --muted: #556274;
+  --faint: #8b98a9;
+  --hairline: #e4e7eb;
+  --hairline-strong: #cfd5dc;
+
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+
+  --broken: #c0362c;
+  --broken-soft: #fdf1f0;
+  --warn: #b45309;
+  --warn-soft: #fdf6ec;
+  --good: #0f766e;
+  --good-soft: #eefaf7;
+
+  --src-jira: #2563eb;
+  --src-email: #b45309;
+  --src-slack: #7c3aed;
+
+  --r-ctrl: 4px;
+  --r-card: 10px;
+  --shadow-overlay: 0 12px 40px -12px rgba(15, 23, 42, 0.28);
+
+  --font-ui: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-doc: "Source Serif 4", Georgia, serif;
+
+  --t-micro: 11px;
+  --t-small: 12.5px;
+  --t-body: 15px;
+  --t-lead: 17px;
+  --t-h3: 20px;
+  --t-h2: 24px;
+  --t-h1: 27px;
+  --t-num: 27px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--page);
+  color: var(--ink-2);
+  font: 400 var(--t-body)/1.55 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.micro {
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.small { font-size: var(--t-small); }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* ============ app chrome ============ */
+.appbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--hairline);
+  padding: 12px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand { font-weight: 700; color: var(--ink); }
+.appbar-note { font-size: var(--t-small); color: var(--faint); }
+
+.briefbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--hairline);
+  padding: 18px 28px 0;
+  position: sticky; top: 0; z-index: 5;
+}
+.briefbar-inner { max-width: 1120px; margin: 0 auto; }
+.b-title-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+h1 { font-size: var(--t-h1); font-weight: 700; color: var(--ink); margin: 0; letter-spacing: -0.01em; }
+.b-meta { display: flex; gap: 14px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.dot { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-small); color: var(--muted); }
+.dot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.dot.jira::before { background: var(--src-jira); }
+.dot.email::before { background: var(--src-email); }
+.dot.slack::before { background: var(--src-slack); }
+
+.nav { display: flex; gap: 2px; margin: 14px 0 0; flex-wrap: wrap; }
+.nav a {
+  font-size: var(--t-small); font-weight: 700; color: var(--muted);
+  padding: 7px 11px 11px; border-bottom: 2px solid transparent; text-decoration: none;
+}
+.nav a:hover { color: var(--ink); }
+.nav a.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ============ layout ============ */
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 28px 96px; }
+section { padding-top: 44px; }
+section:first-child { padding-top: 8px; }
+h2 {
+  font-size: var(--t-h2); font-weight: 700; color: var(--ink); margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+h3 { font-size: var(--t-h3); margin: 26px 0 10px; color: var(--ink); }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rule { border: 0; border-top: 1px solid var(--hairline); margin: 30px 0; }
+
+/* ============ comparison strip ============ */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.compare .side { border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--card); padding: 16px; }
+.compare h4 { margin: 0 0 10px; font-size: var(--t-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+
+/* old-school chip (current look) */
+.chip-old {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--hairline-strong); border-radius: 6px; padding: 2px 8px;
+  font-size: 12px; font-weight: 600; color: var(--ink-2); background: var(--card); white-space: nowrap;
+}
+/* proposed quiet tag */
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--t-small); color: var(--muted); white-space: nowrap;
+}
+.tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.tag.jira::before { background: var(--src-jira); }
+.tag.email::before { background: var(--src-email); }
+.tag.slack::before { background: var(--src-slack); }
+.tag.broken { color: var(--broken); } .tag.broken::before { background: var(--broken); }
+.tag.check { color: var(--warn); } .tag.check::before { background: var(--warn); border-radius: 1px; }
+
+/* exception pills stay */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px dashed var(--warn); color: var(--warn); border-radius: var(--r-ctrl);
+  font-size: var(--t-micro); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 8px; background: var(--card); white-space: nowrap;
+}
+.pill.solid { border-style: solid; border-color: var(--broken); color: var(--broken); }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 36px; padding: 0 14px; border-radius: var(--r-ctrl);
+  border: 1px solid var(--hairline-strong); background: var(--card); color: var(--ink-2);
+  font: 600 14px var(--font-ui); cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .05s ease;
+}
+.btn:hover { background: var(--page); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.primary:hover { background: #27374b; }
+.btn.ghost { border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { background: var(--page); color: var(--ink); }
+
+/* ============ answer ============ */
+.scope {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 14px; font-weight: 700; color: var(--warn);
+}
+.scope .who { color: var(--warn); }
+.clientsays {
+  border: 1px solid var(--hairline); border-left: 3px solid var(--hairline-strong);
+  border-radius: var(--r-card); background: var(--card); padding: 14px 18px;
+}
+.clientsays .preview { font-family: var(--font-doc); font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); margin-top: 6px; }
+
+.verdict { font-size: 21px; font-weight: 700; color: var(--ink); line-height: 1.4; max-width: 76ch; margin: 0; letter-spacing: -0.01em; }
+.verify-line { font-size: var(--t-small); color: var(--muted); }
+
+.scoreboard { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.cell {
+  background: var(--card); border: 1px solid var(--hairline); border-radius: var(--r-card);
+  border-top: 2px solid var(--hairline-strong);
+  padding: 14px 16px 15px; display: flex; flex-direction: column; gap: 7px; cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .08s ease;
+}
+.cell:hover { border-color: var(--faint); box-shadow: 0 6px 18px -12px rgba(15,23,42,.35); transform: translateY(-1px); }
+.cell.bad { border-top-color: var(--broken); }
+.cell.warn { border-top-color: var(--warn); }
+.cell.good { border-top-color: var(--good); }
+.cell .value { font-size: var(--t-num); font-weight: 700; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.cell .detail { font-size: var(--t-small); color: var(--muted); }
+
+.quiet-metrics { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.quiet-metrics b { color: var(--ink); font-weight: 700; }
+.quiet-metrics span { font-size: var(--t-small); color: var(--muted); }
+
+.donow h3 { color: var(--broken); font-size: var(--t-micro); letter-spacing: 0.08em; text-transform: uppercase; margin: 4px 0 2px; }
+.action {
+  display: flex; align-items: baseline; gap: 12px;
+  border: 1px solid var(--hairline); border-left: 3px solid var(--broken);
+  border-radius: var(--r-card); background: var(--card); padding: 12px 16px;
+}
+.action .what { font-weight: 700; color: var(--ink); }
+.action .why { color: var(--muted); font-size: var(--t-small); }
+
+/* ============ story ============ */
+.moments { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.moment {
+  background: var(--card); border: 1px solid var(--hairline); border-left: 3px solid var(--src-jira);
+  border-radius: var(--r-card); padding: 13px 15px; display: flex; flex-direction: column; gap: 6px; cursor: pointer;
+  transition: border-color .15s ease;
+}
+.moment:hover { border-color: var(--faint); }
+.moment.comm { border-left-color: var(--src-slack); }
+.moment.process { border-left-color: var(--src-email); }
+.moment .when { font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.moment .head { font-weight: 700; color: var(--ink); line-height: 1.35; }
+
+.chapter { border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--card); overflow: hidden; }
+.chapter summary { list-style: none; padding: 15px 18px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+.chapter summary::-webkit-details-marker { display: none; }
+.chapter .ct { font-weight: 700; color: var(--ink); }
+.chapter .cr { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; }
+.chapter .take { font-size: var(--t-small); color: var(--muted); font-weight: 400; }
+.chapter[open] summary { border-bottom: 1px solid var(--hairline); }
+.events { padding: 6px 8px 10px; }
+.event {
+  display: grid; grid-template-columns: 52px 24px 1fr; gap: 11px; align-items: start;
+  padding: 9px 10px; border-radius: var(--r-ctrl); cursor: pointer; border: 0; background: transparent; width: 100%; text-align: left;
+  font: inherit; color: inherit;
+}
+.event:hover { background: var(--page); }
+.event .day { font-size: var(--t-small); color: var(--faint); font-variant-numeric: tabular-nums; padding-top: 3px; }
+.event .headline { color: var(--ink-2); }
+.event.key .headline { font-weight: 700; color: var(--ink); }
+.event .chips { display: flex; gap: 12px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+.avatar {
+  width: 22px; height: 22px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+
+/* ============ promises ============ */
+.promise {
+  border: 1px solid var(--hairline); border-left: 3px solid var(--broken);
+  border-radius: var(--r-card); background: var(--card); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+  cursor: pointer; transition: border-color .15s ease;
+}
+.promise:hover { border-color: var(--faint); }
+.promise.kept { border-left-color: var(--good); }
+.stamp {
+  align-self: flex-start; border: 1px solid var(--broken); color: var(--broken);
+  border-radius: var(--r-ctrl); font-size: var(--t-micro); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 9px;
+}
+.stamp.kept { border-color: var(--good); color: var(--good); }
+.quote { font-family: var(--font-doc); font-size: var(--t-body); line-height: 1.6; color: var(--ink-2); max-width: 72ch; }
+.deadline { position: relative; height: 8px; border-radius: 4px; background: var(--page); border: 1px solid var(--hairline); }
+.deadline .planned { position: absolute; inset: 0 auto 0 0; width: 20%; background: #c9d8f5; border-radius: 4px 0 0 4px; }
+.deadline .over { position: absolute; top: 0; bottom: 0; left: 20%; width: 80%; background: #eec9c6; border-radius: 0 4px 4px 0; }
+.deadline-labels { display: flex; justify-content: space-between; font-size: var(--t-micro); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+table.data { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+table.data th { text-align: left; font-size: var(--t-micro); text-transform: uppercase; letter-spacing: .07em; color: var(--faint); font-weight: 700; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--hairline-strong); }
+table.data td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; color: var(--ink-2); }
+
+/* findings / gaps */
+.finding { border: 1px solid var(--hairline); border-radius: var(--r-card); background: var(--card); padding: 13px 16px; display: flex; flex-direction: column; gap: 7px; }
+.note { border: 1px solid var(--hairline); border-left: 3px solid var(--warn); background: var(--warn-soft); border-radius: var(--r-card); padding: 12px 16px; font-size: var(--t-small); color: var(--ink-2); }
+
+/* reply */
+.reply .sentence { font-family: var(--font-doc); font-size: var(--t-lead); line-height: 1.65; padding: 2px 4px; border-radius: 4px; display: block; cursor: pointer; }
+.reply .sentence:hover { background: #fff4cc; }
+.draft-banner { font-size: var(--t-small); color: var(--muted); background: var(--page); border: 1px solid var(--hairline); border-radius: var(--r-ctrl); padding: 9px 12px; }
+
+/* drawer mock */
+.drawer-mock { max-width: 460px; background: var(--card); border: 1px solid var(--hairline); border-radius: var(--r-card); box-shadow: var(--shadow-overlay); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.drawer-mock .meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.mark { background: #fff1b8; padding: 0 2px; }
+.serif { font-family: var(--font-doc); font-size: var(--t-body); line-height: 1.65; }
+
+@media (max-width: 900px) {
+  .scoreboard { grid-template-columns: repeat(2, 1fr); }
+  .moments { grid-template-columns: 1fr; }
+  .compare { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <span class="brand">Anduin Investigator</span>
+  <span class="appbar-note">internal report · not for external distribution</span>
+</div>
+
+<!-- ===================== before / after ===================== -->
+<div class="wrap" style="padding-bottom: 0">
+  <section style="padding-top: 18px">
+    <div class="compare">
+      <div class="side">
+        <h4>Current look</h4>
+        <div class="row" style="gap: 8px">
+          <span class="chip-old">jira</span><span class="chip-old">slack</span><span class="chip-old">broken</span><span class="chip-old">check before repeating</span>
+        </div>
+        <div style="margin-top: 14px; border: 1px solid #d5dbe1; border-radius: 6px; border-top: 3px solid #b23a2e; padding: 12px; background: #fff">
+          <div class="micro">What went wrong</div>
+          <div style="font-size: 17px; font-weight: 700; color: #1f2a33">The 4.12 UTC change</div>
+        </div>
+        <div style="margin-top: 14px">
+          <button class="btn" style="border-radius: 6px; background: #1f2a33; color: #fff; border-color: #1f2a33">Draft the client reply</button>
+        </div>
+      </div>
+      <div class="side">
+        <h4>Proposed look</h4>
+        <div class="row" style="gap: 16px">
+          <span class="tag jira">jira</span><span class="tag slack">slack</span><span class="tag broken">broken</span><span class="tag check">check before repeating</span>
+        </div>
+        <div style="margin-top: 14px" class="cell bad">
+          <div class="micro">What went wrong</div>
+          <div class="value" style="font-size: 20px">The 4.12 UTC change</div>
+        </div>
+        <div style="margin-top: 14px">
+          <button class="btn primary">Draft the client reply</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== briefing header ===================== -->
+<div class="briefbar">
+  <div class="briefbar-inner">
+    <div class="b-title-row">
+      <h1>Northwind Logistics — invoice totals after release 4.12</h1>
+      <span class="pill solid">synthetic data</span>
+    </div>
+    <div class="b-meta">
+      <span class="small faint tabular">Logged 2026-10-17</span>
+      <span class="dot jira">jira</span>
+      <span class="dot slack">slack</span>
+      <span class="dot email">email</span>
+      <a class="small" href="#">How this was produced</a>
+    </div>
+    <nav class="nav">
+      <a class="active" href="#">The answer</a>
+      <a href="#">What happened</a>
+      <a href="#">What was promised?</a>
+      <a href="#">What went wrong?</a>
+      <a href="#">What could not be determined?</a>
+      <a href="#">Draft reply</a>
+      <a href="#">Timeline detail</a>
+    </nav>
+  </div>
+</div>
+
+<!-- ===================== the answer ===================== -->
+<div class="wrap">
+  <section>
+    <div class="stack">
+      <div class="scope">
+        <span class="pill">Unconfirmed scope</span>
+        <span>Northwind Logistics · Meridian</span>
+        <span class="small muted" style="font-weight: 400">· 17 stored records from other clients or projects excluded · verify before relying on it</span>
+      </div>
+
+      <div class="clientsays">
+        <div class="micro">The client says</div>
+        <div class="preview">“Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.”</div>
+      </div>
+
+      <p class="verdict">The 4.12 UTC timezone change broke invoice totals, the promised Sep&nbsp;24 fix never shipped, and four client chases went unanswered for 13 days.</p>
+      <p class="verify-line">Verification: 20 of 47 claims verified end-to-end · 27 check before repeating · 23 flagged.</p>
+
+      <div class="scoreboard">
+        <div class="cell"><span class="micro">What went wrong</span><span class="value" style="font-size:20px">UTC change in 4.12</span><span class="detail">Introduced Sep 10, merged to the release branch.</span></div>
+        <div class="cell bad"><span class="micro">Promises</span><span class="value">8 of 8 broken</span><span class="detail">0 kept · 0 unclear</span></div>
+        <div class="cell bad"><span class="micro">Unanswered chases</span><span class="value">5 from Dana Okoro</span><span class="detail">2024-09-06 → 2024-09-09</span></div>
+        <div class="cell warn"><span class="micro">Longest silence</span><span class="value">13 days</span><span class="detail">after Lin Chen’s slack record</span></div>
+        <div class="cell warn"><span class="micro">Open questions</span><span class="value">14 open</span><span class="detail">Who approved the release?</span></div>
+      </div>
+
+      <div class="quiet-metrics">
+        <span><b>26 days</b> evidence window</span>
+        <span><b>11h</b> first response</span>
+        <span><b>4</b> process failures</span>
+        <span><b>2</b> status conflicts</span>
+        <span><b>14</b> skeptic concerns</span>
+      </div>
+
+      <div class="donow stack" style="gap: 10px">
+        <h3>Do now</h3>
+        <div class="action"><span class="what">Close out the broken promise — “the fix ships in the Sep 24 release”.</span><span class="why">Set a dated plan or withdraw it in writing. · <a href="#">evidence</a></span></div>
+        <div class="action"><span class="what">Reply to the unanswered run of 5 from Dana Okoro.</span><span class="why">No interleaved reply exists in the records. · <a href="#">evidence</a></span></div>
+        <a class="small" href="#">Prevent next time (2)</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== what happened ===================== -->
+  <section>
+    <h2>What happened</h2>
+    <div class="stack">
+      <div class="moments">
+        <div class="moment">
+          <span class="when">2024-09-10</span>
+          <span class="head">UTC conversion merged into release branch 4.12</span>
+          <span class="chips"><span class="tag jira">jira</span><span class="tag">technical</span></span>
+        </div>
+        <div class="moment process">
+          <span class="when">2024-09-24</span>
+          <span class="head">Ticket marked Resolved while QA failed the same build</span>
+          <span class="chips"><span class="tag slack">slack</span><span class="tag broken">broken</span></span>
+        </div>
+        <div class="moment comm">
+          <span class="when">2024-10-01</span>
+          <span class="head">Fourth chase with no reply after the promised fix</span>
+          <span class="chips"><span class="tag email">email</span><span class="tag check">check before repeating</span></span>
+        </div>
+      </div>
+
+      <details class="chapter" open>
+        <summary>
+          <span class="ct">The break and the promise</span>
+          <span class="cr">2024-09-05 → 2024-09-24</span>
+          <span class="take">12 findings, 8 broken promises.</span>
+        </summary>
+        <div class="events">
+          <button class="event key">
+            <span class="day">Day 1</span>
+            <span class="avatar" style="background:#2563eb">LC</span>
+            <span>
+              <span class="headline">Timezone change merged for release 4.12</span>
+              <span class="chips"><span class="tag jira">jira</span><span class="tag">technical</span></span>
+            </span>
+          </button>
+          <button class="event">
+            <span class="day">Day 3</span>
+            <span class="avatar" style="background:#b45309">PN</span>
+            <span>
+              <span class="headline">Client asks to confirm the fix date for invoice totals</span>
+              <span class="chips"><span class="tag jira">jira</span><span class="tag check">check before repeating</span></span>
+            </span>
+          </button>
+          <button class="event">
+            <span class="day">Day 15</span>
+            <span class="avatar" style="background:#7c3aed">MW</span>
+            <span>
+              <span class="headline">Sep 24 release is cut; invoice fix included</span>
+              <span class="chips"><span class="tag slack">slack</span><span class="tag broken">broken</span></span>
+            </span>
+          </button>
+          <button class="event">
+            <span class="day">Day 20</span>
+            <span class="avatar" style="background:#0f766e">DO</span>
+            <span>
+              <span class="headline">Client: totals still wrong on the Sep 24 build</span>
+              <span class="chips"><span class="tag email">email</span></span>
+            </span>
+          </button>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ===================== promises ===================== -->
+  <section>
+    <h2>What was promised?</h2>
+    <div class="stack">
+      <div class="promise">
+        <div class="row" style="gap: 10px">
+          <span class="avatar" style="background:#b45309">LC</span>
+          <span style="font-weight:700;color:var(--ink)">Lin Chen → Northwind</span>
+          <span class="stamp">broken, 9 days late</span>
+          <span class="tag jira">jira</span>
+        </div>
+        <span class="quote">“We will ship the fix in the Sep 24 release.”</span>
+        <div>
+          <div class="deadline"><span class="planned"></span><span class="over"></span></div>
+          <div class="deadline-labels"><span>promised by Sep 24</span><span>9 days past the deadline</span></div>
+        </div>
+        <span class="small faint">made 2024-09-20 · email</span>
+      </div>
+
+      <h3 style="font-size:var(--t-micro);text-transform:uppercase;letter-spacing:.08em;color:var(--faint)">What was communicated versus other records</h3>
+      <table class="data">
+        <thead><tr><th>Date</th><th>Record communicated</th><th>What other records showed</th><th>Mismatch</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="tabular">2024-09-24</td>
+            <td>Ticket marked Resolved; “exports verified on our side.”</td>
+            <td>QA: “Totals are still wrong on the Sep 24 build.”</td>
+            <td>Resolution contradicted by QA on the same build.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== gaps ===================== -->
+  <section>
+    <h2>What could not be determined?</h2>
+    <div class="stack">
+      <div class="note">Available but never searched: none. 17 stored records from other clients were excluded by scope.</div>
+      <div class="finding">
+        <span class="row" style="gap: 10px"><span class="tag">question</span></span>
+        <span style="color:var(--ink-2)">Who approved shipping 4.12 without the VAT sign-off?</span>
+        <span class="small muted">No record names the approver; the changelog shows only the merge.</span>
+      </div>
+      <div class="finding">
+        <span class="row" style="gap: 10px"><span class="tag check">check before repeating</span><span class="tag slack">slack</span></span>
+        <span style="color:var(--ink-2)">The on-call rota was not updated before the leave.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== draft reply ===================== -->
+  <section class="reply">
+    <h2>Draft reply</h2>
+    <div class="stack">
+      <div class="draft-banner">Draft for human review. Built only from verified findings. Nothing is sent from this app.</div>
+      <span class="sentence">Our records confirm invoice totals were affected by the UTC change in release 4.12.</span>
+      <span class="sentence">The fix promised for the Sep 24 release did not ship; a corrected build was delivered on Sep 28.</span>
+      <span class="sentence">A dated remediation plan will be sent by Friday.</span>
+      <div class="row"><button class="btn">Copy reply</button><button class="btn ghost">Redraft</button></div>
+      <span class="small muted">Each sentence opens the verified finding behind it.</span>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <h2>Evidence drawer</h2>
+    <div class="drawer-mock">
+      <div class="meta">
+        <span class="small faint tabular">2024-09-24T16:00:00Z</span>
+        <span class="small muted">Marcus Webb</span>
+        <span class="tag slack">slack</span>
+        <span class="small muted">#meridian-billing</span>
+        <button class="btn ghost" style="margin-left:auto">Close</button>
+      </div>
+      <span class="serif">Sep 24 release is cut; <span class="mark">invoice fix included</span>. MER-202</span>
+      <span class="small muted">Cited by: The fix will ship in the Sep 24 release.</span>
+      <div class="row">
+        <button class="btn">Copy text</button><button class="btn">Open original</button>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

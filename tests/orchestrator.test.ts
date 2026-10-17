@@ -221,4 +221,70 @@ describe("runPipeline notifications", () => {
     expect(outcome).toEqual({ ok: true, retries: 0 });
     expect(calls.filter((call) => call.stage === "assemble")).toHaveLength(1);
   });
+
+  it("pauses after plan when multiple issues need a manager review", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "plan") {
+        return jsonResponse({
+          ok: true,
+          issues: [
+            { id: "i1", title: "Invoice totals", confirmed: false },
+            { id: "i2", title: "SSO login", confirmed: false },
+          ],
+        });
+      }
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      stopForIssueReview: true,
+    });
+
+    expect(outcome).toMatchObject({ ok: true, paused: true });
+    if (outcome.ok && "paused" in outcome) {
+      expect(outcome.issues).toHaveLength(2);
+    }
+    expect(calls.map((call) => call.stage)).toEqual(["plan"]);
+  });
+
+  it("continues after plan when the issues are already confirmed", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "plan") {
+        return jsonResponse({
+          ok: true,
+          issues: [
+            { id: "i1", title: "Invoice totals", confirmed: true },
+            { id: "i2", title: "SSO login", confirmed: true },
+          ],
+        });
+      }
+      if (call.stage === "assemble") return jsonResponse({ needsRetry: false, missing: [] });
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      stopForIssueReview: true,
+    });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.some((call) => call.stage === "investigate")).toBe(true);
+  });
+
+  it("resumes at investigate without re-running the plan", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") return jsonResponse({ needsRetry: false, missing: [] });
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      startAt: "investigate",
+    });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.some((call) => call.stage === "plan")).toBe(false);
+    expect(calls.filter((call) => call.stage === "investigate")).toHaveLength(3);
+  });
 });

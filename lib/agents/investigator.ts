@@ -1,10 +1,19 @@
 import { extractJson, isPlainObject } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import { getLlmClient, runToolLoop } from "../llm";
+import { issuePromptBlock, resolveIssueId } from "../pipeline/issues";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
 import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
-import { appendStageLog, getClaims, getEvents, getInvestigation, insertClaims, insertGaps } from "../store";
-import type { Claim, ClaimInput, ClaimStatus, GapInput } from "../types";
+import {
+  appendStageLog,
+  getClaims,
+  getEvents,
+  getInvestigation,
+  getIssues,
+  insertClaims,
+  insertGaps,
+} from "../store";
+import type { Claim, ClaimInput, ClaimStatus, GapInput, Issue } from "../types";
 import { sampleEvents, summarizeEvents } from "./summary";
 import { buildAgentTools } from "./tools";
 
@@ -54,7 +63,7 @@ function claimKey(eventId: string, text: string): string {
   return `${eventId}|${text.toLowerCase().replace(/\s+/g, " ").trim()}`;
 }
 
-function collectClaims(content: string, agent: string): ClaimInput[] {
+function collectClaims(content: string, agent: string, issues: Issue[]): ClaimInput[] {
   const parsed = extractJson(content);
   if (!isPlainObject(parsed) || !Array.isArray(parsed.claims)) return [];
 
@@ -82,12 +91,13 @@ function collectClaims(content: string, agent: string): ClaimInput[] {
       ts: typeof raw.ts === "string" && raw.ts.trim() ? toUtcIso(raw.ts) || undefined : undefined,
       status: status as ClaimStatus,
       confidence: Math.min(1, Math.max(0, confidence)),
+      issueId: resolveIssueId(raw.issue_id ?? raw.issueId, text, issues),
     });
   }
   return claims;
 }
 
-function collectNotes(content: string, kind: InvestigatorKind): GapInput[] {
+function collectNotes(content: string, kind: InvestigatorKind, issues: Issue[]): GapInput[] {
   const parsed = extractJson(content);
   if (!isPlainObject(parsed) || !Array.isArray(parsed.notes)) return [];
 
@@ -103,6 +113,11 @@ function collectNotes(content: string, kind: InvestigatorKind): GapInput[] {
       question: isPlainObject(raw) && typeof raw.question === "string" ? raw.question : `Could not determine (${KIND_LABELS[kind]})`,
       note: text.trim(),
       eventIds,
+      issueId: resolveIssueId(
+        isPlainObject(raw) ? raw.issue_id ?? raw.issueId : undefined,
+        text.trim(),
+        issues,
+      ),
     });
   }
   return notes;
@@ -121,10 +136,12 @@ export async function runInvestigator(
   const tools = buildAgentTools(investigationId, kind);
   const events = await getEvents(investigationId);
   const investigation = await getInvestigation(investigationId);
+  const issues = await getIssues(investigationId);
   const scopeLine = scopePromptLine(investigation?.scope ?? null);
   // Prompts see only in-scope records, matching what the tools can return.
   const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
   const digest = renderVocabularyDigest(buildVocabularyDigest(inScope));
+  const issueBlock = issuePromptBlock(issues);
 
   const system = [
     `You are the ${KIND_LABELS[kind]} investigator on an incident investigation.`,
@@ -132,6 +149,7 @@ export async function runInvestigator(
     "Work only from the Evidence Registry: every finding must be backed by an item you have read.",
     "Read widely with the source tools — search_jira, get_issue, search_slack, get_slack_thread, search_email, get_email_thread — then call verify_quote to confirm a quote before submitting a claim.",
     "Call submit_claim for each finding. Quote the original text verbatim (copy it exactly; whitespace differences are fine, wording changes are not).",
+    ...(issueBlock ? [issueBlock] : []),
     "Never invent events, people, dates, or messages. If something cannot be established from the records, put it in notes instead of claiming it.",
   ].join("\n");
 
@@ -140,6 +158,7 @@ export async function runInvestigator(
     plan,
     ...(scopeLine ? ["", scopeLine] : []),
     ...(digest ? ["", "Vocabulary observed in the records (use these exact terms when searching):", digest] : []),
+    ...(issueBlock ? ["", issueBlock] : []),
     "",
     "Evidence Registry summary:",
     summarizeEvents(inScope),
@@ -147,7 +166,7 @@ export async function runInvestigator(
     "Evenly spaced sample of items (use the tools for the rest):",
     JSON.stringify(sampleEvents(inScope, 10)),
     "",
-    "Submit each finding with submit_claim (quote must be an exact substring of the cited event).",
+    "Submit each finding with submit_claim (quote must be an exact substring of the cited event) and set issue_id.",
     'When done, reply with JSON only: {"claims":[],"notes":["things you could not determine"]} — claims already submitted need not be repeated.',
   ].join("\n");
 
@@ -182,7 +201,7 @@ export async function runInvestigator(
           {
             role: "user",
             content:
-              'You have reached the tool-call limit. Do not call tools. Reply with JSON only: {"claims":[],"notes":[]} using evidence you have already read, citing item ids you have seen.',
+              'You have reached the tool-call limit. Do not call tools. Reply with JSON only: {"claims":[],"notes":[]} using evidence you have already read, citing item ids you have seen and setting issue_id on every claim and note.',
           },
         ],
         { forceJson: true },
@@ -211,14 +230,14 @@ export async function runInvestigator(
     existing.filter((claim) => claim.agent === kind).map((claim) => claimKey(claim.eventId, claim.text)),
   );
 
-  const finalClaims = collectClaims(finalContent, kind).filter(
+  const finalClaims = collectClaims(finalContent, kind, issues).filter(
     (claim) => !existingKeys.has(claimKey(claim.eventId, claim.text)),
   );
   if (finalClaims.length > 0) {
     await insertClaims(investigationId, finalClaims);
   }
 
-  const notes = collectNotes(finalContent, kind);
+  const notes = collectNotes(finalContent, kind, issues);
   if (notes.length > 0) {
     await insertGaps(investigationId, notes);
   }
@@ -227,6 +246,10 @@ export async function runInvestigator(
     rounds: toolLog.length,
     toolCalls: toolLog,
     notes: notes.length,
+    issues: issues.length,
+    unassigned: (await getClaims(investigationId)).filter(
+      (claim) => claim.agent === kind && !claim.issueId,
+    ).length,
   });
 
   const claims = (await getClaims(investigationId)).filter((claim) => claim.agent === kind);

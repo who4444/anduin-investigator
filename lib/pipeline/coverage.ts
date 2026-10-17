@@ -17,10 +17,33 @@ export interface SourceCoverage {
   available: number;
   /** Records excluded from this investigation's scope. */
   excluded: number;
+  /** The ids behind `excluded`, so the UI can list and inspect them. */
+  excludedEventIds: string[];
   searched: boolean;
   queries: string[];
   /** Calls that were logged but returned errors instead of counts. */
   failedQueries: string[];
+}
+
+/* Coverage is three states, never two (G-02): "we searched and found it",
+   "we searched and it is absent", and "we never looked (excluded)". Copy
+   that collapses the last two into "no records" is a lie by omission. */
+export type CoverageState = "searched" | "not-searched-excluded" | "not-searched";
+
+export function coverageState(entry: SourceCoverage): CoverageState {
+  if (entry.searched) return "searched";
+  return entry.excluded > 0 ? "not-searched-excluded" : "not-searched";
+}
+
+export function coverageLabel(entry: SourceCoverage): string {
+  switch (coverageState(entry)) {
+    case "searched":
+      return `${entry.queries.length} quer${entry.queries.length === 1 ? "y" : "ies"}`;
+    case "not-searched-excluded":
+      return `not searched · ${entry.excluded} excluded`;
+    default:
+      return entry.available > 0 ? "never searched" : "no data";
+  }
 }
 
 export interface CoverageReport {
@@ -79,8 +102,10 @@ export function buildCoverage(
     totals.set(event.source, (totals.get(event.source) ?? 0) + 1);
   }
   const inScope = new Map<SourceKind, number>();
+  const inScopeIds = new Set<string>();
   for (const event of inScopeEvents) {
     inScope.set(event.source, (inScope.get(event.source) ?? 0) + 1);
+    inScopeIds.add(event.id);
   }
 
   const searched = new Map<SourceKind, string[]>();
@@ -123,10 +148,14 @@ export function buildCoverage(
   const sources: SourceCoverage[] = SOURCES.map((source) => {
     const total = totals.get(source) ?? 0;
     const available = inScope.get(source) ?? 0;
+    const excludedEventIds = events
+      .filter((event) => event.source === source && !inScopeIds.has(event.id))
+      .map((event) => event.id);
     return {
       source,
       available,
       excluded: total - available,
+      excludedEventIds,
       searched: searched.has(source),
       queries: searched.get(source) ?? [],
       failedQueries: failed.get(source) ?? [],

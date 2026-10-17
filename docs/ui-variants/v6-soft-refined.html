@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V6 — Soft, refined</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#f6f7fb; --card:#ffffff; --ink:#12152b; --muted:#5c6379; --faint:#98a0b6;
+  --line:#e9ebf3;
+  --indigo:#5b5bd6; --indigo-soft:#eef0ff; --rose:#dc3b5b; --rose-soft:#fdf2f5;
+  --amber:#b45309; --amber-soft:#fdf6e9; --teal:#0e8f7c; --teal-soft:#ecfaf6;
+  --ui:"Manrope",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  --shadow:0 1px 2px rgba(18,21,43,.05),0 10px 28px -18px rgba(18,21,43,.22);
+}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:400 14.5px/1.55 var(--ui)}
+.micro{font:700 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}a{color:var(--indigo);text-decoration:none}
+a:hover{text-decoration:underline}
+.appbar{display:flex;justify-content:space-between;align-items:center;padding:14px 30px}
+.brand{font-weight:800;letter-spacing:-.01em}.note{font:700 10.5px var(--mono);color:var(--faint)}
+.wrap{max-width:1120px;margin:0 auto}
+header{padding:6px 30px 0}
+h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.meta{display:flex;gap:14px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.dotrow{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.dotrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dotrow.j::before{background:#6c8cff}.dotrow.e::before{background:#e8a33d}.dotrow.s::before{background:#a678e8}
+nav{display:flex;gap:6px;margin-top:16px;flex-wrap:wrap}
+nav a{font-size:13px;font-weight:700;color:var(--muted);padding:8px 14px;border-radius:999px}
+nav a:hover{color:var(--ink)}
+nav a.on{background:var(--ink);color:#fff}
+main{max-width:1120px;margin:0 auto;padding:22px 30px 90px}
+section{margin-top:36px}
+h2{font-size:21px;font-weight:800;margin:0 0 16px;letter-spacing:-.015em}
+.scope{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--amber-soft);border:1px solid #f0dfb9;border-radius:14px;padding:10px 15px;font-size:13px;font-weight:600;color:#8a5a05}
+.verdict{font-size:21px;font-weight:800;letter-spacing:-.015em;max-width:78ch;line-height:1.4}
+.verify{font:700 11.5px var(--mono);color:var(--muted)}
+.score{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.cell{background:var(--card);border-radius:16px;box-shadow:var(--shadow);border-left:4px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:8px;transition:transform .18s ease, box-shadow .18s ease}
+.cell:hover{transform:translateY(-2px);box-shadow:0 2px 3px rgba(18,21,43,.05),0 16px 36px -18px rgba(18,21,43,.3)}
+.cell.w2{grid-column:span 2}
+.cell.bad{border-left-color:var(--rose)}
+.cell.warn{border-left-color:#e8a33d}
+.cell b{font-size:25px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;font-family:var(--ui)}
+.cell.bad b{color:var(--rose)}
+.cell .d{font-size:12.5px;color:var(--muted)}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap}
+.tag{font:700 11px var(--mono);letter-spacing:.02em;color:var(--muted);display:inline-flex;gap:6px;align-items:center;background:var(--bg);border-radius:999px;padding:4px 11px}
+.tag::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7}
+.tag.j{color:#4f6bdb}.tag.s{color:#8a5ad6}.tag.e{color:#a06a10}
+.tag.red{color:var(--rose);background:var(--rose-soft)}
+.tag.chk{color:var(--amber);background:var(--amber-soft)}
+.moments{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.moment{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:8px}
+.moment .h{font-weight:800;letter-spacing:-.01em;line-height:1.35}
+.promise{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:12px;border-left:4px solid var(--rose)}
+.stamp{align-self:flex-start;font:700 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--rose);background:var(--rose-soft);border:1px solid #f2c3cd;border-radius:999px;padding:5px 12px}
+.q{font-size:15px;font-weight:700}
+.bar{position:relative;height:9px;border-radius:999px;background:var(--bg)}
+.bar .p{position:absolute;inset:0 auto 0 0;width:20%;background:#c3c8f5;border-radius:999px 0 0 999px}
+.bar .o{position:absolute;top:0;bottom:0;left:20%;width:80%;background:#f4c6d1;border-radius:0 999px 999px 0}
+.barlab{display:flex;justify-content:space-between;font:700 10.5px var(--mono);color:var(--faint);margin-top:5px}
+.drawer{max-width:480px;background:var(--card);border-radius:18px;box-shadow:0 24px 60px -24px rgba(18,21,43,.4);padding:20px;display:flex;flex-direction:column;gap:12px}
+mark{background:#fdf0b5;padding:0 3px;border-radius:4px}
+.btn{height:38px;padding:0 16px;border-radius:999px;border:0;background:var(--bg);color:var(--ink);font:700 13.5px var(--ui);cursor:pointer}
+.btn:hover{background:#eceef6}
+.btn.pri{background:var(--ink);color:#fff}
+.btn.pri:hover{background:#232848}
+</style></head><body>
+<div class="appbar"><span class="brand">Anduin Investigator</span><span class="note">INTERNAL · NOT FOR EXTERNAL DISTRIBUTION</span></div>
+<header><div class="wrap">
+  <h1>Northwind Logistics — invoice totals after release 4.12</h1>
+  <div class="meta"><span class="mono" style="font-size:12px;color:var(--faint)">2026-10-17</span>
+    <span class="dotrow j">jira</span><span class="dotrow s">slack</span><span class="dotrow e">email</span>
+    <a href="#">How this was produced</a>
+  </div>
+  <nav><a class="on" href="#">The answer</a><a href="#">What happened</a><a href="#">What was promised?</a><a href="#">What went wrong?</a><a href="#">What could not be determined?</a><a href="#">Draft reply</a><a href="#">Timeline detail</a></nav>
+</div></header>
+<main>
+  <section style="margin-top:16px">
+    <div class="scope">⚠ Unconfirmed scope — Northwind Logistics · Meridian · 17 records excluded · verify before relying on it</div>
+    <p class="verdict" style="margin-top:18px">The 4.12 UTC timezone change broke invoice totals, the promised Sep 24 fix never shipped, and four client chases went unanswered for 13 days.</p>
+    <p class="verify">VERIFICATION: 20/47 VERIFIED · 27 CHECK FIRST · 23 FLAGGED</p>
+    <div class="score" style="margin-top:18px">
+      <div class="cell w2"><span class="micro">What went wrong</span><b style="font-size:20px">UTC change in 4.12</b><span class="d">Introduced Sep 10, merged to the release branch.</span></div>
+      <div class="cell bad"><span class="micro">Promises</span><b>8 of 8 broken</b><span class="d">0 kept</span></div>
+      <div class="cell bad"><span class="micro">Unanswered chases</span><b style="font-size:20px">5 from Dana</b><span class="d">Sep 06 → 09</span></div>
+      <div class="cell warn"><span class="micro">Longest silence</span><b>13 days</b><span class="d">after Lin Chen</span></div>
+      <div class="cell warn"><span class="micro">Open questions</span><b>14 open</b><span class="d">Who approved?</span></div>
+    </div>
+  </section>
+  <section>
+    <h2>What happened</h2>
+    <div class="moments">
+      <div class="moment"><span class="micro">2024-09-10</span><span class="h">UTC conversion merged into release branch 4.12</span><span class="chiprow"><span class="tag j">jira</span><span class="tag">technical</span></span></div>
+      <div class="moment"><span class="micro">2024-09-24</span><span class="h">Ticket marked Resolved while QA failed the same build</span><span class="chiprow"><span class="tag s">slack</span><span class="tag red">broken</span></span></div>
+      <div class="moment"><span class="micro">2024-10-01</span><span class="h">Fourth chase with no reply after the promised fix</span><span class="chiprow"><span class="tag e">email</span><span class="tag chk">check before repeating</span></span></div>
+    </div>
+  </section>
+  <section>
+    <h2>What was promised?</h2>
+    <div class="promise">
+      <div class="chiprow"><span class="tag">Lin Chen → Northwind</span><span class="stamp">broken · 9 days late</span><span class="tag j">jira</span></div>
+      <span class="q">“We will ship the fix in the Sep 24 release.”</span>
+      <div><div class="bar"><span class="p"></span><span class="o"></span></div><div class="barlab"><span>PROMISED BY SEP 24</span><span>9 DAYS PAST DEADLINE</span></div></div>
+    </div>
+  </section>
+  <section>
+    <h2>Evidence</h2>
+    <div class="drawer">
+      <div class="chiprow"><span class="mono" style="font-size:12px;color:var(--faint)">2024-09-24T16:00:00Z</span><span class="tag">Marcus Webb</span><span class="tag s">slack</span><span class="tag">#meridian-billing</span><span style="flex:1"></span><button class="btn">Close</button></div>
+      <span>Sep 24 release is cut; <mark>invoice fix included</mark>. MER-202</span>
+      <div class="chiprow"><button class="btn">Copy text</button><button class="btn pri">Open original</button></div>
+    </div>
+  </section>
+</main>
+</body></html>

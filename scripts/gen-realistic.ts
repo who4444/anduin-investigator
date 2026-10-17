@@ -16,8 +16,6 @@ export interface RealisticFile {
   content: string;
 }
 
-const DAY = 86_400_000;
-
 function epochSeconds(date: string, time: string): number {
   return Math.floor(Date.parse(`${date}T${time}:00.000Z`) / 1000);
 }

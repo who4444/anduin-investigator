@@ -17,6 +17,11 @@ export interface ScopeUniverse {
 export interface ReportScope extends InvestigationScope {
   excludedRecords: number;
   excludedClaims: number;
+  /** Out-of-scope records authored by the client itself (G-01 invariant). */
+  excludedClientRecords: number;
+  excludedClientEventIds: string[];
+  /** Records the manager added back from the excluded list ("included by review"). */
+  includedByReview: number;
 }
 
 const EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
@@ -78,11 +83,52 @@ export function matchScope(scope: InvestigationScope | null, event: Event): bool
   );
 }
 
+/* The declared client's name tokens ("northwind" in "Northwind Logistics")
+   identify the client's own footprints in the registry. Same rule as the
+   deterministic declared-client linking: a name must START with a token. */
+function clientTokens(client: string): string[] {
+  return client
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4);
+}
+
+function actorEmailDomain(event: Event): string | null {
+  const actor = event.actorResolved ?? event.actor;
+  return actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase() ?? null;
+}
+
+/* The domains that count as "the client" for recall purposes: the scope's
+   verified domains, plus any registry domain whose name starts with a token
+   of the declared client's name. */
+function computeClientDomains(events: Event[], scope: InvestigationScope): Set<string> {
+  const domains = new Set(scope.senderDomains.map((domain) => domain.toLowerCase()));
+  if (scope.client) {
+    const tokens = clientTokens(scope.client);
+    for (const event of events) {
+      const domain = actorEmailDomain(event);
+      if (domain && tokens.some((token) => domain.startsWith(token))) domains.add(domain);
+    }
+  }
+  return domains;
+}
+
+/* G-01: scoping is a recall guard first. The client's own evidence — records
+   authored from a client domain, channels where a client identity posted,
+   and the full email threads of client messages — stays in the investigation
+   even when the anchor rules alone would exclude it. Records with no client
+   footprint are still excluded, so other tenants in the same workspace never
+   leak in. Manager-reviewed ids (`includeEventIds`) are always kept: the
+   review is the human override over everything above. */
 export function splitEventsByScope(
   events: Event[],
   scope: InvestigationScope | null,
+  includeEventIds: string[] = [],
 ): { inScope: Event[]; outOfScope: Event[] } {
   if (!scope || scope.confidence === "none") return { inScope: events, outOfScope: [] };
+
+  const clientDomains = computeClientDomains(events, scope);
+  const forced = new Set(includeEventIds);
 
   // An email thread is one unit: a reply that cites no ticket of its own still
   // belongs to the escalation when its thread root does.
@@ -93,14 +139,48 @@ export function splitEventsByScope(
     }
   }
 
+  // Client evidence: direct authorship, threads the client wrote into, and
+  // channels where a client identity posted.
+  const clientEventIds = new Set<string>();
+  const clientChannels = new Set<string>();
+  for (const event of events) {
+    const domain = actorEmailDomain(event);
+    if (!domain || !clientDomains.has(domain)) continue;
+    clientEventIds.add(event.id);
+    if (event.source === "email" && event.threadId) scopedThreads.add(event.threadId);
+    if (event.source === "slack") clientChannels.add(event.channel.toLowerCase());
+  }
+
   const inScope: Event[] = [];
   const outOfScope: Event[] = [];
   for (const event of events) {
     const inThread =
       event.source === "email" && event.threadId !== undefined && scopedThreads.has(event.threadId);
-    (matchScope(scope, event) || inThread ? inScope : outOfScope).push(event);
+    const clientChannel =
+      event.source === "slack" && clientChannels.has(event.channel.toLowerCase());
+    (matchScope(scope, event) || inThread || clientEventIds.has(event.id) || clientChannel || forced.has(event.id)
+      ? inScope
+      : outOfScope
+    ).push(event);
   }
   return { inScope, outOfScope };
+}
+
+/* Client evidence that did not survive the scope split. Non-empty means the
+   report must disclose it as a blocking condition and refuse to draft a
+   client reply (G-01 invariant). */
+export function excludedClientEvidence(
+  events: Event[],
+  scope: InvestigationScope | null,
+): { clientDomains: string[]; excludedEventIds: string[] } {
+  if (!scope || scope.confidence === "none") return { clientDomains: [], excludedEventIds: [] };
+  const clientDomains = computeClientDomains(events, scope);
+  const { outOfScope } = splitEventsByScope(events, scope);
+  const excluded = outOfScope.filter((event) => {
+    const domain = actorEmailDomain(event);
+    return domain !== null && clientDomains.has(domain);
+  });
+  return { clientDomains: [...clientDomains].sort(), excludedEventIds: excluded.map((event) => event.id) };
 }
 
 export function scopePromptLine(scope: InvestigationScope | null): string | null {
@@ -349,10 +429,7 @@ async function proposeFromModel(
    to that client; a token merely appearing mid-name is not enough (a channel
    named vertex-billing must not match a declared "Billing Team"). */
 function linkedToDeclared(declared: string, universe: ScopeUniverse): ScopeAnchor[] {
-  const tokens = declared
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length >= 4);
+  const tokens = clientTokens(declared);
   if (tokens.length === 0) return [];
 
   const anchors: ScopeAnchor[] = [];

@@ -5,13 +5,14 @@ import {
   getGaps,
   getIdentities,
   getInvestigation,
+  getIssues,
   getSkepticNotes,
   getStages,
 } from "../store";
-import type { Claim, Event, Gap, Investigation, SkepticNote, Stage } from "../types";
+import type { Claim, Event, Gap, Investigation, Issue, SkepticNote, Stage } from "../types";
 import type { InvestigatorKind } from "../agents/investigator";
 import { buildCoverage, type CoverageReport } from "./coverage";
-import { splitEventsByScope, type ReportScope } from "./scope";
+import { excludedClientEvidence, splitEventsByScope, type ReportScope } from "./scope";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const LEDGER_TYPES = new Set(["commitment", "decision"]);
@@ -30,7 +31,10 @@ export interface AssembledStats {
 
 export interface AssembledResult {
   investigation: Investigation;
+  issues: Issue[];
   timeline: Event[];
+  /** Records the scope split excluded, so the manager can review and add them back (G-01). */
+  excludedEvents: Event[];
   ledger: Claim[];
   claims: Claim[];
   gaps: Gap[];
@@ -80,20 +84,25 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     throw new Error(`No investigation with id ${investigationId}.`);
   }
 
-  const [events, allClaims, gaps, skepticNotes, identities, stages] = await Promise.all([
+  const [events, allClaims, gaps, skepticNotes, identities, stages, issues] = await Promise.all([
     getEvents(investigationId),
     getClaims(investigationId),
     getGaps(investigationId),
     getSkepticNotes(investigationId),
     getIdentities(investigationId),
     getStages(investigationId),
+    getIssues(investigationId),
   ]);
 
   // The registry may hold records for several clients and projects; when a
   // scope was identified for this escalation, the report covers only the
   // scoped records AND their claims — a claim citing a filtered record is
   // excluded too, and both exclusions are disclosed.
-  const { inScope, outOfScope } = splitEventsByScope(events, investigation.scope);
+  const { inScope, outOfScope } = splitEventsByScope(
+    events,
+    investigation.scope,
+    investigation.scopeOverrides,
+  );
   const timeline = inScope.map(coalesceActor);
   const inScopeIds = new Set(timeline.map((event) => event.id));
   const registryIds = new Set(events.map((event) => event.id));
@@ -134,12 +143,25 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
   const complete = stages.some((stage) => stage.stage === "assemble" && stage.status === "done");
 
   const scope: ReportScope | null = investigation.scope
-    ? { ...investigation.scope, excludedRecords: outOfScope.length, excludedClaims }
+    ? (() => {
+        const clientEvidence = excludedClientEvidence(events, investigation.scope);
+        return {
+          ...investigation.scope,
+          excludedRecords: outOfScope.length,
+          excludedClaims,
+          excludedClientRecords: clientEvidence.excludedEventIds.length,
+          excludedClientEventIds: clientEvidence.excludedEventIds,
+          includedByReview: investigation.scopeOverrides.filter((eventId) => inScopeIds.has(eventId))
+            .length,
+        };
+      })()
     : null;
 
   return {
     investigation,
+    issues,
     timeline,
+    excludedEvents: outOfScope,
     ledger,
     claims,
     gaps,
@@ -169,6 +191,7 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
     needsRetry: result.needsRetry,
     missing: result.missing,
     stats: result.stats,
+    issues: result.issues.length,
   });
 
   return result;

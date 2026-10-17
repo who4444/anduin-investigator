@@ -71,7 +71,7 @@ export function PromisesSection({
                   </span>
                   <span className="promise-quote">“{row.promise}”</span>
                   {row.deadline && (
-                    <span className="stack" style={{ gap: 4 }}>
+                    <span className="stack stack-xs">
                       <span className="deadline-bar" aria-hidden>
                         <span className="deadline-planned" style={{ width: `${(10 / total) * 100}%` }} />
                         {overrun > 0 && (
@@ -167,27 +167,53 @@ export function CausesSection({
           <p className="empty">No cited records to attribute to owners yet.</p>
         ) : (
           <div className="panel">
+            <div className="lane-axis" aria-hidden>
+              <span />
+              <div className="lane-axis-track">
+                <span className="tabular">{new Date(min).toISOString().slice(0, 10)}</span>
+                <span className="tabular">{new Date(max).toISOString().slice(0, 10)}</span>
+              </div>
+            </div>
             {lanes.map((lane) => {
               const left = ((Date.parse(lane.start) - min) / span) * 100;
               const width = Math.max(2, ((Date.parse(lane.end) - Date.parse(lane.start)) / span) * 100);
               return (
                 <div className="lane" key={lane.actor}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>
+                    <div className="strong">
                       <Avatar name={lane.actor} colorIndex={colorFor(report.briefing.people, lane.actor)} />{" "}
                       {lane.actor}
                     </div>
-                    <div className="small muted tabular">
+                    <div className="lane-range">
                       {lane.start.slice(0, 10)} → {lane.end.slice(0, 10)}
                     </div>
-                    {lane.lapses.map((lapse) => (
-                      <span className="lane-lapse" key={lapse.from}>
-                        {lapse.days}d without activity from {lapse.from.slice(0, 10)}
-                      </span>
-                    ))}
                   </div>
-                  <div className="lane-track">
-                    <span className="lane-bar" style={{ left: `${left}%`, width: `${width}%` }} />
+                  <div className="lane-main">
+                    <div className="lane-track">
+                      <span className="lane-bar" style={{ left: `${left}%`, width: `${width}%` }} />
+                      {lane.lapses.map((lapse) => {
+                        const lapseLeft = ((Date.parse(lapse.from) - min) / span) * 100;
+                        const lapseWidth = Math.max(
+                          1.5,
+                          ((Date.parse(lapse.to) - Date.parse(lapse.from)) / span) * 100,
+                        );
+                        return (
+                          <span
+                            key={lapse.from}
+                            className="lapse-band"
+                            title={`${lapse.days}d without activity from ${lapse.from.slice(0, 10)}`}
+                            style={{ left: `${lapseLeft}%`, width: `${lapseWidth}%` }}
+                          />
+                        );
+                      })}
+                    </div>
+                    {lane.lapses.length > 0 && (
+                      <div className="lane-lapses">
+                        {lane.lapses
+                          .map((lapse) => `${lapse.days}d gap from ${lapse.from.slice(5, 10)}`)
+                          .join(" · ")}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -205,7 +231,6 @@ export function CausesSection({
                 <button
                   type="button"
                   className="finding"
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer" }}
                   onClick={() => onClaim(cause.claimId)}
                 >
                   <span className="finding-head">
@@ -229,14 +254,111 @@ export function CausesSection({
   );
 }
 
+/* G-01 review: the excluded list, inspectable and addable back. Confirming
+   saves the selection and re-runs the investigation over the enlarged scope
+   (the re-run keeps everything already stored and redoes investigate →
+   verify → assemble). */
+function ExcludedRecordsPanel({ report, rerunHref }: { report: ReportPayload; rerunHref: string }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!report.scope || report.excludedEvents.length === 0) return null;
+
+  const toggle = (eventId: string) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
+  };
+
+  const rerun = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/investigations/${report.investigation.id}/scope`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ includeEventIds: [...selected] }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? "Could not save the scope review.");
+      }
+      window.location.assign(rerunHref);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <details className="excluded-panel">
+      <summary>
+        <span className="section-title">
+          Excluded from this investigation ({report.excludedEvents.length})
+        </span>
+        <span className="small muted">
+          records outside the confirmed scope — review before trusting a negative
+        </span>
+      </summary>
+      <div className="stack stack-sm excluded-body">
+        <p className="small muted">
+          Add back any record that belongs to this engagement, then re-run: the investigators will
+          search it and the findings it supports.
+        </p>
+        <ul className="excluded-list">
+          {report.excludedEvents.map((event) => (
+            <li key={event.id}>
+              <label className="excluded-row">
+                <input
+                  type="checkbox"
+                  checked={selected.has(event.id)}
+                  onChange={() => toggle(event.id)}
+                />
+                <span className="stack stack-xs">
+                  <span className="row small muted">
+                    <span className={`source-label source-${event.source}`}>{event.source}</span>
+                    <span className="tabular">{event.ts.slice(0, 10)}</span>
+                    <span>{event.channel}</span>
+                    <span>{event.actorResolved ?? event.actor}</span>
+                  </span>
+                  <span className="excluded-text">{event.text.replace(/\s+/g, " ")}</span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {error && <p className="alert alert-error">{error}</p>}
+        <div className="row">
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={selected.size === 0 || saving}
+            onClick={rerun}
+          >
+            {saving
+              ? "Saving…"
+              : `Re-run with ${selected.size} record${selected.size === 1 ? "" : "s"} included`}
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
 export function GapsSection({
   report,
   onClaim,
   onEvent,
+  rerunHref,
 }: {
   report: ReportPayload;
   onClaim: (claimId: string) => void;
   onEvent: (eventId: string) => void;
+  rerunHref: string;
 }) {
   const neverSearched = report.coverage.neverSearched;
 
@@ -244,10 +366,11 @@ export function GapsSection({
     <section className="briefing-section" id="gaps" aria-labelledby="gaps-title">
       <h2 id="gaps-title">What could not be determined?</h2>
       <div className="stack">
+        <ExcludedRecordsPanel report={report} rerunHref={rerunHref} />
         {report.investigation.ingestWarnings.length > 0 && (
-          <div className="alert alert-warn" style={{ display: "block" }}>
+          <div className="alert alert-warn alert-block">
             <strong>Evidence-set notes from ingest:</strong>
-            <ul style={{ marginTop: 6, paddingLeft: 18 }}>
+            <ul className="bullets">
               {report.investigation.ingestWarnings.map((warning) => (
                 <li key={warning}>{warning}</li>
               ))}
@@ -299,7 +422,7 @@ export function GapsSection({
                   <span className="chip chip-verified">verified</span>
                   {item.source && <span className={`chip chip-source-${item.source}`}>{item.source}</span>}
                 </span>
-                <button type="button" className="btn btn-quiet" style={{ padding: 0, textAlign: "left" }} onClick={() => onClaim(item.claimId)}>
+                <button type="button" className="btn btn-quiet btn-claim" onClick={() => onClaim(item.claimId)}>
                   <span className="finding-text">{item.text}</span>
                 </button>
               </li>
@@ -321,7 +444,7 @@ export function GapsSection({
                     <span className="chip chip-flag">flagged in skeptic review</span>
                   )}
                 </span>
-                <button type="button" className="btn btn-quiet" style={{ padding: 0, textAlign: "left" }} onClick={() => onClaim(item.claimId)}>
+                <button type="button" className="btn btn-quiet btn-claim" onClick={() => onClaim(item.claimId)}>
                   <span className="finding-text">{item.text}</span>
                 </button>
               </li>
@@ -329,8 +452,8 @@ export function GapsSection({
           </ul>
         )}
 
-        <details className="stack" style={{ gap: 8 }}>
-          <summary className="section-title" style={{ cursor: "pointer" }}>
+        <details className="stack stack-sm">
+          <summary className="section-title">
             Rejected claims ({report.rejected.length})
           </summary>
           <p className="small muted">
@@ -346,7 +469,7 @@ export function GapsSection({
                   <span className="finding-head">
                     <span className="chip chip-broken">rejected · {item.reason}</span>
                   </span>
-                  <span className="finding-text" style={{ textDecoration: "line-through" }}>
+                  <span className="finding-text struck">
                     {item.text}
                   </span>
                 </li>
@@ -365,12 +488,14 @@ export function ReplySection({
   error,
   onDraft,
   onClaim,
+  disabledReason,
 }: {
   sentences: { text: string; claimIds: string[] }[] | null;
   state: "idle" | "loading" | "error";
   error: string | null;
   onDraft: () => void;
   onClaim: (claimId: string) => void;
+  disabledReason?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -392,7 +517,9 @@ export function ReplySection({
         <p className="draft-banner">
           Draft for human review. Built only from verified findings. Nothing is sent from this app.
         </p>
-        {!sentences ? (
+        {disabledReason ? (
+          <p className="empty">{disabledReason}</p>
+        ) : !sentences ? (
           <div className="panel stack">
             <p>No reply has been drafted for this investigation yet.</p>
             <div className="row">

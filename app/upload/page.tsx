@@ -45,6 +45,7 @@ export default function UploadPage() {
   const router = useRouter();
   const directoryInput = useRef<HTMLInputElement | null>(null);
   const [escalation, setEscalation] = useState("");
+  const [client, setClient] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export default function UploadPage() {
         form.append("files", file, file.webkitRelativePath || file.name);
       }
       form.append("escalation", escalation);
+      form.append("client", client);
 
       const response = await fetch("/api/investigations", { method: "POST", body: form });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -101,11 +103,11 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="shell stack" style={{ maxWidth: 860 }}>
+    <div className="shell shell-sm stack">
       <div className="row">
         <Link href="/">← Back to sources</Link>
       </div>
-      <h1 style={{ fontSize: 22 }}>Upload exports instead</h1>
+      <h1>Upload exports instead</h1>
       <p className="small muted">
         Use this when a source is not connected. The same pipeline runs over whatever files you provide.
       </p>
@@ -121,12 +123,18 @@ export default function UploadPage() {
           />
         </label>
 
+        <label className="field">
+          <span className="field-label">Client (if known)</span>
+          <input
+            className="input"
+            value={client}
+            onChange={(event) => setClient(event.target.value)}
+            placeholder="e.g. Northwind Logistics — keeps the client's own records in scope."
+          />
+        </label>
+
         <div
-          style={{
-            border: `2px dashed ${dragging ? "var(--jira)" : "var(--border)"}`,
-            borderRadius: "var(--radius)",
-            padding: 16,
-          }}
+          className={dragging ? "dropzone is-dragging" : "dropzone"}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -146,8 +154,7 @@ export default function UploadPage() {
               <input
                 type="file"
                 multiple
-                className="sr-only"
-                style={{ display: "none" }}
+                hidden
                 onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
                 disabled={busy}
               />
@@ -158,7 +165,7 @@ export default function UploadPage() {
                 ref={directoryInput}
                 type="file"
                 multiple
-                style={{ display: "none" }}
+                hidden
                 onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
                 disabled={busy}
               />
@@ -169,11 +176,11 @@ export default function UploadPage() {
               </button>
             )}
           </div>
-          <p className="small muted" style={{ marginTop: 8 }}>
+          <p className="small muted mt-2">
             Jira JSON · email .mbox/.eml · a Slack export folder or a .zip of it. Up to 8 MB.
           </p>
           {files.length > 0 && (
-            <p className="row" style={{ marginTop: 8 }}>
+            <p className="row mt-2">
               {files.map((file) => (
                 <span className="chip" key={`${file.webkitRelativePath || file.name}-${file.size}`}>
                   {file.webkitRelativePath || file.name}

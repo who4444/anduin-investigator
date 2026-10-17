@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 
 import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
 import type { CoverageReport } from "@/lib/pipeline/coverage";
+import { coverageLabel, coverageState } from "@/lib/pipeline/coverage";
 import type { ReportScope } from "@/lib/pipeline/scope";
-import type { Stage } from "@/lib/types";
+import type { Issue, Stage } from "@/lib/types";
 
 interface ProgressViewProps {
   investigationId: string;
   flags: { synthetic: boolean; cached: boolean; live: boolean };
   reviewOnly: boolean;
+  /** G-01 review: re-run the investigation over records the manager added back. */
+  rerun: boolean;
 }
 
 interface ToolCallEntry {
@@ -19,6 +22,14 @@ interface ToolCallEntry {
   name?: string;
   args?: Record<string, string>;
   resultCount?: number;
+}
+
+interface ReviewIssue {
+  id?: string;
+  title: string;
+  ask: string;
+  summary: string;
+  confidence: number;
 }
 
 const STAGE_ROWS: { key: string; label: string; internal?: string[] }[] = [
@@ -42,6 +53,16 @@ function reportHref(id: string, flags: ProgressViewProps["flags"]) {
   if (flags.live) query.set("live", "1");
   const suffix = query.toString();
   return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
+}
+
+function asReviewIssues(issues: Issue[]): ReviewIssue[] {
+  return issues.map((issue) => ({
+    id: issue.id,
+    title: issue.title,
+    ask: issue.ask,
+    summary: issue.summary,
+    confidence: issue.confidence,
+  }));
 }
 
 function formatElapsed(stage: Stage | undefined): string {
@@ -79,7 +100,7 @@ const MARK: Record<string, { glyph: string; className: string }> = {
   pending: { glyph: "·", className: "stage-mark stage-mark-pending" },
 };
 
-export function ProgressView({ investigationId, flags, reviewOnly }: ProgressViewProps) {
+export function ProgressView({ investigationId, flags, reviewOnly, rerun }: ProgressViewProps) {
   const router = useRouter();
   const [stages, setStages] = useState<Stage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +109,10 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   const [warnings, setWarnings] = useState<string[]>([]);
   const [summary, setSummary] = useState<{ events: number; channels: number } | null>(null);
   const [showActivity, setShowActivity] = useState(false);
+  const [reviewIssues, setReviewIssues] = useState<ReviewIssue[] | null>(null);
+  const [overflow, setOverflow] = useState(0);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const started = useRef(false);
   const done = useRef(false);
 
@@ -119,9 +144,21 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
     }
   }, [investigationId]);
 
+  const loadIssues = useCallback(async (): Promise<{ issues: Issue[]; overflow: number }> => {
+    try {
+      const response = await fetch(`/api/investigations/${investigationId}/issues`);
+      if (!response.ok) return { issues: [], overflow: 0 };
+      const payload = (await response.json()) as { issues?: Issue[]; overflow?: number };
+      const issues = Array.isArray(payload.issues) ? payload.issues : [];
+      setOverflow(payload.overflow ?? 0);
+      return { issues, overflow: payload.overflow ?? 0 };
+    } catch {
+      return { issues: [], overflow: 0 };
+    }
+  }, [investigationId]);
+
   useEffect(() => {
-    const initial = setTimeout(() => void loadCoverage(), 0);
-    const poll = setInterval(() => void loadCoverage(), 2500);
+    const initial = setTimeout(() => void loadCoverage(), 0);    const poll = setInterval(() => void loadCoverage(), 2500);
     return () => {
       clearTimeout(initial);
       clearInterval(poll);
@@ -150,7 +187,9 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
       const assembleDone = current.some(
         (stage) => stage.stage === "assemble" && stage.status === "done",
       );
-      if (assembleDone || reviewOnly) {
+      // A re-run deliberately redoes investigate → verify → assemble over the
+      // enlarged scope, so the finished state must not short-circuit it.
+      if (!rerun && (assembleDone || reviewOnly)) {
         finish();
         return;
       }
@@ -165,22 +204,56 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
       });
 
       if (started.current) return;
-      started.current = true;
 
-      const outcome = await runPipeline(investigationId, {
-        onStage: (update: StageUpdate) => {
-          if (update.status === "error" && update.error) {
-            setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
-          }
-        },
-      });
+      const planDone = current.some(
+        (stage) => stage.stage === "plan" && stage.status === "done",
+      );
 
-      if (!outcome.ok) {
-        setError(`${outcome.stage.replace(/_/g, " ")} failed: ${outcome.error}`);
-      } else {
+      const onStage = (update: StageUpdate) => {
+        if (update.status === "error" && update.error) {
+          setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
+        }
+      };
+
+      const handleOutcome = async (outcome: Awaited<ReturnType<typeof runPipeline>>) => {
+        if (!outcome.ok) {
+          setError(`${outcome.stage.replace(/_/g, " ")} failed: ${outcome.error}`);
+          return;
+        }
+        if ("paused" in outcome && outcome.paused) {
+          const info = await loadIssues();
+          setReviewIssues(
+            asReviewIssues(info.issues.length > 0 ? info.issues : outcome.issues),
+          );
+          return;
+        }
         setError(null);
         finish();
+      };
+
+      if (planDone) {
+        // A reload while the issue review is open must show the review again,
+        // not run the plan a second time or skip the manager's confirmation.
+        const info = await loadIssues();
+        if (info.issues.length > 1 && info.issues.some((issue) => !issue.confirmed)) {
+          setReviewIssues(asReviewIssues(info.issues));
+          return;
+        }
+        started.current = true;
+        const outcome = await runPipeline(investigationId, {
+          startAt: "investigate",
+          onStage,
+        });
+        await handleOutcome(outcome);
+        return;
       }
+
+      started.current = true;
+      const outcome = await runPipeline(investigationId, {
+        stopForIssueReview: true,
+        onStage,
+      });
+      await handleOutcome(outcome);
     };
 
     void boot();
@@ -188,10 +261,96 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
       cancelled = true;
       source?.close();
     };
-  }, [finish, investigationId, loadStages, reviewOnly]);
+  }, [finish, investigationId, loadIssues, loadStages, reviewOnly, rerun]);
 
-  const activity = useMemo(() => {
-    const entries: { agent: string; name: string; detail: string; count?: number }[] = [];
+  const updateReviewIssue = (index: number, patch: Partial<ReviewIssue>) => {
+    setReviewIssues((current) =>
+      current ? current.map((issue, i) => (i === index ? { ...issue, ...patch } : issue)) : current,
+    );
+  };
+
+  const addReviewIssue = () => {
+    setReviewIssues((current) =>
+      current && current.length < 3
+        ? [...current, { title: "", ask: "", summary: "", confidence: 0.5 }]
+        : current,
+    );
+  };
+
+  const removeReviewIssue = (index: number) => {
+    setReviewIssues((current) =>
+      current && current.length > 1 ? current.filter((_, i) => i !== index) : current,
+    );
+  };
+
+  const mergeReviewIssues = () => {
+    setReviewIssues((current) => {
+      if (!current || current.length < 2) return current;
+      return [
+        {
+          ...current[0],
+          title: current[0].title || "Combined issue",
+          ask: current
+            .map((issue) => issue.ask.trim())
+            .filter(Boolean)
+            .join("\n\n"),
+          summary: current
+            .map((issue) => issue.summary.trim())
+            .filter(Boolean)
+            .join(" "),
+        },
+      ];
+    });
+  };
+
+  const confirmReview = async () => {
+    if (!reviewIssues || reviewIssues.length === 0) return;
+    if (reviewIssues.some((issue) => !issue.title.trim())) {
+      setReviewError("Give every issue a title before investigating.");
+      return;
+    }
+    setReviewBusy(true);
+    setReviewError(null);
+    try {
+      const response = await fetch(`/api/investigations/${investigationId}/issues`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          issues: reviewIssues.map((issue) => ({
+            id: issue.id,
+            title: issue.title.trim(),
+            ask: issue.ask.trim(),
+            summary: issue.summary.trim(),
+            confidence: issue.confidence,
+          })),
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Could not save the issues.");
+      setReviewIssues(null);
+      started.current = true;
+      const outcome = await runPipeline(investigationId, {
+        startAt: "investigate",
+        onStage: (update) => {
+          if (update.status === "error" && update.error) {
+            setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
+          }
+        },
+      });
+      if (!outcome.ok) {
+        setError(`${outcome.stage.replace(/_/g, " ")} failed: ${outcome.error}`);
+      } else {
+        setError(null);
+        finish();
+      }
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setReviewBusy(false);
+    }
+  };
+
+  const activity = useMemo(() => {    const entries: { agent: string; name: string; detail: string; count?: number }[] = [];
     for (const stage of stages) {
       if (!["root_cause", "commitments", "ownership"].includes(stage.stage)) continue;
       for (const raw of stage.log) {
@@ -224,7 +383,10 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   return (
     <div className="shell stack">
       <div className="spread">
-        <h1 style={{ fontSize: 20 }}>Investigation in progress</h1>
+        <span className="row">
+          <h1>Investigation in progress</h1>
+          {rerun && <span className="chip">re-run with reviewed records</span>}
+        </span>
         <a href={reviewOnly ? reportHref(investigationId, flags) : reportHref(investigationId, flags)}>
           Open the report
         </a>
@@ -269,11 +431,128 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
         </p>
       )}
 
+      {reviewIssues && (
+        <section className="panel issue-review" aria-labelledby="issue-review-title">
+          <div className="spread">
+            <div>
+              <h2 id="issue-review-title">Confirm the issues before I investigate</h2>
+              <p className="small muted">
+                The plan found {reviewIssues.length} independent issue
+                {reviewIssues.length === 1 ? "" : "s"} in this escalation. Edit a title or ask,
+                merge them, or remove one — this split decides how the timeline, promises and
+                draft reply are separated. Max 3.
+              </p>
+              {reviewIssues.length > 1 && (
+                <p className="small muted">
+                  If one fix would resolve all of these, merge them. A failed fix, a premature
+                  closure, unanswered chases, or an SLA consequence is usually a facet of the
+                  same issue, not a separate one.
+                </p>
+              )}
+            </div>
+            <span className="chip">{reviewIssues.length} of 3</span>
+          </div>
+
+          {overflow > 0 && (
+            <p className="alert alert-warn">
+              The plan also detected {overflow} more independent issue{overflow === 1 ? "" : "s"}.
+              This investigation covers the {reviewIssues.length} shown; split the rest into a
+              separate escalation.
+            </p>
+          )}
+
+          <div className="stack">
+            {reviewIssues.map((issue, index) => (
+              <div className="issue-edit-card" key={issue.id ?? `new-${index}`}>
+                <div className="spread">
+                  <span className="small muted">Issue {index + 1}</span>
+                  {reviewIssues.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      onClick={() => removeReviewIssue(index)}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <label className="field">
+                  <span className="field-label">Title</span>
+                  <input
+                    className="input"
+                    value={issue.title}
+                    maxLength={120}
+                    onChange={(event) => updateReviewIssue(index, { title: event.target.value })}
+                    placeholder="e.g. Blank VAT totals after 5.3.0"
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">What the client asks on this issue</span>
+                  <textarea
+                    className="input"
+                    rows={2}
+                    value={issue.ask}
+                    maxLength={600}
+                    onChange={(event) => updateReviewIssue(index, { ask: event.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Short description (optional)</span>
+                  <textarea
+                    className="input"
+                    rows={2}
+                    value={issue.summary}
+                    maxLength={600}
+                    onChange={(event) => updateReviewIssue(index, { summary: event.target.value })}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={addReviewIssue}
+              disabled={reviewIssues.length >= 3}
+            >
+              Add issue
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={mergeReviewIssues}
+              disabled={reviewIssues.length < 2}
+            >
+              Merge into one issue
+            </button>
+          </div>
+
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void confirmReview()}
+              disabled={reviewBusy}
+            >
+              {reviewBusy
+                ? "Saving…"
+                : `Confirm ${reviewIssues.length} issue${reviewIssues.length === 1 ? "" : "s"} and investigate`}
+            </button>
+            <span className="small muted">
+              The same evidence is searched once; findings and promises stay separated per issue.
+            </span>
+          </div>
+          {reviewError && <p className="alert alert-error">{reviewError}</p>}
+        </section>
+      )}
+
       <section className="panel">
-        <h2 style={{ marginBottom: 8 }}>Summary</h2>
+        <h2>Summary</h2>
         {summary ? (
-          <div className="stack" style={{ gap: 8 }}>
-            <p className="row small" style={{ gap: 12 }}>
+          <div className="stack stack-sm">
+            <p className="row small">
               <span className="tabular">{summary.events} items stored</span>
               {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
             </p>
@@ -281,7 +560,7 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
               <p className="small muted">Evidence-set notes: {warnings.join(" · ")}</p>
             )}
             {scope && (
-              <p className={`scope-line small tone-${scope.confidence}`} style={{ fontWeight: 500 }}>
+              <p className={`scope-line small tone-${scope.confidence}`}>
                 {scope.confidence === "none"
                   ? `No scope could be confirmed${scope.client ? ` for ${scope.client}` : ""} — every stored record was searched.`
                   : `${scope.confidence === "partial" ? "Unconfirmed scope: " : "Scope: "}${[scope.client, scope.project]
@@ -292,14 +571,20 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
               </p>
             )}
             {coverage && (
-              <ul className="stack" style={{ gap: 6 }}>
+              <ul className="stack stack-sm">
                 {coverage.sources.map((entry) => (
                   <li key={entry.source} className="row small">
                     <span className={`source-label source-${entry.source}`}>{entry.source}</span>
                     <span className="tabular">{entry.available} items</span>
-                    <span className={entry.searched ? "muted" : "activity-result"}>
-                      {entry.searched ? `${entry.queries.length} queries` : entry.available > 0 ? "never searched" : "no data"}
+                    <span className={coverageState(entry) === "searched" ? "muted" : "activity-result"}>
+                      {coverageLabel(entry)}
                     </span>
+                    {entry.failedQueries.length > 0 && (
+                      <span className="activity-result">
+                        {entry.failedQueries.length} failed quer
+                        {entry.failedQueries.length === 1 ? "y" : "ies"}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

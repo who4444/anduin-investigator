@@ -1,0 +1,8 @@
+[
+  { "ts": "1726995600.000000", "user": "U1", "text": "Invoice totals are still blank. We have had no reply on the Sep 20 promise." },
+  { "ts": "1726999200.000000", "user": "U1", "text": "Separately, finance still cannot sign in. Two problems, no dates." },
+  { "ts": "1727080200.000000", "user": "U1", "text": "Third chase: VAT totals blank and SSO down. We need answers on both." },
+  { "ts": "1727425200.000000", "user": "U1", "text": "SSO is still failing after your Sep 26 release." },
+  { "ts": "1727600400.000000", "user": "U1", "text": "VAT still blank and SSO still down. Escalating this on our side." },
+  { "ts": "1727694000.000000", "user": "U2", "text": "SSO is fixed in 3.4.1 and VAT is fixed in 2.1.4. Sorry for the run-around." }
+]

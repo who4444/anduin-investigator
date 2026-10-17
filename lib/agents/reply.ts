@@ -1,7 +1,7 @@
 import { extractJson, isPlainObject } from "../json";
 import { getLlmClient } from "../llm";
-import { getClaims, getEvents, upsertReportExtras } from "../store";
-import type { Claim } from "../types";
+import { getClaims, getEvents, getIssues, upsertIssueReportExtras, upsertReportExtras } from "../store";
+import type { Claim, Issue } from "../types";
 
 export interface ReplySentence {
   text: string;
@@ -95,13 +95,28 @@ export function pruneStaleReply(
   return sentences.length > 0 ? { sentences } : null;
 }
 
-export async function generateReply(investigationId: string): Promise<ReplyDraft> {
-  const claims = await getClaims(investigationId);
+export async function generateReply(
+  investigationId: string,
+  issueId?: string | null,
+): Promise<ReplyDraft> {
+  const allClaims = await getClaims(investigationId);
+  let issue: Issue | null = null;
+  if (issueId) {
+    issue = (await getIssues(investigationId)).find((candidate) => candidate.id === issueId) ?? null;
+    if (!issue) throw new Error("No issue with that id belongs to this investigation.");
+  }
+  const claims = issueId
+    ? allClaims.filter((claim) => claim.issueId === issueId)
+    : allClaims;
   const verified = claims.filter(
     (claim) => claim.verifyStatus === "verified" && !claim.skepticFlag,
   );
   if (verified.length === 0) {
-    throw new Error("No verified findings yet — run verification before drafting a reply.");
+    throw new Error(
+      issue
+        ? "No verified findings for this issue yet — run verification before drafting a reply."
+        : "No verified findings yet — run verification before drafting a reply.",
+    );
   }
 
   const events = await getEvents(investigationId);
@@ -116,12 +131,24 @@ export async function generateReply(investigationId: string): Promise<ReplyDraft
     ts: eventsById.get(claim.eventId)?.ts ?? claim.ts ?? null,
   }));
 
+  const issueContext = issue
+    ? [
+        `This draft is only for one of several independent issues in the escalation.`,
+        `Issue: ${issue.title}`,
+        issue.ask ? `The client asks: ${issue.ask}` : "",
+        "Do not mention or fold in findings from the other issues.",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
   const response = await getLlmClient().chat(
     [
       { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
         content: [
+          ...(issueContext ? [issueContext, ""] : []),
           "Verified findings:",
           JSON.stringify(payload),
           "",
@@ -149,6 +176,11 @@ export async function generateReply(investigationId: string): Promise<ReplyDraft
   }.`;
 
   const verdict = validated.verdict || fallbackVerdict;
-  await upsertReportExtras(investigationId, { verdict, reply: { sentences: validated.sentences } });
+  const reply = { sentences: validated.sentences };
+  if (issue) {
+    await upsertIssueReportExtras(investigationId, issue.id, { verdict, reply });
+  } else {
+    await upsertReportExtras(investigationId, { verdict, reply });
+  }
   return { verdict, sentences: validated.sentences };
 }

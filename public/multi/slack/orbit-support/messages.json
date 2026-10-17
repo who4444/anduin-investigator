@@ -1,0 +1,10 @@
+[
+  { "ts": "1725271200.000000", "user": "U2", "text": "Contoso reports blank VAT invoice totals since 2.1.0; tracking ORB-101." },
+  { "ts": "1725526800.000000", "user": "U2", "text": "VAT fix scheduled for the Sep 20 release." },
+  { "ts": "1726651800.000000", "user": "U3", "text": "Contoso SSO is broken for finance since the identity migration; tracking ORB-140." },
+  { "ts": "1726913400.000000", "user": "U2", "text": "Marking ORB-101 resolved; the VAT fix is in 2.1.3." },
+  { "ts": "1727361600.000000", "user": "U4", "text": "Reopened ORB-101: the finance sandbox still shows blank VAT totals on 2.1.3." },
+  { "ts": "1727365200.000000", "user": "U3", "text": "Marking ORB-140 resolved; the SSO fix is included." },
+  { "ts": "1727624400.000000", "user": "U5", "text": "SSO root cause: identity-service 3.4 dropped the SAML certificate; 3.4.1 fixes it." },
+  { "ts": "1727690400.000000", "user": "U4", "text": "VAT fixed in 2.1.4; exports verified with finance." }
+]

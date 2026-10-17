@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveScopeUniverse,
+  excludedClientEvidence,
   matchScope,
   resolveScope,
   splitEventsByScope,
 } from "../lib/pipeline/scope";
 import type { Event, InvestigationScope } from "../lib/types";
 import type { LlmClient } from "../lib/llm";
+import { clientMailbox, clientMailboxScope, sharedChannel } from "./fixtures/p0";
 
 const event = (over: Partial<Event> & { id: string }): Event => ({
   investigationId: "inv",
@@ -522,5 +524,88 @@ describe("resolveScope", () => {
     expect(resolved?.ticketPrefixes).toContain("MER");
     expect(resolved?.senderDomains).toEqual(["northwind.example"]);
     expect(resolved?.channels).toEqual([]);
+  });
+});
+
+/* G-01 ratchets. Scoping must act as a recall guard: client evidence wins
+   over the exclusion rules; unrelated tenants stay excluded. These flip
+   from `it.fails` to `it` when the recall guard lands. */
+describe("recall guard (G-01)", () => {
+  const scoped: InvestigationScope = {
+    client: "Northwind Logistics",
+    project: "Meridian Billing",
+    ticketPrefixes: ["MER"],
+    channels: ["meridian-billing"],
+    senderDomains: ["northwind.example"],
+    confidence: "scoped",
+    anchors: [],
+  };
+
+  it("keeps client messages in a shared channel outside the project scope", () => {
+    const { inScope } = splitEventsByScope(sharedChannel.events, scoped);
+    const ids = inScope.map((event) => event.id);
+    expect(ids).toContain("f1-general-chase-1");
+    expect(ids).toContain("f1-general-chase-2");
+  });
+
+  it("keeps the client mailbox when the scope has no domain anchor", () => {
+    const { inScope } = splitEventsByScope(clientMailbox.events, clientMailboxScope);
+    expect(inScope.map((event) => event.id)).toContain("f2-email");
+  });
+
+  it("still excludes records no client evidence touches", () => {
+    const { outOfScope } = splitEventsByScope(sharedChannel.events, scoped);
+    expect(outOfScope.map((event) => event.id)).toContain("f1-distractor");
+  });
+});
+
+describe("excludedClientEvidence (G-01 invariant)", () => {
+  /* While the recall guard holds, client evidence is kept in by
+     construction, so the tripwire reads zero — it exists so a future
+     filter (force-exclude, windows) cannot silently serve a draft over
+     records that were dropped. */
+  it("derives the client's domains from the declared name", () => {
+    const result = excludedClientEvidence(clientMailbox.events, clientMailboxScope);
+    expect(result.clientDomains).toEqual(["northwind.example"]);
+    expect(result.excludedEventIds).toEqual([]);
+  });
+
+  it("flags nothing when the recall guard keeps client evidence in scope", () => {
+    const result = excludedClientEvidence(sharedChannel.events, {
+      client: "Northwind Logistics",
+      project: "Meridian Billing",
+      ticketPrefixes: ["MER"],
+      channels: ["meridian-billing"],
+      senderDomains: ["northwind.example"],
+      confidence: "scoped",
+      anchors: [],
+    });
+    expect(result.excludedEventIds).toEqual([]);
+  });
+
+  it("flags nothing without a scope", () => {
+    expect(excludedClientEvidence(sharedChannel.events, null).excludedEventIds).toEqual([]);
+  });
+});
+
+describe("force-include overrides (G-01 review)", () => {
+  const scoped: InvestigationScope = {
+    client: "Northwind Logistics",
+    project: "Meridian Billing",
+    ticketPrefixes: ["MER"],
+    channels: ["meridian-billing"],
+    senderDomains: ["northwind.example"],
+    confidence: "scoped",
+    anchors: [],
+  };
+
+  it("keeps a manager-added record the anchors alone would exclude", () => {
+    const { inScope } = splitEventsByScope(sharedChannel.events, scoped, ["f1-distractor"]);
+    expect(inScope.map((event) => event.id)).toContain("f1-distractor");
+  });
+
+  it("leaves the split unchanged without overrides", () => {
+    const { outOfScope } = splitEventsByScope(sharedChannel.events, scoped, []);
+    expect(outOfScope.map((event) => event.id)).toContain("f1-distractor");
   });
 });

@@ -1,0 +1,85 @@
+From Dana Okafor <dana.okafor@contoso.example> Mon, 02 Sep 2024 09:00:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Ravi Menon <ravi.menon@orbit.example>
+Date: Mon, 02 Sep 2024 09:00:00 +0000
+Subject: VAT invoice exports blank since 2.1.0
+Message-ID: <orbit-m1@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+Since the 2.1.0 upgrade our VAT invoice exports show blank totals. Finance is blocked on reconciliation.
+
+From Ravi Menon <ravi.menon@orbit.example> Thu, 05 Sep 2024 09:30:00 +0000
+From: Ravi Menon <ravi.menon@orbit.example>
+To: Dana Okafor <dana.okafor@contoso.example>
+Date: Thu, 05 Sep 2024 09:30:00 +0000
+Subject: Re: VAT invoice exports blank since 2.1.0
+Message-ID: <orbit-m2@orbit.example>
+In-Reply-To: <orbit-m1@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+We have scheduled the VAT fix for the Sep 20 release.
+
+From Dana Okafor <dana.okafor@contoso.example> Wed, 18 Sep 2024 09:00:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Leo Park <leo.park@orbit.example>
+Date: Wed, 18 Sep 2024 09:00:00 +0000
+Subject: SSO login broken for finance
+Message-ID: <orbit-m3@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+Separate issue: finance users cannot sign in since the identity migration. The SSO error is AADSTS50011.
+
+From Leo Park <leo.park@orbit.example> Wed, 18 Sep 2024 10:00:00 +0000
+From: Leo Park <leo.park@orbit.example>
+To: Dana Okafor <dana.okafor@contoso.example>
+Date: Wed, 18 Sep 2024 10:00:00 +0000
+Subject: Re: SSO login broken for finance
+Message-ID: <orbit-m4@orbit.example>
+In-Reply-To: <orbit-m3@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+We will ship the SSO fix in the Sep 26 release.
+
+From Dana Okafor <dana.okafor@contoso.example> Mon, 23 Sep 2024 08:00:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Ravi Menon <ravi.menon@orbit.example>, Leo Park <leo.park@orbit.example>
+Date: Mon, 23 Sep 2024 08:00:00 +0000
+Subject: Fourth follow-up: two separate problems, no dates
+Message-ID: <orbit-m5@contoso.example>
+In-Reply-To: <orbit-m1@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance still cannot sign in. We need a date for each issue.
+
+From Dana Okafor <dana.okafor@contoso.example> Fri, 27 Sep 2024 08:15:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Leo Park <leo.park@orbit.example>
+Date: Fri, 27 Sep 2024 08:15:00 +0000
+Subject: Re: SSO login broken for finance
+Message-ID: <orbit-m6@contoso.example>
+In-Reply-To: <orbit-m3@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+SSO is still failing after your Sep 26 release. Please confirm what went out.
+
+From Dana Okafor <dana.okafor@contoso.example> Sat, 28 Sep 2024 10:00:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Ravi Menon <ravi.menon@orbit.example>
+Date: Sat, 28 Sep 2024 10:00:00 +0000
+Subject: Re: VAT invoice exports blank since 2.1.0
+Message-ID: <orbit-m7@contoso.example>
+In-Reply-To: <orbit-m1@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+VAT totals are still blank. We have had no confirmation on the Sep 20 release.
+
+From Dana Okafor <dana.okafor@contoso.example> Mon, 30 Sep 2024 08:00:00 +0000
+From: Dana Okafor <dana.okafor@contoso.example>
+To: Ravi Menon <ravi.menon@orbit.example>, Leo Park <leo.park@orbit.example>
+Date: Mon, 30 Sep 2024 08:00:00 +0000
+Subject: Escalation: two independent issues, four unanswered chases
+Message-ID: <orbit-m8@contoso.example>
+In-Reply-To: <orbit-m5@contoso.example>
+Content-Type: text/plain; charset=utf-8
+
+This is a formal escalation. We have two independent issues: blank VAT totals since 2.1.0, and SSO login failing for finance since the identity migration. The VAT fix was promised for Sep 20 and the SSO fix for Sep 26. Both dates passed without a working fix, our chases on 22 and 23 September went unanswered, and we still have no explanation or dates. Please explain what happened on each issue and when each will actually be fixed.

@@ -196,11 +196,46 @@ describeDb("buildCoverage", () => {
     const report = buildCoverage(events, stages, inScope);
     const slack = report.sources.find((entry) => entry.source === "slack");
     expect(slack).toMatchObject({ available: 1, excluded: 0, searched: true });
+    expect(slack?.excludedEventIds).toEqual([]);
     const jira = report.sources.find((entry) => entry.source === "jira");
     expect(jira).toMatchObject({ available: 0, excluded: 1 });
+    expect(jira?.excludedEventIds).toEqual(["e_coverage_jira_1"]);
     const email = report.sources.find((entry) => entry.source === "email");
     expect(email).toMatchObject({ available: 0, excluded: 1 });
+    expect(email?.excludedEventIds).toEqual(["e_coverage_email_1"]);
     // With nothing available in scope, the source is not "never searched".
     expect(report.neverSearched).toEqual([]);
+  });
+});
+
+describe("coverage states (G-02)", () => {
+  const entry = (over: Partial<import("../lib/pipeline/coverage").SourceCoverage>) => ({
+    source: "email" as const,
+    available: 4,
+    excluded: 0,
+    excludedEventIds: [],
+    searched: false,
+    queries: [],
+    failedQueries: [],
+    ...over,
+  });
+
+  it("names the three states: searched, excluded, absent", async () => {
+    const { coverageLabel, coverageState } = await import("../lib/pipeline/coverage");
+
+    const searched = entry({ searched: true, queries: ["search_email(\"totals\")"] });
+    expect(coverageState(searched)).toBe("searched");
+    expect(coverageLabel(searched)).toBe("1 query");
+
+    const excluded = entry({ excluded: 256, excludedEventIds: ["x"] });
+    expect(coverageState(excluded)).toBe("not-searched-excluded");
+    expect(coverageLabel(excluded)).toBe("not searched · 256 excluded");
+
+    const absent = entry({ available: 0 });
+    expect(coverageState(absent)).toBe("not-searched");
+    expect(coverageLabel(absent)).toBe("no data");
+
+    const unsearched = entry({ available: 3 });
+    expect(coverageLabel(unsearched)).toBe("never searched");
   });
 });
