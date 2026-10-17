@@ -37,10 +37,21 @@ export interface ClaimEntailmentCheck {
   error?: string;
 }
 
+/** G-03: the search-completeness proof a negative claim carries. */
+export interface ClaimNegativeCheck {
+  subject: string | null;
+  complete: boolean;
+  basis: string;
+  failedQueries: number;
+  notSearched: string[];
+  excludedClientRecords: number;
+}
+
 export interface ClaimChecks {
   quote?: ClaimQuoteCheck | null;
   attribution?: ClaimAttributionCheck | null;
   entailment?: ClaimEntailmentCheck | null;
+  negative?: ClaimNegativeCheck | null;
 }
 
 export type SkepticNoteKind = "contradiction" | "unsupported" | "silence" | "unanswered";

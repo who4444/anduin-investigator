@@ -90,6 +90,12 @@ function ClaimChecks({ claim }: { claim: Claim }) {
             {checks.entailment.error ? ` (${checks.entailment.error})` : ""}.
           </li>
         )}
+        {checks?.negative && (
+          <li>
+            Negative claim about {checks.negative.subject ?? "the record"} — search completeness:{" "}
+            {checks.negative.basis}. {checks.negative.complete ? "" : "Findings may be incomplete."}
+          </li>
+        )}
         {claim.verifyError && <li>Recorded reason: {claim.verifyError}.</li>}
       </ul>
     </div>

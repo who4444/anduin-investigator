@@ -96,6 +96,8 @@ Each is mapped to a gap below.
 
 ### G-03 — Negative claims require completeness
 
+**Status:** **implemented (core) — 2026-10-17.** Classifier + case-level completeness proof (every available source searched, no failed queries, no excluded client evidence). Incomplete negatives cap at `supported`/`evidence_incomplete` — never verified, never safe-to-repeat, out of causes, chip reads "coverage incomplete", the proof is in the drawer; complete negatives cap at `negative_inference` — still never verified. Drafts use verified-only, so no negative can be asserted. Remaining: per-question source relevance (proofs are case-level) and synthesized gap rows for incomplete negatives.
+
 **Type:** inference policy, verification, safety.
 **Problem:** "no reply", "no handoff", "never shipped", "no confirmation" are rendered as findings from missing records. With an excluded mailbox or failed thread lookup, the negative is unsafe.
 **Required behaviour**
@@ -110,6 +112,8 @@ Each is mapped to a gap below.
 **Likely touchpoints:** `lib/pipeline/verify-claims.ts`, `lib/pipeline/attribution.ts`/`entailment.ts`, `lib/report/build.ts`, `lib/agents/reply.ts`.
 
 ### G-04 — Derived facts need the same trust as quotes
+
+**Status:** **implemented (dates + lateness) — 2026-10-17.** The deadline regex that matched bare month tokens ("Mar" inside "Marching") is gone: full month names, word boundaries, no invented years, next-occurrence rollover — the whole date table is green. The ledger fails closed: a lateness larger than the evidence window renders "the date does not fit the record window", never a number. Remaining metric items (client-only chasers preference, per-source/functional silences, first-response definition) go with the G-05 metrics pass.
 
 **Type:** metric correctness, provenance, tests.
 **Problem:** quotes are verified; numbers are not. "Days late", "longest silence", "unanswered chases", "first response", "findings", promise counts are computed in code and shown as fact. A partial date token can produce "185 days late" inside a 26-day incident.

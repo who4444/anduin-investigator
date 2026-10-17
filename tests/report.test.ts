@@ -469,6 +469,55 @@ describe("commitment dedupe (G-05)", () => {
   });
 });
 
+/* G-04 ratchet: a lateness larger than the whole evidence window cannot be
+   real — the ledger must render it as an invalid date, never as a number a
+   manager might repeat to a client. */
+describe("deadline sanity (G-04)", () => {
+  it("refuses a lateness beyond the incident window", () => {
+    const events: Event[] = [
+      event({ id: "w1", ts: "2024-09-10T03:00:00.000Z" }),
+      event({ id: "w2", ts: "2024-09-30T03:00:00.000Z" }),
+    ];
+    const claims: Claim[] = [
+      claim({
+        id: "cw",
+        eventId: "w1",
+        type: "commitment",
+        text: "We will ship by Mar 15.",
+        ts: "2024-09-10T03:00:00.000Z",
+        status: "broken",
+      }),
+    ];
+
+    const rows = buildLedger({ events, claims, notes: [] });
+
+    expect(rows[0].deadlineInvalid).toBe(true);
+    expect(rows[0].daysLate).toBeNull();
+  });
+
+  it("keeps an in-window lateness as a number", () => {
+    const events: Event[] = [
+      event({ id: "w1", ts: "2024-09-10T03:00:00.000Z" }),
+      event({ id: "w2", ts: "2024-09-25T03:00:00.000Z" }),
+    ];
+    const claims: Claim[] = [
+      claim({
+        id: "cw",
+        eventId: "w2",
+        type: "commitment",
+        text: "We will ship by Sep 20.",
+        ts: "2024-09-25T03:00:00.000Z",
+        status: "broken",
+      }),
+    ];
+
+    const rows = buildLedger({ events, claims, notes: [] });
+
+    expect(rows[0].deadlineInvalid).toBe(false);
+    expect(rows[0].daysLate).toBe(5);
+  });
+});
+
 describe("reply validation", () => {
   const known = new Set(["c1", "c2"]);
 

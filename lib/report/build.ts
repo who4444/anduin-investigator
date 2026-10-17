@@ -1,6 +1,7 @@
 import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types";
 import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
+import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
 
@@ -66,6 +67,9 @@ export interface LedgerRow {
   toWhom: string | null;
   madeAt: string | null;
   deadline: string | null;
+  /** The parsed deadline falls outside the evidence window: shown as an
+      unverifiable date, never as a days-late number (G-04). */
+  deadlineInvalid: boolean;
   outcome: string;
   daysLate: number | null;
   source: SourceKind | null;
@@ -103,6 +107,8 @@ export interface Signature {
   quote: string;
   source: SourceKind | null;
   verification: "verified" | "supported";
+  /** Set for negatives with a search-completeness caveat (G-03). */
+  verifyError?: string | null;
 }
 
 export interface RejectedClaim {
@@ -537,7 +543,10 @@ export function buildFailures({ claims }: ReportInput): Finding[] {
 }
 
 export function buildCauses({ claims }: ReportInput): Finding[] {
-  const kept = visibleClaims(claims).filter((claim) => claim.type !== "commitment");
+  // A negative with an incomplete search is a question, not a cause (G-03).
+  const kept = visibleClaims(claims).filter(
+    (claim) => claim.type !== "commitment" && claim.verifyError !== "evidence_incomplete",
+  );
   return kept.map((claim) => ({ text: claim.text, tag: tagForClaim(claim), claimId: claim.id }));
 }
 
@@ -706,30 +715,84 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
 /* ledger, audit, lanes, trust                                         */
 /* ------------------------------------------------------------------ */
 
-const MONTHS = "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec";
-const DATE_TOKEN = new RegExp(`(?:${MONTHS})\\s+\\d{1,2}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2} ${MONTHS}`, "i");
+/* Deadline extraction (G-04). Rules:
+   - a deadline needs a day AND a month; a bare month token is not a deadline
+     ("we ship by the end of March" promises no date),
+   - months match only at word boundaries ("Marching" is not March),
+   - named dates resolve against the record's timestamp; without a reference
+     the year is never invented (no "now" fallback),
+   - a named date more than half a year before its record means the next
+     occurrence (a December promise about "Jan 5" is next January). */
 
-export function extractDeadline(text: string, referenceIso: string | null): { label: string; iso: string | null } | null {
-  const match = text.match(DATE_TOKEN);
-  if (!match) return null;
-  const label = match[0];
+const MONTH_PATTERN =
+  "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
 
-  let parsed: number;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
-    parsed = Date.parse(`${label}T23:59:59Z`);
-  } else {
-    const referenceYear = referenceIso
-      ? new Date(referenceIso).getUTCFullYear()
-      : new Date().getUTCFullYear();
-    parsed = Date.parse(`${label} ${referenceYear} UTC`);
+const ISO_DATE = /\b(\d{4})-(\d{2})-(\d{2})\b/;
+const MONTH_FIRST = new RegExp(
+  `\\b(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,
+  "i",
+);
+const DAY_FIRST = new RegExp(
+  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_PATTERN})\\.?(?:,?\\s+(\\d{4}))?\\b`,
+  "i",
+);
+
+const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const DEADLINE_ROLLOVER_MS = 183 * DAY_MS;
+
+function monthNumber(name: string): number {
+  return MONTH_KEYS.indexOf(name.toLowerCase().slice(0, 3));
+}
+
+export function extractDeadline(
+  text: string,
+  referenceIso: string | null,
+): { label: string; iso: string | null } | null {
+  const isoMatch = text.match(ISO_DATE);
+  if (isoMatch) {
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    const parsed = Date.parse(`${isoMatch[0]}T23:59:59Z`);
+    if (Number.isNaN(parsed)) return null;
+    return { label: isoMatch[0], iso: new Date(parsed).toISOString() };
   }
 
-  return { label, iso: Number.isNaN(parsed) ? null : new Date(parsed).toISOString() };
+  const monthFirst = text.match(MONTH_FIRST);
+  const dayFirst = monthFirst ? null : text.match(DAY_FIRST);
+  const match = monthFirst ?? dayFirst;
+  if (!match) return null;
+
+  const month = monthNumber(monthFirst ? match[1] : dayFirst![2]);
+  const day = Number(monthFirst ? match[2] : dayFirst![1]);
+  const explicitYear = monthFirst ? match[3] : dayFirst![3];
+  if (month < 0 || day < 1 || day > 31) return null;
+
+  const referenceMs = referenceIso ? Date.parse(referenceIso) : Number.NaN;
+  const hasReference = !Number.isNaN(referenceMs);
+  if (!explicitYear && !hasReference) return null;
+
+  let year = explicitYear ? Number(explicitYear) : new Date(referenceMs).getUTCFullYear();
+  let parsed = Date.UTC(year, month, day);
+  if (!Number.isNaN(parsed) && !explicitYear && parsed < referenceMs - DEADLINE_ROLLOVER_MS) {
+    year += 1;
+    parsed = Date.UTC(year, month, day);
+  }
+  if (Number.isNaN(parsed)) return null;
+  return { label: match[0].replace(/\s+/g, " ").trim(), iso: new Date(parsed).toISOString() };
 }
 
 export function buildLedger(input: ReportInput): LedgerRow[] {
   const { events } = input;
   const eventsById = eventMap(events);
+  // The incident window bounds what "days late" can honestly mean.
+  const timestamps = events
+    .map((event) => Date.parse(event.ts))
+    .filter((value) => !Number.isNaN(value));
+  const windowDays =
+    timestamps.length >= 2
+      ? Math.ceil((Math.max(...timestamps) - Math.min(...timestamps)) / DAY_MS)
+      : 0;
   return clusterCommitments(input.claims).map((cluster) => {
     const claim = cluster.representative;
     const event = cited(claim, eventsById);
@@ -742,10 +805,13 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
     // Lateness is anchored on the record that carries the promise, not on
     // whenever a later claim restated it.
     const proofTs = event?.ts ?? claim.ts ?? null;
-    const daysLate =
+    const rawDaysLate =
       claim.status === "broken" && deadline?.iso && proofTs
         ? Math.max(0, Math.floor((Date.parse(proofTs) - Date.parse(deadline.iso)) / DAY_MS))
         : null;
+    // Lateness beyond the whole evidence window cannot be real: the parsed
+    // date is a partial token or a wrong year. Fail closed to "invalid".
+    const deadlineInvalid = rawDaysLate !== null && rawDaysLate > windowDays + 1;
     return {
       claimId: claim.id,
       promise: claim.text,
@@ -753,8 +819,9 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
       toWhom,
       madeAt: event?.ts ?? claim.ts ?? null,
       deadline: deadline ? deadline.label : null,
+      deadlineInvalid,
       outcome: claim.status,
-      daysLate,
+      daysLate: deadlineInvalid ? null : rawDaysLate,
       source: event?.source ?? null,
       verification: verificationOf(claim),
       mergedClaims: cluster.members.length > 1 ? cluster.members.length : undefined,
@@ -848,10 +915,18 @@ export function buildTrust(input: ReportInput): {
     quote: claim.quote,
     source: eventsById.get(claim.eventId)?.source ?? null,
     verification: verificationOf(claim),
+    verifyError: claim.verifyError ?? null,
   });
 
+  // Negatives are never "safe to repeat": the client pack must not assert an
+  // absence, however well-supported (G-03 / new invariant in GAPS §9).
   const safeToRepeat = claims
-    .filter((claim) => claim.verifyStatus === "verified" && !claim.skepticFlag)
+    .filter(
+      (claim) =>
+        claim.verifyStatus === "verified" &&
+        !claim.skepticFlag &&
+        !NEGATIVE_VERIFY_ERRORS.has(claim.verifyError ?? ""),
+    )
     .map(signature);
   const checkWithHuman = claims
     .filter(

@@ -84,13 +84,15 @@ export function PromisesSection({
                       <span className="deadline-labels">
                         <span>promised by {row.deadline}</span>
                         <span>
-                          {row.outcome === "broken"
-                            ? overrun > 0
-                              ? `${overrun} day${overrun === 1 ? "" : "s"} past the deadline`
-                              : "deadline passed"
-                            : row.outcome === "kept"
-                              ? "delivered"
-                              : "still unclear"}
+                          {row.deadlineInvalid
+                            ? "the date does not fit the record window"
+                            : row.outcome === "broken"
+                              ? overrun > 0
+                                ? `${overrun} day${overrun === 1 ? "" : "s"} past the deadline`
+                                : "deadline passed"
+                              : row.outcome === "kept"
+                                ? "delivered"
+                                : "still unclear"}
                         </span>
                       </span>
                     </span>
@@ -438,7 +440,9 @@ export function GapsSection({
             {report.checkWithHuman.map((item) => (
               <li key={item.claimId} className="finding">
                 <span className="finding-head">
-                  {item.verification === "supported" ? (
+                  {item.verifyError === "evidence_incomplete" ? (
+                    <span className="chip chip-check">coverage incomplete — not searched fully</span>
+                  ) : item.verification === "supported" ? (
                     <span className="chip chip-check">check before repeating</span>
                   ) : (
                     <span className="chip chip-flag">flagged in skeptic review</span>
