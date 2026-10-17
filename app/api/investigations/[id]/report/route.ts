@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { errorResponse, json, readId, readInvestigationOrDefault } from "@/lib/api/pipeline";
 import { buildResult } from "@/lib/pipeline/assemble";
 import { buildBriefing } from "@/lib/report/briefing";
+import { buildBottomLine } from "@/lib/report/bottomline";
 import { buildReportView } from "@/lib/report/build";
 import { getReportExtras } from "@/lib/store";
 
@@ -41,6 +42,13 @@ export async function GET(
         events: assembled.timeline,
         claims: assembled.claims,
       }),
+      bottomLine: buildBottomLine({
+        events: assembled.timeline,
+        claims: assembled.claims,
+        notes: assembled.skepticNotes,
+        gaps: assembled.gaps,
+      }),
+      scope: assembled.scope,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

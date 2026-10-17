@@ -15,6 +15,7 @@ import type {
   IdentityResolution,
   IdentityResolutionInput,
   Investigation,
+  InvestigationScope,
   NewInvestigation,
   SkepticNote,
   SkepticNoteInput,
@@ -43,6 +44,7 @@ interface InvestigationRow {
   content_hash: string;
   plan: string | null;
   created_at: Date | string;
+  scope: unknown;
 }
 
 function mapInvestigation(row: InvestigationRow): Investigation {
@@ -54,7 +56,20 @@ function mapInvestigation(row: InvestigationRow): Investigation {
     contentHash: row.content_hash,
     plan: row.plan,
     createdAt: toIso(row.created_at) as string,
+    scope: isPlainScope(row.scope) ? row.scope : null,
   };
+}
+
+function isPlainScope(value: unknown): value is InvestigationScope {
+  if (typeof value !== "object" || value === null) return false;
+  const scope = value as Partial<InvestigationScope>;
+  return (
+    (scope.client === null || typeof scope.client === "string") &&
+    (scope.project === null || typeof scope.project === "string") &&
+    Array.isArray(scope.ticketPrefixes) &&
+    Array.isArray(scope.channels) &&
+    Array.isArray(scope.senderDomains)
+  );
 }
 
 interface EventRow {
@@ -266,7 +281,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope
     from investigations
     where id = ${id}
     limit 1
@@ -274,10 +289,15 @@ export async function getInvestigation(id: string): Promise<Investigation | null
   return rows.length ? mapInvestigation(rows[0]) : null;
 }
 
+export async function setScope(id: string, scope: InvestigationScope | null): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set scope = ${scope ? sql.json(scope as unknown as JSONValue) : null} where id = ${id}`;
+}
+
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope
     from investigations
     where content_hash = ${hash}
     order by created_at desc

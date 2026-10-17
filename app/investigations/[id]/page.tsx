@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BriefingShell } from "@/app/_components/briefing/shell";
 import { buildResult } from "@/lib/pipeline/assemble";
 import { buildBriefing } from "@/lib/report/briefing";
+import { buildBottomLine } from "@/lib/report/bottomline";
 import { buildReportView, type ReportPayload } from "@/lib/report/build";
 import { getReportExtras } from "@/lib/store";
 
@@ -46,6 +47,13 @@ export default async function ReportPage({
         events: assembled.timeline,
         claims: assembled.claims,
       }),
+      bottomLine: buildBottomLine({
+        events: assembled.timeline,
+        claims: assembled.claims,
+        notes: assembled.skepticNotes,
+        gaps: assembled.gaps,
+      }),
+      scope: assembled.scope,
     };
   } catch (error) {
     // Only a genuinely unknown investigation is a 404; anything else (database

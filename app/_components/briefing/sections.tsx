@@ -33,7 +33,7 @@ export function PromisesSection({
 
   return (
     <section className="briefing-section" id="promises" aria-labelledby="promises-title">
-      <h2 id="promises-title">Promises</h2>
+      <h2 id="promises-title">What was promised?</h2>
       <div className="stack">
         {ledger.length === 0 ? (
           <p className="empty">No source-backed promises were found in the records.</p>
@@ -161,7 +161,7 @@ export function CausesSection({
 
   return (
     <section className="briefing-section" id="causes" aria-labelledby="causes-title">
-      <h2 id="causes-title">Causes and ownership</h2>
+      <h2 id="causes-title">What went wrong?</h2>
       <div className="stack">
         {lanes.length === 0 ? (
           <p className="empty">No cited records to attribute to owners yet.</p>
@@ -242,7 +242,7 @@ export function GapsSection({
 
   return (
     <section className="briefing-section" id="gaps" aria-labelledby="gaps-title">
-      <h2 id="gaps-title">Gaps and confidence</h2>
+      <h2 id="gaps-title">What could not be determined?</h2>
       <div className="stack">
         {neverSearched.length > 0 && (
           <p className="alert alert-warn">

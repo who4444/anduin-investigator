@@ -259,16 +259,25 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
       <section className="panel">
         <h2 style={{ marginBottom: 8 }}>Summary</h2>
         {summary ? (
-          <p className="row small" style={{ gap: 12 }}>
-            <span className="tabular">{summary.events} items stored</span>
-            {coverage?.sources.map((entry) => (
-              <span key={entry.source} className="tabular">
-                {entry.source}: {entry.available} items
-                {entry.searched ? `, ${entry.queries.length} queries` : entry.available > 0 ? ", never searched" : ", no data"}
-              </span>
-            ))}
-            {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
-          </p>
+          <div className="stack" style={{ gap: 8 }}>
+            <p className="row small" style={{ gap: 12 }}>
+              <span className="tabular">{summary.events} items stored</span>
+              {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
+            </p>
+            {coverage && (
+              <ul className="stack" style={{ gap: 6 }}>
+                {coverage.sources.map((entry) => (
+                  <li key={entry.source} className="row small">
+                    <span className={`source-label source-${entry.source}`}>{entry.source}</span>
+                    <span className="tabular">{entry.available} items</span>
+                    <span className={entry.searched ? "muted" : "activity-result"}>
+                      {entry.searched ? `${entry.queries.length} queries` : entry.available > 0 ? "never searched" : "no data"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <p className="small muted">Counts appear as the sources are read.</p>
         )}
@@ -308,25 +317,6 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
               ))}
             </ol>
           ))}
-      </section>
-
-      <section className="panel stack">
-        <h2>Coverage so far</h2>
-        {!coverage ? (
-          <p className="small muted">Coverage appears once the investigation finishes.</p>
-        ) : (
-          <ul className="stack" style={{ gap: 6 }}>
-            {coverage.sources.map((entry) => (
-              <li key={entry.source} className="row small">
-                <span className="chip">{entry.source}</span>
-                <span className="tabular">{entry.available} items</span>
-                <span className={entry.searched ? "muted" : "activity-result"}>
-                  {entry.searched ? `${entry.queries.length} queries` : entry.available > 0 ? "never searched" : "no data"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     </div>
   );

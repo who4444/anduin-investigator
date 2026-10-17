@@ -53,6 +53,13 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
 2. Issue Analyst: reads the escalation and writes an investigation plan that
    names which sources and search angles to try (keywords, ticket IDs, people,
    date ranges), so unsearched sources are visible.
+2b. Scope identification (at plan time, `lib/pipeline/scope.ts`): the model
+   proposes the client, project, ticket prefixes, Slack channels and sender
+   domains from the escalation; CODE keeps only identifiers that actually
+   exist in the registry. All source tools, agent prompts and the report are
+   then scoped to that client/project (email replies follow their thread);
+   excluded records are counted and disclosed in the report. If nothing
+   concrete matches, the investigation runs unscoped as before.
 3. Investigators run in PARALLEL, split by QUESTION, not by person. Each may
    search any source:
    - Root cause: what went wrong technically, when it first appeared, failed fixes
@@ -127,6 +134,7 @@ Draft client reply grounded only in verified claims; time scrubber.
 ## Commands
 - `npm run db:up` then `npm run db:migrate` — required before anything that touches Postgres (local docker postgres:16, anduin/anduin/anduin on 5432). Migrations are `migrations/*.sql`, applied by `lib/db/migrate.ts` (idempotent, tracked in `schema_migrations`).
 - `npx vitest run` — full suite. DB-backed suites skip cleanly when `DATABASE_URL` is unset; with it set, Postgres must be up and migrated or they fail.
+- `npm run test:ui` — Playwright UI tests (`tests/ui/**`) against the real built app on port 3100; run `npm run build` first. A deterministic fake OpenAI-compatible LLM (`tests/ui/fake-llm.ts`, started by globalSetup on 9401) serves every agent call, so the full pipeline runs free and offline; seeds hit the content-hash cache across runs, so specs must tolerate both fresh (201) and cached (200) states.
 - `npm run lint`, `npm run typecheck`, `npm run build` — build must stay green; Next requires `export const maxDuration = 60` as a LITERAL in every route (an imported constant breaks the build).
 - `npm run demo:gen` — regenerates the synthetic exports into `public/demo/` (+ `manifest.json`). Deterministic; re-run after editing `scripts/gen-demo.ts`.
 - `npm run dev` — local app. `.env.local` (never committed) supplies `DATABASE_URL`, `DEEPSEEK_*`, and the optional live-source credentials (`JIRA_*`, `SLACK_TOKEN`, `GMAIL_*`); `lib/db/env.ts` loads it for scripts and tests.

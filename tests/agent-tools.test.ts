@@ -331,6 +331,67 @@ describeDb("agent tools", () => {
     expect(raw.length).toBeLessThan(30_000);
   });
 
+  it("scopes agent tools to the investigation's client and project", async () => {
+    const { setScope, insertEvents: insert } = await import("../lib/store");
+    await insert(investigationId, [
+      {
+        id: "e_test_kst",
+        source: "jira",
+        ts: "2024-09-12T03:00:00.000Z",
+        actor: "Ravi Patel",
+        channel: "KST-301",
+        text: "Acme rate limits were raised.",
+      },
+      {
+        id: "e_test_kestrel",
+        source: "slack",
+        ts: "2024-09-12T04:00:00.000Z",
+        actor: "Ravi Patel",
+        channel: "kestrel-eng",
+        text: "Acme's Kestrel change is live.",
+      },
+      {
+        id: "e_test_acme_mail",
+        source: "email",
+        ts: "2024-09-12T05:00:00.000Z",
+        actor: "Ravi Patel <ravi@acme.example>",
+        channel: "email",
+        text: "Acme's rate limits were raised; closing KST-301.",
+      },
+    ]);
+    await setScope(investigationId, {
+      client: "Northwind Logistics",
+      project: "Meridian Billing",
+      ticketPrefixes: ["MER"],
+      channels: ["meridian-billing"],
+      senderDomains: ["northwind.example"],
+    });
+
+    try {
+      const tools = buildAgentTools(investigationId, "root_cause");
+
+      const jira = JSON.parse(await tools.exec("search_jira", { query: "" })) as {
+        items: { channel: string }[];
+      };
+      expect(jira.items.every((item) => item.channel.startsWith("MER"))).toBe(true);
+
+      const slack = JSON.parse(await tools.exec("search_slack", { query: "" })) as {
+        items: { channel: string }[];
+      };
+      expect(slack.items.every((item) => item.channel === "meridian-billing")).toBe(true);
+
+      const email = JSON.parse(await tools.exec("search_email", { query: "" })) as {
+        items: { actor: string }[];
+      };
+      expect(email.items.every((item) => item.actor.includes("northwind.example"))).toBe(true);
+
+      const kst = JSON.parse(await tools.exec("get_issue", { key: "KST-301" })) as { error?: string };
+      expect(kst.error).toMatch(/different client or project/);
+    } finally {
+      await setScope(investigationId, null);
+    }
+  });
+
   it("rejects a submit_claim without a valid status", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const response = JSON.parse(

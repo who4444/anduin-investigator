@@ -1,7 +1,8 @@
 import { extractJson, isPlainObject } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import { getLlmClient, runToolLoop } from "../llm";
-import { appendStageLog, getClaims, getEvents, insertClaims, insertGaps } from "../store";
+import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
+import { appendStageLog, getClaims, getEvents, getInvestigation, insertClaims, insertGaps } from "../store";
 import type { Claim, ClaimInput, ClaimStatus, GapInput } from "../types";
 import { sampleEvents, summarizeEvents } from "./summary";
 import { buildAgentTools } from "./tools";
@@ -118,6 +119,10 @@ export async function runInvestigator(
 
   const tools = buildAgentTools(investigationId, kind);
   const events = await getEvents(investigationId);
+  const investigation = await getInvestigation(investigationId);
+  const scopeLine = scopePromptLine(investigation?.scope ?? null);
+  // Prompts see only in-scope records, matching what the tools can return.
+  const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
 
   const system = [
     `You are the ${KIND_LABELS[kind]} investigator on an incident investigation.`,
@@ -131,12 +136,13 @@ export async function runInvestigator(
   const user = [
     "Investigation plan:",
     plan,
+    ...(scopeLine ? ["", scopeLine] : []),
     "",
     "Evidence Registry summary:",
-    summarizeEvents(events),
+    summarizeEvents(inScope),
     "",
     "Evenly spaced sample of items (use the tools for the rest):",
-    JSON.stringify(sampleEvents(events, 10)),
+    JSON.stringify(sampleEvents(inScope, 10)),
     "",
     "Submit each finding with submit_claim (quote must be an exact substring of the cited event).",
     'When done, reply with JSON only: {"claims":[],"notes":["things you could not determine"]} — claims already submitted need not be repeated.',

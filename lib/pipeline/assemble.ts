@@ -11,6 +11,7 @@ import {
 import type { Claim, Event, Gap, Investigation, SkepticNote, Stage } from "../types";
 import type { InvestigatorKind } from "../agents/investigator";
 import { buildCoverage, type CoverageReport } from "./coverage";
+import { splitEventsByScope, type ReportScope } from "./scope";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const LEDGER_TYPES = new Set(["commitment", "decision"]);
@@ -35,6 +36,7 @@ export interface AssembledResult {
   stats: AssembledStats;
   identities: AssembledIdentity[];
   stages: Stage[];
+  scope: ReportScope | null;
 }
 
 export interface AssembledIdentity {
@@ -81,7 +83,11 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     getStages(investigationId),
   ]);
 
-  const timeline = events.map(coalesceActor);
+  // The registry may hold records for several clients and projects; when a
+  // scope was identified for this escalation, the report covers only the
+  // scoped records and says how many were excluded.
+  const { inScope, outOfScope } = splitEventsByScope(events, investigation.scope);
+  const timeline = inScope.map(coalesceActor);
   const visibleClaims = claims.filter(isVisibleClaim);
 
   const ledger = visibleClaims
@@ -109,6 +115,10 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
   const needsRetry = missing.length > 0 && pass < MAX_RETRY_PASS;
   const coverage = buildCoverage(events, stages);
 
+  const scope: ReportScope | null = investigation.scope
+    ? { ...investigation.scope, excludedRecords: outOfScope.length }
+    : null;
+
   return {
     investigation,
     timeline,
@@ -126,6 +136,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
       applied: identity.applied,
     })),
     stages,
+    scope,
     needsRetry,
     missing,
     pass,

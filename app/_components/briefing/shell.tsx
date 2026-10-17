@@ -1,24 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { ChaptersSection } from "@/app/_components/briefing/chapters";
-import { PERSON_COLORS } from "@/app/_components/briefing/people";
+import { AnswerSection } from "@/app/_components/briefing/answer";
+import { ChaptersList } from "@/app/_components/briefing/chapters";
+import { MomentsStrip } from "@/app/_components/briefing/story";
 import { CausesSection, GapsSection, PromisesSection, ReplySection } from "@/app/_components/briefing/sections";
-import { StorySection } from "@/app/_components/briefing/story";
 import { SwimlaneSection } from "@/app/_components/briefing/swimlane";
 import { EvidenceDrawer } from "@/app/_components/evidence";
 import type { ReportPayload } from "@/lib/report/build";
 
 const SECTIONS = [
-  { id: "story", label: "The story" },
-  { id: "board", label: "Board" },
-  { id: "chapters", label: "Chapters" },
-  { id: "promises", label: "Promises" },
-  { id: "causes", label: "Causes and ownership" },
-  { id: "gaps", label: "Gaps and confidence" },
+  { id: "answer", label: "The answer" },
+  { id: "story", label: "What happened" },
+  { id: "promises", label: "What was promised?" },
+  { id: "causes", label: "What went wrong?" },
+  { id: "gaps", label: "What could not be determined?" },
   { id: "reply", label: "Draft reply" },
+  { id: "timeline-detail", label: "Timeline detail" },
 ];
+
+function useScrollSpy(): string {
+  const [active, setActive] = useState(SECTIONS[0].id);
+  useEffect(() => {
+    const observed = SECTIONS.map((section) => document.getElementById(section.id)).filter(
+      (element): element is HTMLElement => element !== null,
+    );
+    if (observed.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActive(visible[0].target.id);
+      },
+      { rootMargin: "-30% 0px -60% 0px" },
+    );
+    for (const element of observed) observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return active;
+}
 
 export function BriefingShell({
   report,
@@ -37,9 +59,9 @@ export function BriefingShell({
   const [reply, setReply] = useState(report.reply);
   const [replyState, setReplyState] = useState<"idle" | "loading" | "error">("idle");
   const [replyError, setReplyError] = useState<string | null>(null);
+  const active = useScrollSpy();
 
   const sources = [...new Set(report.events.map((event) => event.source))];
-  const verdict = report.verdict ?? report.briefing.narrative ?? null;
 
   const openClaim = (claimId: string | undefined) => {
     if (!claimId) return;
@@ -78,17 +100,11 @@ export function BriefingShell({
               {cached && <span className="chip">cached result</span>}
             </span>
           </div>
-          {verdict && <p className="verdict">{verdict}</p>}
           <div className="report-meta small muted">
             <span className="tabular">Escalation {report.investigation.createdAt.slice(0, 10)}</span>
             <span aria-hidden>·</span>
-            <span className="tabular">
-              {report.stats.verified} of {report.stats.total} claims verified
-              {report.stats.supported > 0 ? ` · ${report.stats.supported} check before repeating` : ""}
-            </span>
-            <span aria-hidden>·</span>
             {sources.map((source) => (
-              <span key={source} className={`chip chip-source-${source}`}>
+              <span key={source} className={`source-label source-${source}`}>
                 {source}
               </span>
             ))}
@@ -98,7 +114,12 @@ export function BriefingShell({
         </div>
         <nav className="section-index" aria-label="Report sections">
           {SECTIONS.map((section) => (
-            <a key={section.id} href={`#${section.id}`}>
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className={active === section.id ? "is-active" : undefined}
+              aria-current={active === section.id ? "true" : undefined}
+            >
               {section.label}
             </a>
           ))}
@@ -106,9 +127,22 @@ export function BriefingShell({
       </div>
 
       <div className="shell">
-        <StorySection report={report} onClaim={openClaim} onEvent={openEvent} />
-        <SwimlaneSection report={report} onClaim={openClaim} />
-        <ChaptersSection report={report} onClaim={openClaim} />
+        <AnswerSection report={report} onClaim={openClaim} onEvent={openEvent} />
+
+        <section className="briefing-section" id="story" aria-labelledby="story-title">
+          <h2 id="story-title">What happened</h2>
+          <div className="stack">
+            {report.briefing.keyMoments.length > 0 && (
+              <MomentsStrip
+                moments={report.briefing.keyMoments}
+                people={report.briefing.people}
+                onClaim={openClaim}
+              />
+            )}
+            <ChaptersList report={report} onClaim={openClaim} />
+          </div>
+        </section>
+
         <PromisesSection report={report} onClaim={openClaim} onEvent={openEvent} />
         <CausesSection report={report} onClaim={openClaim} />
         <GapsSection report={report} onClaim={openClaim} onEvent={openEvent} />
@@ -119,9 +153,19 @@ export function BriefingShell({
           onDraft={draftReply}
           onClaim={openClaim}
         />
-        <p className="small muted" style={{ paddingTop: 24 }}>
-          Person colors are a fixed palette for this briefing ({PERSON_COLORS.length} slots).
-        </p>
+
+        <details className="briefing-section appendix" id="timeline-detail">
+          <summary>
+            <span className="appendix-title">Timeline detail</span>
+            <span className="small muted">swimlane board with every finding, silence and lapse</span>
+          </summary>
+          <div className="stack">
+            <SwimlaneSection report={report} onClaim={openClaim} embedded />
+            <p className="small muted">
+              Person colors are a fixed palette for this briefing.
+            </p>
+          </div>
+        </details>
       </div>
 
       {drawer && (

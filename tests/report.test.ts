@@ -172,6 +172,31 @@ describe("report metrics", () => {
     expect(window).toMatchObject({ determined: false, value: "not determined" });
   });
 
+  it("phrases broken-promise actions by claim length", () => {
+    const longBroken = claim({
+      id: "cb",
+      eventId: "e3",
+      type: "commitment",
+      status: "broken",
+      text: "The invoice fix was included in the Sep 24 release build and the client was told it was resolved while QA was still failing that exact build.",
+      ts: "2024-09-24T16:00:00.000Z",
+    });
+    const shortBroken = claim({
+      id: "cs",
+      eventId: "e3",
+      type: "commitment",
+      status: "broken",
+      text: "The fix ships Sep 24.",
+      ts: "2024-09-24T16:05:00.000Z",
+    });
+    const { actions } = buildReportView({ events, claims: [longBroken, shortBroken], notes: [] });
+    const long = actions.immediate.find((action) => action.claimIds.includes("cb"));
+    const short = actions.immediate.find((action) => action.claimIds.includes("cs"));
+
+    expect(long?.text).toMatch(/^Close out the broken promise — “The invoice fix was included in the Sep 24 release build and the client was told…”. Set a dated plan/);
+    expect(short?.text).toMatch(/^Re-commit to The fix ships Sep 24\. with a dated plan/);
+  });
+
   it("finds leave and handoff findings even when they are not typed process_failure", () => {
     const ownershipClaim = claim({
       id: "leave1",

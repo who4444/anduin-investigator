@@ -92,6 +92,7 @@ export interface Investigation {
   contentHash: string;
   plan: string | null;
   createdAt: string;
+  scope: InvestigationScope | null;
 }
 
 export interface Stage {
@@ -156,4 +157,12 @@ export interface NewInvestigation {
   title: string;
   escalationText: string;
   contentHash: string;
+}
+
+export interface InvestigationScope {
+  client: string | null;
+  project: string | null;
+  ticketPrefixes: string[];
+  channels: string[];
+  senderDomains: string[];
 }

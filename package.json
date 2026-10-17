@@ -12,7 +12,8 @@
     "db:up": "docker compose up -d",
     "demo:gen": "tsx scripts/gen-demo.ts",
     "sandbox:seed": "tsx sandbox/seed/engine/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "fflate": "^0.8.2",
@@ -23,6 +24,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

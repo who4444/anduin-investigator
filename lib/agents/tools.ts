@@ -1,8 +1,9 @@
 import { asNumber, asString } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import type { ToolSpec } from "../llm";
-import { getClaims, getEvents, insertClaims } from "../store";
-import type { ClaimInput, ClaimStatus, Event, SourceKind } from "../types";
+import { splitEventsByScope } from "../pipeline/scope";
+import { getClaims, getEvents, getInvestigation, insertClaims } from "../store";
+import type { ClaimInput, ClaimStatus, Event, InvestigationScope, SourceKind } from "../types";
 import { verifyQuote } from "../verify";
 import { compactEvent } from "./summary";
 
@@ -211,9 +212,17 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
 }
 
 export function buildAgentTools(investigationId: string, agentName: string): AgentTools {
+  // The registry may hold records for several clients and projects; when a
+  // scope has been identified for this escalation, the tools only surface
+  // records inside it (thread-aware, matching the report).
   async function sourceItems(source: SourceKind): Promise<Event[]> {
-    const events = await getEvents(investigationId);
-    return events.filter((event) => event.source === source);
+    const [events, investigation] = await Promise.all([
+      getEvents(investigationId),
+      getInvestigation(investigationId),
+    ]);
+    const scope: InvestigationScope | null = investigation?.scope ?? null;
+    const { inScope } = splitEventsByScope(events, scope);
+    return inScope.filter((event) => event.source === source);
   }
 
   async function exec(name: string, args: Record<string, unknown>): Promise<string> {
@@ -239,7 +248,21 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const items = (await sourceItems("jira")).filter(
           (event) => event.channel.toLowerCase() === needle,
         );
-        if (items.length === 0) return JSON.stringify({ error: `No stored issue ${key}.` });
+        if (items.length === 0) {
+          const investigation = await getInvestigation(investigationId);
+          const scope = investigation?.scope ?? null;
+          if (
+            scope &&
+            !scope.ticketPrefixes.some((prefix) =>
+              key.toUpperCase().startsWith(`${prefix.toUpperCase()}-`),
+            )
+          ) {
+            return JSON.stringify({
+              error: `No stored issue ${key} — it belongs to a different client or project than this investigation's scope.`,
+            });
+          }
+          return JSON.stringify({ error: `No stored issue ${key}.` });
+        }
         return JSON.stringify({ count: items.length, ...readCapped(items) });
       }
 

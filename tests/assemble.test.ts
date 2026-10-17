@@ -190,4 +190,86 @@ describeDb("verify + assemble", () => {
     expect(result.ledger).toHaveLength(1);
     expect(result.ledger[0].quote).toBe("promised the fix for the Sep 24 release");
   });
+
+  it("excludes out-of-scope records from the report timeline and reports the exclusion", async () => {
+    const { createInvestigation, insertEvents, insertClaims, setScope, deleteInvestigation } =
+      await import("../lib/store");
+    const { buildResult } = await import("../lib/pipeline/assemble");
+    const id = await createInvestigation({
+      title: `Scoped ${randomUUID()}`,
+      escalationText: "Northwind escalation about Meridian Billing.",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    try {
+      await insertEvents(id, [
+        {
+          id: "e_scope_in_1",
+          source: "jira",
+          ts: "2024-09-10T03:00:00.000Z",
+          actor: "Lin Chen",
+          channel: "MER-201",
+          text: "Timezone change merged for release 4.12.",
+        },
+        {
+          id: "e_scope_out_1",
+          source: "jira",
+          ts: "2024-09-11T03:00:00.000Z",
+          actor: "Ravi Patel",
+          channel: "KST-301",
+          text: "Acme rate limits were raised.",
+        },
+        {
+          id: "e_scope_out_2",
+          source: "slack",
+          ts: "2024-09-12T03:00:00.000Z",
+          actor: "Ravi Patel",
+          channel: "kestrel-eng",
+          text: "Acme's Kestrel change is live.",
+        },
+      ]);
+      await insertClaims(id, [
+        {
+          agent: "root_cause",
+          type: "root_cause",
+          text: "The 4.12 timezone change introduced the defect.",
+          actor: "Lin Chen",
+          quote: "Timezone change merged for release 4.12.",
+          eventId: "e_scope_in_1",
+          status: "n/a",
+          confidence: 0.9,
+        },
+        {
+          agent: "ownership",
+          type: "process_failure",
+          text: "Acme's rate-limit change shipped in the same window.",
+          actor: "Ravi Patel",
+          quote: "Acme's Kestrel change is live.",
+          eventId: "e_scope_out_2",
+          status: "n/a",
+          confidence: 0.6,
+        },
+      ]);
+      await setScope(id, {
+        client: "Northwind Logistics",
+        project: "Meridian Billing",
+        ticketPrefixes: ["MER"],
+        channels: ["meridian-billing"],
+        senderDomains: ["northwind.example"],
+      });
+
+      const result = await buildResult(id);
+
+      expect(result.timeline.map((event) => event.id)).toEqual(["e_scope_in_1"]);
+      expect(result.scope).toEqual({
+        client: "Northwind Logistics",
+        project: "Meridian Billing",
+        ticketPrefixes: ["MER"],
+        channels: ["meridian-billing"],
+        senderDomains: ["northwind.example"],
+        excludedRecords: 2,
+      });
+    } finally {
+      await deleteInvestigation(id);
+    }
+  });
 });

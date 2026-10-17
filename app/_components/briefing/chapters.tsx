@@ -5,7 +5,7 @@ import { useState } from "react";
 import { EventRow } from "@/app/_components/briefing/story";
 import type { ReportPayload } from "@/lib/report/build";
 
-export function ChaptersSection({
+export function ChaptersList({
   report,
   onClaim,
 }: {
@@ -25,18 +25,14 @@ export function ChaptersSection({
 
   if (briefing.chapters.length === 0) {
     return (
-      <section className="briefing-section" id="chapters" aria-labelledby="chapters-title">
-        <h2 id="chapters-title">Chapters</h2>
-        <p className="empty">
-          No verified events to group yet. Run the investigation to produce the story.
-        </p>
-      </section>
+      <p className="empty">
+        No verified events to group yet. Run the investigation to produce the story.
+      </p>
     );
   }
 
   return (
-    <section className="briefing-section" id="chapters" aria-labelledby="chapters-title">
-      <h2 id="chapters-title">Chapters</h2>
+    <div className="chapters">
       {briefing.chapters.map((chapter) => {
         const events = chapter.eventIds
           .map((id) => eventById.get(id))
@@ -93,6 +89,6 @@ export function ChaptersSection({
           </details>
         );
       })}
-    </section>
+    </div>
   );
 }

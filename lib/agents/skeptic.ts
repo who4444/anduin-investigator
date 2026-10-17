@@ -4,6 +4,7 @@ import {
   appendStageLog,
   getClaims,
   getEvents,
+  getInvestigation,
   getStages,
   insertGaps,
   insertSkepticNotes,
@@ -11,6 +12,7 @@ import {
 } from "../store";
 import type { SkepticNoteInput, SkepticNoteKind, GapInput } from "../types";
 import { buildCoverage } from "../pipeline/coverage";
+import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
 import { compactEvent, summarizeEvents } from "./summary";
 
 const SKEPTIC_KINDS: SkepticNoteKind[] = ["contradiction", "unsupported", "silence", "unanswered"];
@@ -56,6 +58,9 @@ function collectIssues(content: string): { kind: SkepticNoteKind; claimIndex?: n
 export async function runSkeptic(investigationId: string, pass = 1): Promise<SkepticResult> {
   const claims = await getClaims(investigationId);
   const events = await getEvents(investigationId);
+  const investigation = await getInvestigation(investigationId);
+  const scopeLine = scopePromptLine(investigation?.scope ?? null);
+  const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
 
   if (claims.length === 0) {
     await appendStageLog(investigationId, "skeptic", pass, { flagged: 0, issues: 0, note: "no claims to review" });
@@ -76,8 +81,8 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
   }));
 
   const eventPayload =
-    events.length <= MAX_EVENTS_IN_PROMPT
-      ? events.map((event) => compactEvent(event))
+    inScope.length <= MAX_EVENTS_IN_PROMPT
+      ? inScope.map((event) => compactEvent(event))
       : undefined;
 
   const stages = await getStages(investigationId);
@@ -86,9 +91,10 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
   const user = [
     "Draft claims (index is how the model should reference them):",
     JSON.stringify(indexedClaims),
+    ...(scopeLine ? ["", scopeLine] : []),
     "",
     "Evidence Registry summary:",
-    summarizeEvents(events),
+    summarizeEvents(inScope),
     "",
     "Sources and queries already searched:",
     JSON.stringify(

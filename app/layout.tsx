@@ -25,8 +25,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${atkinson.variable} ${sourceSerif.variable}`}>
       <body>
-        <header className="report-header">
-          <div className="report-header-inner" style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <header className="app-header">
+          <div className="app-header-inner">
             <Link href="/" style={{ color: "var(--text)", fontWeight: 700 }}>
               Anduin Investigator
             </Link>

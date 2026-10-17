@@ -1,5 +1,6 @@
 import { getLlmClient } from "../llm";
-import { appendStageLog, getEvents, setPlan } from "../store";
+import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
+import { appendStageLog, getEvents, getInvestigation, setPlan } from "../store";
 import { sampleEvents, summarizeEvents } from "./summary";
 
 const DEFAULT_PLAN = [
@@ -24,17 +25,21 @@ export async function runAnalyst(
   pass = 1,
 ): Promise<string> {
   const events = await getEvents(investigationId);
+  const investigation = await getInvestigation(investigationId);
+  const scopeLine = scopePromptLine(investigation?.scope ?? null);
+  const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
 
   const user = [
     escalation.trim()
       ? `Escalation from the client:\n${escalation.trim()}`
       : "No escalation text was provided. Infer the likely escalation from the records themselves.",
+    ...(scopeLine ? ["", scopeLine] : []),
     "",
     "Event store summary:",
-    summarizeEvents(events),
+    summarizeEvents(inScope),
     "",
     "Evenly spaced sample of events:",
-    JSON.stringify(sampleEvents(events, 10)),
+    JSON.stringify(sampleEvents(inScope, 10)),
     "",
     "Write the investigation plan now.",
   ].join("\n");

@@ -50,6 +50,17 @@ describeDb("pipeline routes", () => {
       chat: async (messages) => {
         const system = messages[0]?.content ?? "";
         if (system.includes("issue analyst")) return { content: "# Plan\n1. Trace 4.12." };
+        if (system.includes("identify which client and project")) {
+          return {
+            content: JSON.stringify({
+              client: "Northwind Logistics",
+              project: "Meridian Billing",
+              ticketPrefixes: ["MER"],
+              channels: [],
+              senderDomains: [],
+            }),
+          };
+        }
         if (system.includes("skeptic")) {
           return { content: JSON.stringify({ issues: [] }) };
         }
@@ -91,7 +102,7 @@ describeDb("pipeline routes", () => {
 
   it("runs the plan route and marks the stage done", async () => {
     const { POST } = await import("../app/api/investigations/[id]/plan/route");
-    const { getStages } = await import("../lib/store");
+    const { getInvestigation, getStages } = await import("../lib/store");
 
     const response = await POST(post("http://localhost/plan"), context(investigationId));
     const body = await response.json();
@@ -99,6 +110,16 @@ describeDb("pipeline routes", () => {
     expect(response.status).toBe(200);
     expect(body.plan).toContain("Trace 4.12");
     expect((await getStages(investigationId)).find((stage) => stage.stage === "plan")?.status).toBe("done");
+
+    // The identified scope is verified against the registry and persisted.
+    const investigation = await getInvestigation(investigationId);
+    expect(investigation?.scope).toEqual({
+      client: "Northwind Logistics",
+      project: "Meridian Billing",
+      ticketPrefixes: ["MER"],
+      channels: [],
+      senderDomains: [],
+    });
   });
 
   it("runs an investigator and persists its claims", async () => {

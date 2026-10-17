@@ -1,5 +1,7 @@
 import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types";
 import type { CoverageReport } from "../pipeline/coverage";
+import type { ReportScope } from "../pipeline/scope";
+import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
 
 export type FindingTag = "technical" | "process" | "communication";
@@ -137,6 +139,8 @@ export interface ReportPayload extends ReportView {
   verdict: string | null;
   reply: { sentences: { text: string; claimIds: string[] }[] } | null;
   briefing: Briefing;
+  bottomLine: BottomLine;
+  scope: ReportScope | null;
 }
 
 export interface ReportInput {
@@ -182,6 +186,13 @@ function sortedByTs<T extends { ts: string }>(items: T[]): T[] {
 
 function formatDays(days: number): string {
   return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function shortenText(text: string, maxWords: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const words = flat.split(" ");
+  const cut = words.slice(0, maxWords).join(" ");
+  return words.length > maxWords ? `${cut}…` : cut;
 }
 
 /* ------------------------------------------------------------------ */
@@ -504,8 +515,14 @@ export function buildActions(input: ReportInput): { immediate: ReportAction[]; f
     (claim) => claim.type === "commitment" && claim.status === "broken",
   );
   for (const claim of brokenCommitments.slice(0, 3)) {
+    const stated = claim.text.replace(/^A /, "a ");
+    // Long claim texts do not read as a sentence when wrapped in an imperative;
+    // switch to a quotable form instead.
     immediate.push({
-      text: `Re-commit to ${claim.text.replace(/^A /, "a ")} with a dated plan, or withdraw it in writing.`,
+      text:
+        stated.length > 80
+          ? `Close out the broken promise — “${shortenText(stated, 16)}”. Set a dated plan or withdraw it in writing.`
+          : `Re-commit to ${stated} with a dated plan, or withdraw it in writing.`,
       reason: "A source-backed promise reads as broken.",
       claimIds: [claim.id],
       eventIds: [claim.eventId],

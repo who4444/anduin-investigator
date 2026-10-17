@@ -42,9 +42,11 @@ function matchesFilter(event: BriefingEvent, filter: TypeFilter): boolean {
 export function SwimlaneSection({
   report,
   onClaim,
+  embedded = false,
 }: {
   report: ReportPayload;
   onClaim: (claimId: string) => void;
+  embedded?: boolean;
 }) {
   const { briefing } = report;
   const [person, setPerson] = useState("all");
@@ -70,6 +72,7 @@ export function SwimlaneSection({
   const actorOptions = briefing.people.map((entry) => entry.name);
 
   if (!bounds || events.length === 0) {
+    if (embedded) return <p className="empty">No dated events yet, so there is nothing to place on the board.</p>;
     return (
       <section className="briefing-section" id="board" aria-labelledby="board-title">
         <h2 id="board-title">Board</h2>
@@ -80,41 +83,46 @@ export function SwimlaneSection({
 
   const laneEvents = (lane: Lane) => events.filter((event) => event.lane === lane);
 
-  return (
-    <section className="briefing-section" id="board" aria-labelledby="board-title">
-      <h2 id="board-title">Board</h2>
-      <div className="panel stack">
-        <div className="row">
-          <label className="small">
-            Person{" "}
-            <select className="input" value={person} onChange={(event) => setPerson(event.target.value)}>
-              <option value="all">everyone</option>
-              {actorOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="small">
-            Type{" "}
-            <select
-              className="input"
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
-            >
-              {TYPE_FILTERS.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+  const board = (
+    <div className="panel stack">
+      <div className="row">
+        <label className="small">
+          Person{" "}
+          <select className="input" value={person} onChange={(event) => setPerson(event.target.value)}>
+            <option value="all">everyone</option>
+            {actorOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="small">
+          Type{" "}
+          <select
+            className="input"
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
+          >
+            {TYPE_FILTERS.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-        <div className="swimlane-wrap">
-          <div className="swimlane">
-            {briefing.lanes.map((lane) => (
+      <div className="swimlane-wrap">
+        <div className="swimlane">
+          <div className="swimlane-axis" aria-hidden>
+            <span className="swimlane-axis-spacer" />
+            <div className="swimlane-axis-track">
+              <span className="tabular">{bounds ? new Date(bounds.min).toISOString().slice(0, 10) : ""}</span>
+              <span className="tabular">{bounds ? new Date(bounds.max).toISOString().slice(0, 10) : ""}</span>
+            </div>
+          </div>
+          {briefing.lanes.map((lane) => (
               <div className="swimlane-row" key={lane}>
                 <span className="swimlane-label">{LANE_LABEL[lane]}</span>
                 <div className="swimlane-track">
@@ -171,14 +179,23 @@ export function SwimlaneSection({
             ))}
           </div>
         </div>
-        <p className="swimlane-note">
-          Markers are one per source-backed finding; key moments are larger, and dashed-ringed markers
-          carry a check-first label. Shaded bands are silent periods
-          {report.lanes.length > 0 ? "; red bands in the owner lane are ownerless stretches" : ""}. Hovering
-          highlights the same person&apos;s markers; the chapter list below carries the same events on small
-          screens.
-        </p>
+        <div className="swimlane-legend small muted">
+          <span className="legend-item"><span className="legend-swatch legend-key" /> key moment</span>
+          <span className="legend-item"><span className="legend-swatch legend-dashed" /> check before repeating</span>
+          <span className="legend-item"><span className="legend-swatch legend-silence" /> silent period</span>
+          {report.lanes.length > 0 && (
+            <span className="legend-item"><span className="legend-swatch legend-lapse" /> ownerless stretch</span>
+          )}
+          <span className="legend-item">hovering highlights one person&apos;s markers</span>
+        </div>
       </div>
+  );
+
+  if (embedded) return board;
+  return (
+    <section className="briefing-section" id="board" aria-labelledby="board-title">
+      <h2 id="board-title">Board</h2>
+      {board}
     </section>
   );
 }
