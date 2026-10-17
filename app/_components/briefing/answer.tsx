@@ -49,11 +49,21 @@ export function AnswerSection({
         <p className={`scope-line tone-${scope.confidence}`}>
           {scope.confidence === "partial" && <span className="scope-flag">Unconfirmed scope</span>}
           <span className="scope-client">{scopeParts.join(" · ")}</span>
-          {scope.excludedRecords > 0 && (
+          {scope.excludedRecords + scope.excludedClaims > 0 && (
             <span className="small muted">
               {" "}
-              · {scope.excludedRecords} stored record{scope.excludedRecords === 1 ? "" : "s"} from other
-              clients or projects excluded
+              ·{" "}
+              {[
+                scope.excludedRecords > 0
+                  ? `${scope.excludedRecords} stored record${scope.excludedRecords === 1 ? "" : "s"}`
+                  : "",
+                scope.excludedClaims > 0
+                  ? `${scope.excludedClaims} finding${scope.excludedClaims === 1 ? "" : "s"}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" and ")}{" "}
+              from other clients or projects excluded
             </span>
           )}
           {scope.confidence === "partial" && (

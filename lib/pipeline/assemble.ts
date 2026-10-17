@@ -37,6 +37,9 @@ export interface AssembledResult {
   identities: AssembledIdentity[];
   stages: Stage[];
   scope: ReportScope | null;
+  /** True only once the assemble stage has completed at least once: a report
+      read mid-run must not present itself as a finished "no findings" answer. */
+  complete: boolean;
 }
 
 export interface AssembledIdentity {
@@ -74,7 +77,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     throw new Error(`No investigation with id ${investigationId}.`);
   }
 
-  const [events, claims, gaps, skepticNotes, identities, stages] = await Promise.all([
+  const [events, allClaims, gaps, skepticNotes, identities, stages] = await Promise.all([
     getEvents(investigationId),
     getClaims(investigationId),
     getGaps(investigationId),
@@ -85,9 +88,19 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
 
   // The registry may hold records for several clients and projects; when a
   // scope was identified for this escalation, the report covers only the
-  // scoped records and says how many were excluded.
+  // scoped records AND their claims — a claim citing a filtered record is
+  // excluded too, and both exclusions are disclosed.
   const { inScope, outOfScope } = splitEventsByScope(events, investigation.scope);
   const timeline = inScope.map(coalesceActor);
+  const inScopeIds = new Set(timeline.map((event) => event.id));
+  const registryIds = new Set(events.map((event) => event.id));
+  // A claim citing a record the registry does not have can never be scoped;
+  // it stays in the counts because verification already rejected it (an
+  // honesty signal). Only claims citing KNOWN out-of-scope records drop.
+  const claims = allClaims.filter(
+    (claim) => inScopeIds.has(claim.eventId) || !registryIds.has(claim.eventId),
+  );
+  const excludedClaims = allClaims.length - claims.length;
   const visibleClaims = claims.filter(isVisibleClaim);
 
   const ledger = visibleClaims
@@ -113,10 +126,11 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
 
   const pass = currentPass(stages);
   const needsRetry = missing.length > 0 && pass < MAX_RETRY_PASS;
-  const coverage = buildCoverage(events, stages);
+  const coverage = buildCoverage(events, stages, timeline);
+  const complete = stages.some((stage) => stage.stage === "assemble" && stage.status === "done");
 
   const scope: ReportScope | null = investigation.scope
-    ? { ...investigation.scope, excludedRecords: outOfScope.length }
+    ? { ...investigation.scope, excludedRecords: outOfScope.length, excludedClaims }
     : null;
 
   return {
@@ -137,6 +151,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     })),
     stages,
     scope,
+    complete,
     needsRetry,
     missing,
     pass,

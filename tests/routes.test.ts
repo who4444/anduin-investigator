@@ -197,6 +197,25 @@ describeDb("pipeline routes", () => {
     expect((await resultResponse.json()).error).toMatch(/valid identifier/i);
   });
 
+  it("serves complete:false for an investigation whose pipeline has not run", async () => {
+    const { createInvestigation } = await import("../lib/store");
+    const { GET: resultRoute } = await import("../app/api/investigations/[id]/result/route");
+
+    const freshId = await createInvestigation({
+      title: `Fresh ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(freshId);
+
+    const response = await resultRoute(
+      new NextRequest("http://localhost/result"),
+      context(freshId),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).complete).toBe(false);
+  });
+
   it("verifies and assembles, then serves the result without re-logging the assemble stage", async () => {
     const { POST: verify } = await import("../app/api/investigations/[id]/verify/route");
     const { POST: assembleRoute } = await import("../app/api/investigations/[id]/assemble/route");
@@ -231,6 +250,8 @@ describeDb("pipeline routes", () => {
     expect(resultBody.ledger).toEqual([]);
     expect(resultBody.stats.verified).toBeGreaterThanOrEqual(1);
     expect(resultBody.investigation.escalationText).toContain("4.12");
+    expect(resultBody.complete).toBe(true);
+    expect(resultBody.investigation.origin).toBe("upload");
 
     const afterLength = (await getStages(investigationId)).find(
       (stage) => stage.stage === "assemble",

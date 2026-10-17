@@ -100,8 +100,23 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
     JSON.stringify(
       coverage.sources
         .filter((entry) => entry.searched)
-        .map((entry) => ({ source: entry.source, queries: entry.queries })),
+        .map((entry) => ({
+          source: entry.source,
+          queries: entry.queries,
+          ...(entry.excluded > 0 ? { excluded: entry.excluded } : {}),
+        })),
     ),
+    ...(coverage.sources.some((entry) => entry.failedQueries.length > 0)
+      ? [
+          "Attempted but FAILED (the tool returned an error instead of counts):",
+          JSON.stringify(
+            coverage.sources
+              .filter((entry) => entry.failedQueries.length > 0)
+              .map((entry) => ({ source: entry.source, failed: entry.failedQueries })),
+          ),
+          "Treat failed angles as NOT searched and raise an issue for them.",
+        ]
+      : []),
     coverage.neverSearched.length > 0
       ? `Available but NEVER searched: ${coverage.neverSearched.join(", ")} — raise an "unanswered" issue naming what should have been searched.`
       : "Every available source was searched at least once.",

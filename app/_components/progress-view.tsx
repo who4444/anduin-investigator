@@ -79,6 +79,7 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   const [error, setError] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<CoverageReport | null>(null);
   const [scope, setScope] = useState<ReportScope | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [summary, setSummary] = useState<{ events: number; channels: number } | null>(null);
   const [showActivity, setShowActivity] = useState(false);
   const started = useRef(false);
@@ -99,9 +100,11 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
       coverage?: CoverageReport;
       events?: { source: string; channel: string }[];
       scope?: ReportScope | null;
+      investigation?: { ingestWarnings?: string[] };
     };
     if (payload.coverage) setCoverage(payload.coverage);
     if (payload.scope !== undefined) setScope(payload.scope);
+    if (payload.investigation?.ingestWarnings) setWarnings(payload.investigation.ingestWarnings);
     if (payload.events) {
       setSummary({
         events: payload.events.length,
@@ -268,6 +271,9 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
               <span className="tabular">{summary.events} items stored</span>
               {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
             </p>
+            {warnings.length > 0 && (
+              <p className="small muted">Evidence-set notes: {warnings.join(" · ")}</p>
+            )}
             {scope && (
               <p className={`scope-line small tone-${scope.confidence}`} style={{ fontWeight: 500 }}>
                 {scope.confidence === "none"

@@ -10,6 +10,7 @@ import {
   createInvestigation,
   deleteInvestigation,
   insertEvents,
+  setIngestWarnings,
   upsertIdentity,
   upsertStage,
 } from "../store";
@@ -25,6 +26,7 @@ export interface IngestFilesInput {
   contentHash?: string;
   warnings?: string[];
   declaredClient?: string | null;
+  origin?: "upload" | "pull" | "demo";
 }
 
 export type IngestFilesResult =
@@ -153,6 +155,7 @@ export async function ingestFiles(input: IngestFilesInput): Promise<IngestFilesR
       escalationText: input.escalation,
       contentHash: input.contentHash ?? "",
       declaredClient: input.declaredClient ?? null,
+      origin: input.origin,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -175,6 +178,9 @@ export async function ingestFiles(input: IngestFilesInput): Promise<IngestFilesR
     }
 
     await insertEvents(investigationId, withIds.slice(0, MAX_EVENT_COUNT));
+    // Persist the ingest disclosures so no report outlives a silently
+    // truncated evidence set.
+    await setIngestWarnings(investigationId, warnings);
     await upsertStage(investigationId, "ingest", 1, "done");
 
     return {

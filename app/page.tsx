@@ -97,12 +97,13 @@ export default function StartPage() {
     }
     form.append("escalation", escalation);
     form.append("client", client);
+    form.append("origin", "demo");
     form.append("title", "Northwind Logistics — invoice totals after release 4.12");
 
     const response = await fetch("/api/investigations", { method: "POST", body: form });
-    const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string };
+    const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string; cached?: boolean };
     if (!response.ok || !payload.investigationId) throw new Error(payload.error ?? "Could not start the investigation.");
-    return { investigationId: payload.investigationId, flag: "synthetic=1" };
+    return { investigationId: payload.investigationId, flag: payload.cached ? "synthetic=1&cached=1" : "synthetic=1" };
   }
 
   async function startLive() {

@@ -35,9 +35,10 @@ export function rankEvents(events: Event[], query: string): Event[] {
       }
     }
 
-    // A literal phrase is only informative when the query is not just a ticket
-    // key — that case is already handled above.
-    if (refTokens.length === 0 && text.includes(phrase)) {
+    // A literal phrase is redundant only when the query is exactly one ticket
+    // key — otherwise it is the real information need and is scored too.
+    const pureTicketQuery = tokens.length === 1 && refTokens.length === 1;
+    if (!pureTicketQuery && text.includes(phrase)) {
       score += SCORE_PHRASE;
     }
 

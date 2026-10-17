@@ -19,12 +19,14 @@ async function seed(
   request: APIRequestContext,
   escalation: string,
   client: string,
+  origin = "",
 ): Promise<string> {
   const form = new FormData();
   for (const [name, mimeType] of DEMO_FILES) {
     form.append("files", new File([readFileSync(`public/demo/${name}`)], name, { type: mimeType }));
   }
   form.append("escalation", escalation);
+  if (origin) form.append("origin", origin);
   form.append("client", client);
   form.append("title", `Scope ${escalation.slice(0, 24)}`);
 
@@ -74,4 +76,15 @@ test("an unverifiable declared client falls back to an honest no-scope line", as
 
   await page.goto(url);
   await expect(page.locator(".scope-line.tone-none")).toContainText("No scope could be confirmed for Ghost Client Corp");
+});
+
+test("synthetic labeling persists even when the URL carries no flags", async ({
+  page,
+  request,
+}) => {
+  const escalation = "Northwind scenario reopen labeling check with full evidence.";
+  const url = await seed(request, escalation, "Northwind Logistics", "demo");
+
+  await page.goto(url);
+  await expect(page.locator(".chip", { hasText: "synthetic data" })).toBeVisible();
 });

@@ -127,6 +127,12 @@ export function BriefingShell({
       </div>
 
       <div className="shell">
+        {!report.complete && (
+          <p className="alert alert-warn">
+            This report is still being produced — findings may be incomplete.{" "}
+            <a href={progressHref}>Watch the run</a> and reload afterwards.
+          </p>
+        )}
         <AnswerSection report={report} onClaim={openClaim} onEvent={openEvent} />
 
         <section className="briefing-section" id="story" aria-labelledby="story-title">

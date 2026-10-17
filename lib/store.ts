@@ -50,6 +50,8 @@ interface InvestigationRow {
   scope: unknown;
   declared_client: string | null;
   plan_data: unknown;
+  ingest_warnings: unknown;
+  origin: string | null;
 }
 
 function mapScope(value: unknown): InvestigationScope | null {
@@ -91,6 +93,10 @@ function mapInvestigation(row: InvestigationRow): Investigation {
     scope: mapScope(row.scope),
     declaredClient: row.declared_client ?? null,
     planData: normalizePlanData(row.plan_data),
+    ingestWarnings: Array.isArray(row.ingest_warnings)
+      ? (row.ingest_warnings as unknown[]).filter((entry): entry is string => typeof entry === "string")
+      : [],
+    origin: row.origin ?? "upload",
   };
 }
 
@@ -293,8 +299,8 @@ export function claimDedupeKey(eventId: string, text: string): string {
 export async function createInvestigation(input: NewInvestigation): Promise<string> {
   const sql = getPool();
   const rows = await sql<{ id: string }[]>`
-    insert into investigations (title, escalation_text, content_hash, declared_client)
-    values (${input.title}, ${input.escalationText}, ${input.contentHash}, ${input.declaredClient ?? null})
+    insert into investigations (title, escalation_text, content_hash, declared_client, origin)
+    values (${input.title}, ${input.escalationText}, ${input.contentHash}, ${input.declaredClient ?? null}, ${input.origin ?? "upload"})
     returning id
   `;
   return rows[0].id;
@@ -303,7 +309,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin
     from investigations
     where id = ${id}
     limit 1
@@ -324,7 +330,7 @@ export async function setPlanData(id: string, data: PlanData | null): Promise<vo
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin
     from investigations
     where content_hash = ${hash}
     order by created_at desc
@@ -501,6 +507,11 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     event_ids: sql.array(gap.eventIds, 25),
   }));
   await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids")}`;
+}
+
+export async function setIngestWarnings(id: string, warnings: string[]): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set ingest_warnings = ${sql.json(warnings as unknown as JSONValue)} where id = ${id}`;
 }
 
 export async function getGaps(investigationId: string): Promise<Gap[]> {

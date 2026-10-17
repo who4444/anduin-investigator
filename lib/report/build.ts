@@ -128,7 +128,14 @@ export interface ReportView {
 }
 
 export interface ReportPayload extends ReportView {
-  investigation: { id: string; title: string; escalationText: string; createdAt: string };
+  investigation: {
+    id: string;
+    title: string;
+    escalationText: string;
+    createdAt: string;
+    origin: string;
+    ingestWarnings: string[];
+  };
   events: Event[];
   claims: Claim[];
   stats: { total: number; verified: number; supported: number; rejected: number; flagged: number };
@@ -141,6 +148,7 @@ export interface ReportPayload extends ReportView {
   briefing: Briefing;
   bottomLine: BottomLine;
   scope: ReportScope | null;
+  complete: boolean;
 }
 
 export interface ReportInput {
@@ -614,15 +622,18 @@ export function buildSilences(events: Event[], minimumDays = SILENCE_THRESHOLD_D
 export function buildTimeline(input: ReportInput): TimelineGroup[] {
   const { events, claims } = input;
   const eventsById = eventMap(events);
+  // Every visible claim must cite a record the report actually shows; a claim
+  // whose cited record is absent is dropped rather than given a fake source.
   const rows: TimelineClaimRow[] = visibleClaims(claims)
     .map((claim) => {
       const event = cited(claim, eventsById);
+      if (!event) return null;
       return {
         kind: "claim" as const,
         claimId: claim.id,
-        ts: claim.ts ?? event?.ts ?? "",
-        actor: event ? event.actorResolved ?? event.actor : (claim.actor ?? "unknown"),
-        source: (event?.source ?? "email") as SourceKind,
+        ts: claim.ts ?? event.ts,
+        actor: event.actorResolved ?? event.actor,
+        source: event.source,
         text: claim.text,
         status: claim.status,
         flagged: claim.skepticFlag,
@@ -630,6 +641,7 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
         verification: verificationOf(claim),
       };
     })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
     .filter((row) => row.ts.length > 0);
 
   const groups: TimelineGroup[] = [];

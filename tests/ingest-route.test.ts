@@ -162,6 +162,24 @@ describeDb("POST /api/investigations", () => {
     expect(secondBody.investigationId).not.toBe(firstBody.investigationId);
   });
 
+  it("persists the declared origin and the ingest warnings for later reporting", async () => {
+    const form = buildForm();
+    form.set("origin", "demo");
+    // A file the parsers do not recognise produces a real warning.
+    form.append("files", new File(["This is a readme."], "readme.txt", { type: "text/plain" }));
+
+    const response = await POST(request(form));
+    const body = await response.json();
+    created.push(body.investigationId);
+    expect(response.status).toBe(201);
+    expect(body.warnings.some((warning: string) => warning.includes("readme.txt"))).toBe(true);
+
+    const { getInvestigation } = await import("../lib/store");
+    const stored = await getInvestigation(body.investigationId);
+    expect(stored?.origin).toBe("demo");
+    expect(stored?.ingestWarnings.some((warning) => warning.includes("readme.txt"))).toBe(true);
+  });
+
   it("rejects an upload with no files", async () => {
     const response = await POST(request(new FormData()));
     expect(response.status).toBe(400);

@@ -118,6 +118,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     contentHash: `pull:${[declaredClient, ...hashParts].filter(Boolean).join("|")}`,
     warnings,
     declaredClient,
+    origin: "pull",
   });
 
   if (!result.ok) {

@@ -262,6 +262,11 @@ describeDb("verify + assemble", () => {
       const result = await buildResult(id);
 
       expect(result.timeline.map((event) => event.id)).toEqual(["e_scope_in_1"]);
+      // Claims citing out-of-scope records are excluded from the report set
+      // and disclosed — never shown with a fabricated source.
+      expect(result.claims).toHaveLength(1);
+      expect(result.claims[0].eventId).toBe("e_scope_in_1");
+      expect(result.stats).toMatchObject({ total: 1 });
       expect(result.scope).toEqual({
         client: "Northwind Logistics",
         project: "Meridian Billing",
@@ -271,6 +276,7 @@ describeDb("verify + assemble", () => {
         confidence: "scoped",
         anchors: [],
         excludedRecords: 2,
+        excludedClaims: 1,
       });
     } finally {
       await deleteInvestigation(id);

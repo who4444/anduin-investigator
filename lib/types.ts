@@ -95,6 +95,8 @@ export interface Investigation {
   scope: InvestigationScope | null;
   declaredClient: string | null;
   planData: PlanData | null;
+  ingestWarnings: string[];
+  origin: string;
 }
 
 export interface Stage {
@@ -155,11 +157,14 @@ export interface Gap {
   eventIds: string[];
 }
 
+export type InvestigationOrigin = "upload" | "pull" | "demo";
+
 export interface NewInvestigation {
   title: string;
   escalationText: string;
   contentHash: string;
   declaredClient?: string | null;
+  origin?: InvestigationOrigin;
 }
 
 export type ScopeConfidence = "scoped" | "partial" | "none";

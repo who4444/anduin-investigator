@@ -49,6 +49,7 @@ export async function GET(
         gaps: assembled.gaps,
       }),
       scope: assembled.scope,
+      complete: assembled.complete,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

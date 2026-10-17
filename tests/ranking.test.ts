@@ -33,6 +33,15 @@ describe("rankEvents", () => {
     expect(ranked.map((entry) => entry.id)).toEqual(["phrase", "tokens"]);
   });
 
+  it("adds the literal phrase bonus in mixed ref-plus-words queries", () => {
+    const cited = event({ id: "cited", text: "Status update only.", refs: ["MER-101"], ts: "2024-09-25T00:00:00.000Z" });
+    const onPoint = event({ id: "onPoint", text: "MER-101 invoice totals wrong since 4.12.", ts: "2024-09-01T00:00:00.000Z" });
+
+    const ranked = rankEvents([cited, onPoint], "MER-101 invoice totals wrong");
+
+    expect(ranked.map((entry) => entry.id)).toEqual(["onPoint", "cited"]);
+  });
+
   it("breaks ties with the most recent record first", () => {
     const older = event({ id: "older", ts: "2024-09-01T00:00:00.000Z", text: "Invoice totals review." });
     const newer = event({ id: "newer", ts: "2024-09-20T00:00:00.000Z", text: "Invoice totals review." });

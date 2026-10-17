@@ -127,9 +127,10 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
 
   const ordered = kept
     .map((claim) => ({ claim, event: eventsById.get(claim.eventId) }))
+    .filter((entry): entry is { claim: Claim; event: Event } => entry.event !== undefined)
     .sort((a, b) => {
-      const left = a.claim.ts ?? a.event?.ts ?? "";
-      const right = b.claim.ts ?? b.event?.ts ?? "";
+      const left = a.claim.ts ?? a.event.ts;
+      const right = b.claim.ts ?? b.event.ts;
       return left < right ? -1 : left > right ? 1 : 0;
     });
 
@@ -154,9 +155,9 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
   const mentionCounts = new Map<string, { role: string; mentions: number }>();
   const rawTsByClaim = new Map<string, string>();
   const eventsOut: BriefingEvent[] = ordered.map(({ claim, event }) => {
-    const ts = claim.ts ?? event?.ts ?? "";
-    rawTsByClaim.set(claim.id, event?.ts ?? "");
-    const actor = event?.actorResolved ?? event?.actor ?? claim.actor ?? "unknown";
+    const ts = claim.ts ?? event.ts;
+    rawTsByClaim.set(claim.id, event.ts);
+    const actor = event.actorResolved ?? event.actor;
     const role = roleFor(actor, kept, eventsById);
     const existing = mentionCounts.get(actor) ?? { role, mentions: 0 };
     existing.mentions += 1;
@@ -169,11 +170,11 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
       text: claim.text,
       importance: importanceOf(claim),
       type: claim.type,
-      lane: laneFor(claim, event?.channel ?? ""),
+      lane: laneFor(claim, event.channel),
       actor,
       actorRole: role,
       actorColor: 0,
-      source: event?.source ?? "email",
+      source: event.source,
       ts,
       dayNumber: dayNumber(ts),
       status: claim.status,

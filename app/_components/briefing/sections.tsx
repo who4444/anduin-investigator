@@ -244,6 +244,16 @@ export function GapsSection({
     <section className="briefing-section" id="gaps" aria-labelledby="gaps-title">
       <h2 id="gaps-title">What could not be determined?</h2>
       <div className="stack">
+        {report.investigation.ingestWarnings.length > 0 && (
+          <div className="alert alert-warn" style={{ display: "block" }}>
+            <strong>Evidence-set notes from ingest:</strong>
+            <ul style={{ marginTop: 6, paddingLeft: 18 }}>
+              {report.investigation.ingestWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {neverSearched.length > 0 && (
           <p className="alert alert-warn">
             Available but never searched: {neverSearched.join(", ")}. Findings may be incomplete.

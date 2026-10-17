@@ -28,6 +28,8 @@ export default async function ReportPage({
         title: assembled.investigation.title,
         escalationText: assembled.investigation.escalationText,
         createdAt: assembled.investigation.createdAt,
+        origin: assembled.investigation.origin,
+        ingestWarnings: assembled.investigation.ingestWarnings,
       },
       events: assembled.timeline,
       claims: assembled.claims,
@@ -54,6 +56,7 @@ export default async function ReportPage({
         gaps: assembled.gaps,
       }),
       scope: assembled.scope,
+      complete: assembled.complete,
     };
   } catch (error) {
     // Only a genuinely unknown investigation is a 404; anything else (database
@@ -63,8 +66,8 @@ export default async function ReportPage({
   }
 
   const flags = new URLSearchParams();
-  if (query.synthetic === "1") flags.set("synthetic", "1");
-  if (query.live === "1") flags.set("live", "1");
+  if (query.synthetic === "1" || report.investigation.origin === "demo") flags.set("synthetic", "1");
+  if (query.live === "1" || report.investigation.origin === "pull") flags.set("live", "1");
   if (query.cached === "1") flags.set("cached", "1");
   const suffix = flags.toString();
   const progressHref = `/investigations/${id}/progress?review=1${suffix ? `&${suffix}` : ""}`;
@@ -73,9 +76,9 @@ export default async function ReportPage({
     <BriefingShell
       report={report}
       progressHref={progressHref}
-      synthetic={query.synthetic === "1"}
+      synthetic={query.synthetic === "1" || report.investigation.origin === "demo"}
       cached={query.cached === "1"}
-      live={query.live === "1"}
+      live={query.live === "1" || report.investigation.origin === "pull"}
     />
   );
 }

@@ -16,6 +16,7 @@ export interface ScopeUniverse {
 
 export interface ReportScope extends InvestigationScope {
   excludedRecords: number;
+  excludedClaims: number;
 }
 
 const EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
@@ -153,13 +154,23 @@ function tokensOf(normalized: string): Set<string> {
   return new Set(normalized.split(" ").filter((token) => token.length > 2));
 }
 
-function findEscalationEmail(escalation: string, events: Event[]): Event | null {
+/* Margin and distinctiveness guards for the escalation↔email match: canned
+   support templates can score equally well against two different clients'
+   emails, and boilerplate-only overlap must never found a scope anchor. */
+const EMAIL_MARGIN = 0.15;
+const DISCRIMINATIVE_DOC_MAX = 2;
+const DISCRIMINATIVE_TOKEN_MIN = 4;
+
+function findEscalationEmailCandidates(
+  escalation: string,
+  events: Event[],
+): { event: Event; score: number }[] {
   const needle = normalizeForMatch(escalation);
   const needleTokens = tokensOf(needle);
-  if (needleTokens.size < 6) return null;
+  if (needleTokens.size < 6) return [];
   const probe = needle.slice(0, 80);
 
-  let best: { event: Event; score: number } | null = null;
+  const candidates: { event: Event; score: number }[] = [];
   for (const event of events) {
     if (event.source !== "email") continue;
     const hay = normalizeForMatch(event.text);
@@ -176,9 +187,38 @@ function findEscalationEmail(escalation: string, events: Event[]): Event | null 
       const jaccard = shared / (needleTokens.size + hayTokens.size - shared);
       if (jaccard >= 0.5) score = jaccard;
     }
-    if (score > 0 && (!best || score > best.score)) best = { event, score };
+    if (score > 0) candidates.push({ event, score });
   }
-  return best?.event ?? null;
+  return candidates.sort((a, b) => b.score - a.score || (a.event.ts < b.event.ts ? -1 : 1));
+}
+
+function findEscalationEmail(escalation: string, events: Event[]): Event | null {
+  const candidates = findEscalationEmailCandidates(escalation, events);
+  if (candidates.length === 0) return null;
+
+  // A near-tie between candidates means shared boilerplate, not identity.
+  const best = candidates[0];
+  const runnerUp = candidates[1];
+  if (runnerUp && best.score - runnerUp.score < EMAIL_MARGIN) return null;
+
+  // Require at least one shared token that is rare across the records —
+  // a name, a ticket key, a specific phrase word — not template filler.
+  const docCount = new Map<string, number>();
+  for (const event of events) {
+    for (const token of tokensOf(normalizeForMatch(event.text))) {
+      docCount.set(token, (docCount.get(token) ?? 0) + 1);
+    }
+  }
+  const bestTokens = tokensOf(normalizeForMatch(best.event.text));
+  const shared = [...tokensOf(normalizeForMatch(escalation))].filter((token) => bestTokens.has(token));
+  const discriminative = shared.some(
+    (token) =>
+      token.length >= DISCRIMINATIVE_TOKEN_MIN &&
+      (docCount.get(token) ?? 0) <= DISCRIMINATIVE_DOC_MAX,
+  );
+  if (!discriminative) return null;
+
+  return best.event;
 }
 
 export function collectEscalationAnchors(escalation: string, events: Event[]): ScopeAnchor[] {
@@ -367,19 +407,21 @@ export async function resolveScope(
   }
 
   // Contradicting anchors (disjoint record sets) cannot all describe one
-  // client: keep the component that carries escalation evidence, else the
-  // largest, and cap confidence.
+  // client. Anchors carrying escalation evidence are never dropped — when
+  // they span multiple components, they are all kept and confidence is
+  // capped, so a casual prose mention can never vote the real ticket out.
   let contradiction = false;
   let kept = registryAnchors;
   const components = anchorComponents(registryAnchors, events);
   if (components.length > 1) {
     contradiction = true;
-    const evidenceComponent = components.find((component) =>
+    const evidenceComponents = components.filter((component) =>
       component.some((anchor) => anchor.source === "escalation"),
     );
     kept =
-      evidenceComponent ??
-      components.reduce((best, current) => (current.length > best.length ? current : best), components[0]);
+      evidenceComponents.length > 0
+        ? evidenceComponents.flat()
+        : components.reduce((best, current) => (current.length > best.length ? current : best), components[0]);
   }
 
   const anchors = dedupeAnchors([...(declaredAnchor ? [declaredAnchor] : []), ...kept]);

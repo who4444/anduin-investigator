@@ -13,9 +13,14 @@ const TOOL_TO_SOURCE: Record<string, SourceKind> = {
 
 export interface SourceCoverage {
   source: SourceKind;
+  /** In-scope records available to the agents. */
   available: number;
+  /** Records excluded from this investigation's scope. */
+  excluded: number;
   searched: boolean;
   queries: string[];
+  /** Calls that were logged but returned errors instead of counts. */
+  failedQueries: string[];
 }
 
 export interface CoverageReport {
@@ -26,11 +31,13 @@ export interface CoverageReport {
 interface ToolCallLogEntry {
   name?: unknown;
   args?: unknown;
+  resultCount?: unknown;
 }
 
 interface StageLogEntry {
   name?: unknown;
   args?: unknown;
+  resultCount?: unknown;
   toolCalls?: unknown;
 }
 
@@ -60,13 +67,24 @@ function formatQuery(name: string, args: Record<string, unknown>): string {
   }
 }
 
-export function buildCoverage(events: Event[], stages: Stage[]): CoverageReport {
-  const available = new Map<SourceKind, number>();
+export function buildCoverage(
+  events: Event[],
+  stages: Stage[],
+  inScopeEvents: Event[] = events,
+): CoverageReport {
+  // Availability is what the agents can actually see; exclusions are disclosed
+  // so "jira · 2 items" never hides a bigger unscoped registry behind it.
+  const totals = new Map<SourceKind, number>();
   for (const event of events) {
-    available.set(event.source, (available.get(event.source) ?? 0) + 1);
+    totals.set(event.source, (totals.get(event.source) ?? 0) + 1);
+  }
+  const inScope = new Map<SourceKind, number>();
+  for (const event of inScopeEvents) {
+    inScope.set(event.source, (inScope.get(event.source) ?? 0) + 1);
   }
 
   const searched = new Map<SourceKind, string[]>();
+  const failed = new Map<SourceKind, string[]>();
 
   const record = (entry: ToolCallLogEntry) => {
     if (typeof entry?.name !== "string") return;
@@ -76,10 +94,14 @@ export function buildCoverage(events: Event[], stages: Stage[]): CoverageReport 
       typeof entry.args === "object" && entry.args !== null
         ? (entry.args as Record<string, unknown>)
         : {};
-    const queries = searched.get(source) ?? [];
     const label = formatQuery(entry.name, args);
-    if (!queries.includes(label)) queries.push(label);
-    searched.set(source, queries);
+    // The tool loop logs a parsed result count for every call that returned
+    // counts ({count: N}); calls whose result was an error carry none.
+    const outcomeFailed = typeof entry.resultCount !== "number";
+    const target = outcomeFailed ? failed : searched;
+    const list = target.get(source) ?? [];
+    if (!list.includes(label)) list.push(label);
+    target.set(source, list);
   };
 
   for (const stage of stages) {
@@ -98,12 +120,18 @@ export function buildCoverage(events: Event[], stages: Stage[]): CoverageReport 
     }
   }
 
-  const sources: SourceCoverage[] = SOURCES.map((source) => ({
-    source,
-    available: available.get(source) ?? 0,
-    searched: searched.has(source),
-    queries: searched.get(source) ?? [],
-  }));
+  const sources: SourceCoverage[] = SOURCES.map((source) => {
+    const total = totals.get(source) ?? 0;
+    const available = inScope.get(source) ?? 0;
+    return {
+      source,
+      available,
+      excluded: total - available,
+      searched: searched.has(source),
+      queries: searched.get(source) ?? [],
+      failedQueries: failed.get(source) ?? [],
+    };
+  });
 
   const neverSearched = sources
     .filter((entry) => entry.available > 0 && !entry.searched)

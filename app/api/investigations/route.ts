@@ -61,6 +61,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const escalation = String(form.get("escalation") ?? "").slice(0, ESCALATION_TEXT_LIMIT);
   const declaredClient = String(form.get("client") ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const rawOrigin = String(form.get("origin") ?? "upload");
+  const origin = rawOrigin === "demo" || rawOrigin === "pull" ? rawOrigin : "upload";
   const hash = contentHash(uploads, escalation, declaredClient);
 
   try {
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       title: String(form.get("title") ?? ""),
       contentHash: hash,
       declaredClient,
+      origin,
     });
 
     if (!result.ok) {

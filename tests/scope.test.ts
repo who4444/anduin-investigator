@@ -345,4 +345,66 @@ describe("resolveScope", () => {
       resolved?.anchors.some((anchor) => anchor.source === "escalation" && anchor.kind === "sender-domain"),
     ).toBe(true);
   });
+
+  it("refuses an email anchor when two boilerplate candidates are too close", async () => {
+    const shared =
+      "Hello, Thank you for reaching out to our support team. We reviewed your case thoroughly and confirm the status below as of today.";
+    const mine = event({
+      id: "e-mail-mine",
+      source: "email",
+      channel: "email",
+      actor: "Priya Nair <support@northwind.example>",
+      text: `${shared} The invoice totals are wrong since 4.12 and we are preparing the fix.`,
+    });
+    const other = event({
+      id: "e-mail-other",
+      source: "email",
+      channel: "email",
+      actor: "Ravi Patel <support@otherclient.example>",
+      text: `${shared} The rate-limit increase is live and we are monitoring latency.`,
+    });
+
+    // The escalation is the client's own variant of the shared template.
+    const escalation = `${shared} The invoice totals are wrong since 4.12 and we are preparing the fix.`;
+    const resolved = await resolveScope(escalation, [mine, other], scriptedClient({}, true), null);
+
+    // Without a clear margin the match is refused outright: no anchors, no scope.
+    expect(resolved).toBeNull();
+    expect(resolved === null || !resolved.senderDomains.includes("otherclient.example")).toBe(true);
+  });
+
+  it("never drops escalation-evidence anchors when components disagree", async () => {
+    // No bridging record links the named ticket to the escalation sender —
+    // they sit in separate components, and both are escalation evidence.
+    const events = [
+      event({ id: "e-mer", channel: "MER-201", text: "Invoice totals drift." }),
+      event({
+        id: "e-mail",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okafor <billing@northwind.example>",
+        text: "Just checking in.",
+      }),
+      event({ id: "e-kst", channel: "KST-301", actor: "Ravi Patel", text: "Acme rate limits." }),
+      event({
+        id: "e-slack-kst",
+        source: "slack",
+        channel: "kestrel-eng",
+        actor: "Ravi Patel",
+        text: "Acme's Kestrel change is live.",
+      }),
+    ];
+
+    const resolved = await resolveScope(
+      "From dana@northwind.example — the invoice totals problem is MER-201.",
+      events,
+      scriptedClient({ channels: ["kestrel-eng"], ticketPrefixes: [], senderDomains: [] }),
+      null,
+    );
+
+    expect(resolved).toMatchObject({ confidence: "partial" });
+    expect(resolved?.ticketPrefixes).toContain("MER");
+    expect(resolved?.senderDomains).toEqual(["northwind.example"]);
+    expect(resolved?.channels).toEqual([]);
+  });
 });
