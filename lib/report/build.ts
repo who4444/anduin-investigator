@@ -2,6 +2,7 @@ import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types
 import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
+import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
 
@@ -62,6 +63,9 @@ export interface TimelineGroup {
 
 export interface LedgerRow {
   claimId: string;
+  /** Every claim that states this promise (merged restatements included). */
+  claimIds: string[];
+  eventId: string | null;
   promise: string;
   who: string | null;
   toWhom: string | null;
@@ -74,6 +78,9 @@ export interface LedgerRow {
   daysLate: number | null;
   source: SourceKind | null;
   verification: "verified" | "supported";
+  /** Sources disagree on the outcome; the failing reading wins (G-05). */
+  contested: boolean;
+  rationale: string | null;
   mergedClaims?: number;
 }
 
@@ -182,6 +189,9 @@ export interface ReportInput {
   events: Event[];
   claims: Claim[];
   notes: SkepticNote[];
+  /** G-05: structured commitments, when the run produced them. Absent
+      (legacy/cached runs), the ledger falls back to clustering claims. */
+  commitments?: Commitment[];
 }
 
 const DAY_MS = 86_400_000;
@@ -793,6 +803,56 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
     timestamps.length >= 2
       ? Math.ceil((Math.max(...timestamps) - Math.min(...timestamps)) / DAY_MS)
       : 0;
+
+  // G-05: structured commitments are the canonical ledger. One commitment is
+  // one promise; the store has already merged restatements and decided the
+  // contested outcome.
+  if (input.commitments && input.commitments.length > 0) {
+    const claimsById = new Map(input.claims.map((claim) => [claim.id, claim]));
+    return input.commitments
+      .map((commitment) => {
+        const claim = claimsById.get(commitment.claimId);
+        if (
+          !claim ||
+          (claim.verifyStatus !== "verified" && claim.verifyStatus !== "supported")
+        ) {
+          return null;
+        }
+        const event = cited(claim, eventsById);
+        const proofTs = event?.ts ?? claim.ts ?? null;
+        const rawDaysLate =
+          commitment.status === "broken" && commitment.deadlineIso && proofTs
+            ? Math.max(
+                0,
+                Math.floor((Date.parse(proofTs) - Date.parse(commitment.deadlineIso)) / DAY_MS),
+              )
+            : null;
+        const deadlineInvalid = rawDaysLate !== null && rawDaysLate > windowDays + 1;
+        const row: LedgerRow = {
+          claimId: claim.id,
+          claimIds: [claim.id],
+          eventId: claim.eventId,
+          promise: claim.text,
+          who: commitment.promisor ?? claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
+          toWhom: commitment.promisee,
+          madeAt: event?.ts ?? claim.ts ?? null,
+          deadline: commitment.deadlinePhrase,
+          deadlineInvalid,
+          outcome: commitment.status,
+          daysLate: deadlineInvalid ? null : rawDaysLate,
+          source: event?.source ?? null,
+          verification: verificationOf(claim),
+          contested: commitment.contested,
+          rationale: commitment.rationale,
+          mergedClaims:
+            commitment.sourceEventIds.length > 1 ? commitment.sourceEventIds.length : undefined,
+        };
+        return row;
+      })
+      .filter((row): row is LedgerRow => row !== null)
+      .sort((a, b) => ((a.madeAt ?? "") < (b.madeAt ?? "") ? -1 : 1));
+  }
+
   return clusterCommitments(input.claims).map((cluster) => {
     const claim = cluster.representative;
     const event = cited(claim, eventsById);
@@ -812,8 +872,11 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
     // Lateness beyond the whole evidence window cannot be real: the parsed
     // date is a partial token or a wrong year. Fail closed to "invalid".
     const deadlineInvalid = rawDaysLate !== null && rawDaysLate > windowDays + 1;
+    const statuses = [...new Set(cluster.members.map((member) => member.status))];
     return {
       claimId: claim.id,
+      claimIds: cluster.members.map((member) => member.id),
+      eventId: claim.eventId,
       promise: claim.text,
       who: claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
       toWhom,
@@ -824,6 +887,9 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
       daysLate: deadlineInvalid ? null : rawDaysLate,
       source: event?.source ?? null,
       verification: verificationOf(claim),
+      contested: statuses.length > 1,
+      rationale:
+        statuses.length > 1 ? `sources disagree on the outcome (${statuses.join(" vs ")})` : null,
       mergedClaims: cluster.members.length > 1 ? cluster.members.length : undefined,
     };
   });

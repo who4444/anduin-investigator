@@ -11,7 +11,7 @@ import {
   buildTimeline,
   buildTrust,
 } from "../lib/report/build";
-import type { Claim, Event, SkepticNote } from "../lib/types";
+import type { Claim, Commitment, Event, SkepticNote } from "../lib/types";
 import { duplicatePromise } from "./fixtures/p0";
 
 const event = (over: Partial<Event> & { id: string; ts: string }): Event => ({
@@ -458,14 +458,68 @@ describe("report view", () => {
   });
 });
 
-/* G-05 ratchet: one promise is one ledger row even when three tools word it
-   differently and disagree on status; a failing outcome outweighs a "kept"
-   reading. Flip to `it` when the commitment entity/dedupe lands. */
+/* G-05: once the commitments entity exists, one merged commitment renders
+   one canonical ledger row. (Raw claim clustering remains the fallback for
+   legacy runs and is intentionally weaker on loose wordings.) */
 describe("commitment dedupe (G-05)", () => {
-  it.fails("renders one row for one promise spread across three tools", () => {
-    const rows = buildLedger(duplicatePromise);
+  it("renders one row for a merged commitment across three sources", () => {
+    const commitment: Commitment = {
+      id: "cm1",
+      investigationId: "p0",
+      claimId: "f3-c-jira",
+      issueId: null,
+      promisor: "Marcus Webb",
+      promisee: "Northwind",
+      object: "invoice totals corrected",
+      conditions: null,
+      deadlinePhrase: "Sep 24",
+      deadlineIso: "2024-09-24T00:00:00.000Z",
+      rationale: "sources disagree on the outcome (broken vs kept vs unclear)",
+      status: "broken",
+      contested: true,
+      fulfilmentEventIds: [],
+      sourceEventIds: ["f3-jira", "f3-slack", "f3-email"],
+      dedupeKey: "marcus webb|northwind|corrected invoice totals|2024-09-24",
+      createdAt: "2024-09-20T10:00:00.000Z",
+    };
+
+    const rows = buildLedger({ ...duplicatePromise, commitments: [commitment] });
+
     expect(rows).toHaveLength(1);
-    expect(rows[0].outcome).toBe("broken");
+    expect(rows[0]).toMatchObject({
+      claimId: "f3-c-jira",
+      outcome: "broken",
+      contested: true,
+      mergedClaims: 3,
+      deadline: "Sep 24",
+    });
+  });
+
+  it("drops a commitment whose backing claim is not visible", () => {
+    const commitment: Commitment = {
+      id: "cm2",
+      investigationId: "p0",
+      claimId: "f3-c-jira",
+      issueId: null,
+      promisor: "Marcus Webb",
+      promisee: null,
+      object: "invoice totals corrected",
+      conditions: null,
+      deadlinePhrase: "Sep 24",
+      deadlineIso: "2024-09-24T00:00:00.000Z",
+      rationale: null,
+      status: "broken",
+      contested: false,
+      fulfilmentEventIds: [],
+      sourceEventIds: ["f3-jira"],
+      dedupeKey: "key",
+      createdAt: "2024-09-20T10:00:00.000Z",
+    };
+    const claims = duplicatePromise.claims.map((claim) =>
+      claim.id === "f3-c-jira" ? { ...claim, verifyStatus: "rejected" as const } : claim,
+    );
+
+    expect(buildLedger({ ...duplicatePromise, claims, commitments: [commitment] })).toHaveLength(0);
   });
 });
 

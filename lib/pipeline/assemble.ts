@@ -1,6 +1,7 @@
 import {
   appendStageLog,
   getClaims,
+  getCommitments,
   getEvents,
   getGaps,
   getIdentities,
@@ -9,7 +10,16 @@ import {
   getSkepticNotes,
   getStages,
 } from "../store";
-import type { Claim, Event, Gap, Investigation, Issue, SkepticNote, Stage } from "../types";
+import type {
+  Claim,
+  Commitment,
+  Event,
+  Gap,
+  Investigation,
+  Issue,
+  SkepticNote,
+  Stage,
+} from "../types";
 import type { InvestigatorKind } from "../agents/investigator";
 import { buildCoverage, type CoverageReport } from "./coverage";
 import { excludedClientEvidence, splitEventsByScope, type ReportScope } from "./scope";
@@ -35,6 +45,8 @@ export interface AssembledResult {
   timeline: Event[];
   /** Records the scope split excluded, so the manager can review and add them back (G-01). */
   excludedEvents: Event[];
+  /** G-05: structured promises, when the run produced them. */
+  commitments: Commitment[];
   ledger: Claim[];
   claims: Claim[];
   gaps: Gap[];
@@ -84,15 +96,17 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     throw new Error(`No investigation with id ${investigationId}.`);
   }
 
-  const [events, allClaims, gaps, skepticNotes, identities, stages, issues] = await Promise.all([
-    getEvents(investigationId),
-    getClaims(investigationId),
-    getGaps(investigationId),
-    getSkepticNotes(investigationId),
-    getIdentities(investigationId),
-    getStages(investigationId),
-    getIssues(investigationId),
-  ]);
+  const [events, allClaims, commitments, gaps, skepticNotes, identities, stages, issues] =
+    await Promise.all([
+      getEvents(investigationId),
+      getClaims(investigationId),
+      getCommitments(investigationId),
+      getGaps(investigationId),
+      getSkepticNotes(investigationId),
+      getIdentities(investigationId),
+      getStages(investigationId),
+      getIssues(investigationId),
+    ]);
 
   // The registry may hold records for several clients and projects; when a
   // scope was identified for this escalation, the report covers only the
@@ -162,6 +176,9 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     issues,
     timeline,
     excludedEvents: outOfScope,
+    // Commitments whose backing claim was filtered out are dropped by the
+    // report builders (they resolve the claim from the filtered set).
+    commitments,
     ledger,
     claims,
     gaps,

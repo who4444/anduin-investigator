@@ -1,5 +1,5 @@
-import type { Claim, Event, Gap, SkepticNote } from "../types";
-import { buildMetrics, clusterCommitments } from "./build";
+import type { Claim, Commitment, Event, Gap, SkepticNote } from "../types";
+import { buildLedger, buildMetrics } from "./build";
 
 export type BottomLineTone = "neutral" | "good" | "warn" | "bad";
 
@@ -23,6 +23,7 @@ export interface BottomLineInput {
   claims: Claim[];
   notes: SkepticNote[];
   gaps: Gap[];
+  commitments?: Commitment[];
 }
 
 function shorten(text: string, maxWords = 9): string {
@@ -80,19 +81,20 @@ export function buildBottomLine(input: BottomLineInput): BottomLine {
       )
     : cell("cause", "What went wrong", "not determined", "neutral", false, [], []);
 
-  // 2. promises — cluster outcomes, broken outweighs kept
-  const clusters = clusterCommitments(claims);
-  const broken = clusters.filter((cluster) => cluster.representative.status === "broken").length;
-  const kept = clusters.filter((cluster) => cluster.representative.status === "kept").length;
-  const unclear = clusters.length - broken - kept;
+  // 2. promises — the canonical ledger (structured commitments when present,
+  // claim clusters otherwise); broken outweighs kept in code, not here.
+  const ledger = buildLedger(input);
+  const broken = ledger.filter((row) => row.outcome === "broken").length;
+  const kept = ledger.filter((row) => row.outcome === "kept").length;
+  const unclear = ledger.length - broken - kept;
   let promiseValue = "no promises found";
   let promiseTone: BottomLineTone = "neutral";
-  if (clusters.length > 0) {
+  if (ledger.length > 0) {
     if (broken > 0) {
-      promiseValue = `${broken} of ${clusters.length} broken`;
+      promiseValue = `${broken} of ${ledger.length} broken`;
       promiseTone = "bad";
-    } else if (kept === clusters.length) {
-      promiseValue = `${kept} of ${clusters.length} kept`;
+    } else if (kept === ledger.length) {
+      promiseValue = `${kept} of ${ledger.length} kept`;
       promiseTone = "good";
     } else {
       promiseValue = "outcome unclear";
@@ -104,10 +106,10 @@ export function buildBottomLine(input: BottomLineInput): BottomLine {
     "Promises",
     promiseValue,
     promiseTone,
-    clusters.length > 0,
-    clusters.flatMap((cluster) => cluster.members.map((member) => member.id)),
-    clusters.flatMap((cluster) => cluster.members.map((member) => member.eventId)),
-    clusters.length > 0 ? `${kept} kept · ${unclear} unclear` : undefined,
+    ledger.length > 0,
+    ledger.flatMap((row) => row.claimIds),
+    ledger.flatMap((row) => (row.eventId ? [row.eventId] : [])),
+    ledger.length > 0 ? `${kept} kept · ${unclear} unclear` : undefined,
   );
 
   // 3. unanswered chases

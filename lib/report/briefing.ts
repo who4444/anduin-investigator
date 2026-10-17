@@ -1,5 +1,11 @@
-import type { Claim, Event, SourceKind } from "../types";
-import { buildSilences, clusterCommitments, effectiveTs, type TimelineSilenceRow } from "./build";
+import type { Claim, Commitment, Event, SourceKind } from "../types";
+import {
+  buildLedger,
+  buildSilences,
+  clusterCommitments,
+  effectiveTs,
+  type TimelineSilenceRow,
+} from "./build";
 
 export type Importance = "key" | "normal" | "routine";
 export type Lane = "client" | "promises" | "owner" | "ticket" | "engineering";
@@ -118,7 +124,11 @@ function roleFor(actor: string, kept: Claim[], eventsById: Map<string, Event>): 
   return "team";
 }
 
-export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Briefing {
+export function buildBriefing(input: {
+  events: Event[];
+  claims: Claim[];
+  commitments?: Commitment[];
+}): Briefing {
   const { events, claims } = input;
   const eventsById = new Map(events.map((event) => [event.id, event]));
   const isVisible = (claim: Claim) =>
@@ -305,9 +315,12 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
       verification: event.verification,
     }));
 
-  const brokenClusters = clusters.filter((cluster) => cluster.representative.status === "broken").length;
-  const keptClusters = clusters.filter((cluster) => cluster.representative.status === "kept").length;
-  const unclearClusters = clusters.length - brokenClusters - keptClusters;
+  // Promise counts come from the canonical ledger (structured commitments
+  // when present), the same set the promises section renders (G-05).
+  const promiseLedger = buildLedger({ events, claims, notes: [], commitments: input.commitments });
+  const brokenClusters = promiseLedger.filter((row) => row.outcome === "broken").length;
+  const keptClusters = promiseLedger.filter((row) => row.outcome === "kept").length;
+  const unclearClusters = promiseLedger.length - brokenClusters - keptClusters;
   const lastDay = eventsOut.length > 0 ? eventsOut[eventsOut.length - 1].dayNumber : 0;
   const sources = new Set(eventsOut.map((event) => event.source));
   const flagged = claims.filter((claim) => claim.skepticFlag).length;
@@ -326,16 +339,16 @@ export function buildBriefing(input: { events: Event[]; claims: Claim[] }): Brie
         `${supportedCount} of them still need a human check before repeating.`,
       );
     }
-    if (clusters.length > 0) {
+    if (promiseLedger.length > 0) {
       const unclearSuffix = unclearClusters > 0 ? `, ${unclearClusters} as unclear` : "";
       narrativeParts.push(
         brokenClusters > 0
-          ? `${brokenClusters} of ${clusters.length} promises read as broken${keptClusters > 0 ? `, ${keptClusters} as kept` : ""}${unclearSuffix}.`
-          : keptClusters === clusters.length
-            ? `All ${clusters.length} promises read as kept.`
+          ? `${brokenClusters} of ${promiseLedger.length} promises read as broken${keptClusters > 0 ? `, ${keptClusters} as kept` : ""}${unclearSuffix}.`
+          : keptClusters === promiseLedger.length
+            ? `All ${promiseLedger.length} promises read as kept.`
             : keptClusters > 0
-              ? `${keptClusters} of ${clusters.length} promises read as kept${unclearSuffix}.`
-              : `${clusters.length} promise${clusters.length === 1 ? "" : "s"} read as unclear — the records do not settle the outcome.`,
+              ? `${keptClusters} of ${promiseLedger.length} promises read as kept${unclearSuffix}.`
+              : `${promiseLedger.length} promise${promiseLedger.length === 1 ? "" : "s"} read as unclear — the records do not settle the outcome.`,
       );
     } else {
       narrativeParts.push("No promises were found in the records.");

@@ -63,6 +63,14 @@ export function PromisesSection({
                       {row.outcome === "broken" && deadlineDays > 0 ? `, ${deadlineDays} days late` : ""}
                     </span>
                     <VerificationChip verification={row.verification} />
+                    {row.contested && (
+                      <span
+                        className="chip chip-check"
+                        title={row.rationale ?? "sources disagree on the outcome"}
+                      >
+                        contested
+                      </span>
+                    )}
                     {row.mergedClaims && (
                       <span className="chip" title="Near-duplicate findings merged into this promise">
                         {row.mergedClaims} findings merged
@@ -100,6 +108,7 @@ export function PromisesSection({
                   {row.madeAt && (
                     <span className="small muted">made {row.madeAt.slice(0, 10)} · {row.source ?? "record"}</span>
                   )}
+                  {row.rationale && <span className="small muted">Status: {row.rationale}.</span>}
                 </button>
               );
             })}

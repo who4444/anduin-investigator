@@ -262,3 +262,35 @@ export interface IssueInput {
   summary: string;
   confidence: number;
 }
+
+/** G-05: a promise as a first-class entity, backed by one verified claim. */
+export type CommitmentStatus = "kept" | "broken" | "unclear" | "withdrawn";
+
+export interface CommitmentInput {
+  claimId: string;
+  issueId?: string | null;
+  promisor: string | null;
+  promisee: string | null;
+  /** What exactly was promised, in one phrase ("invoice totals corrected"). */
+  object: string;
+  conditions: string | null;
+  /** The deadline as stated in the record ("Sep 24"). */
+  deadlinePhrase: string | null;
+  /** Resolved by CODE from the phrase and the record's timestamp. */
+  deadlineIso: string | null;
+  rationale: string | null;
+  /** Records that evidence the object was delivered (kept requires these). */
+  fulfilmentEventIds: string[];
+}
+
+export interface Commitment extends CommitmentInput {
+  id: string;
+  investigationId: string;
+  status: CommitmentStatus;
+  /** Sources disagreed on the outcome; one row carries the contested state. */
+  contested: boolean;
+  /** Event ids of every source record that states this promise. */
+  sourceEventIds: string[];
+  dedupeKey: string;
+  createdAt: string;
+}

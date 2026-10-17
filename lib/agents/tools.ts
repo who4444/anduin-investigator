@@ -1,10 +1,26 @@
 import { asNumber, asString } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import type { ToolSpec } from "../llm";
+import { applyStatusRules, commitmentDedupeKey } from "../pipeline/commitments";
 import { splitEventsByScope } from "../pipeline/scope";
 import { resolveIssueId } from "../pipeline/issues";
-import { getClaims, getEvents, getIssues, getInvestigation, insertClaims } from "../store";
-import type { ClaimInput, ClaimStatus, Event, InvestigationScope, SourceKind } from "../types";
+import { extractDeadline } from "../report/build";
+import {
+  getClaims,
+  getEvents,
+  getIssues,
+  getInvestigation,
+  insertClaims,
+  mergeCommitment,
+} from "../store";
+import type {
+  ClaimInput,
+  ClaimStatus,
+  CommitmentStatus,
+  Event,
+  InvestigationScope,
+  SourceKind,
+} from "../types";
 import { verifyQuote } from "../verify";
 import { rankEvents } from "./ranking";
 import { compactEvent } from "./summary";
@@ -115,6 +131,45 @@ function toolSpecs(): ToolSpec[] {
         },
       },
       ["type", "text", "quote", "item_id", "status", "confidence"],
+    ),
+    tool(
+      "submit_commitment",
+      "Record one PROMISE as a structured commitment (use this instead of submit_claim for promises). It also stores the backing claim. The quote MUST be an exact substring of the cited item's text.",
+      {
+        text: { type: "string", description: "One sentence stating the promise." },
+        actor: { type: "string", description: "The promisor: who promised." },
+        to: { type: "string", description: "The promisee: who it was promised to, when the record states it." },
+        object: {
+          type: "string",
+          description: "What exactly was promised, in a short phrase with no dates, e.g. 'invoice totals corrected'.",
+        },
+        conditions: { type: "string", description: "Any condition attached to the promise." },
+        deadline: {
+          type: "string",
+          description: "The deadline exactly as stated in the record, e.g. 'Sep 24'. Omit when none was stated.",
+        },
+        quote: { type: "string" },
+        item_id: { type: "string" },
+        ts: { type: "string" },
+        status: {
+          type: "string",
+          enum: ["kept", "broken", "unclear"],
+          description: "kept needs a delivering record in fulfilment_item_ids; otherwise unclear.",
+        },
+        rationale: { type: "string", description: "Why this status, in one sentence." },
+        fulfilment_item_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "Record ids that show the promise was delivered (required for kept).",
+        },
+        confidence: { type: "number", description: "0-1." },
+        issue_id: {
+          type: "string",
+          description:
+            "The issue this promise belongs to, copied from the issue_id list in the prompt. Required when the escalation has more than one issue.",
+        },
+      },
+      ["text", "quote", "item_id", "object", "status", "confidence"],
     ),
   ];
 }
@@ -398,6 +453,83 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         );
         if (winner) return JSON.stringify({ claimId: winner.id, duplicate: true, issueId: winner.issueId ?? null });
         return JSON.stringify({ error: "claim could not be stored." });
+      }
+
+      case "submit_commitment": {
+        const { claim, error } = claimFromArgs({ ...args, type: "commitment" });
+        if (!claim) return JSON.stringify({ error });
+        const object = asString(args.object)?.trim();
+        if (!object) {
+          return JSON.stringify({ error: "object is required: state what was promised, without dates." });
+        }
+
+        const issues = await getIssues(investigationId);
+        const issueId = resolveIssueId(args.issue_id, claim.text, issues);
+
+        // Same claim guard as submit_claim: a restatement is one claim.
+        const normalizedText = claim.text.toLowerCase().replace(/\s+/g, " ").trim();
+        const existingClaims = await getClaims(investigationId);
+        const duplicate = existingClaims.find(
+          (candidate) =>
+            candidate.agent === agentName &&
+            candidate.type === "commitment" &&
+            candidate.eventId === claim.eventId &&
+            candidate.text.toLowerCase().replace(/\s+/g, " ").trim() === normalizedText,
+        );
+        const stored =
+          duplicate ?? (await insertClaims(investigationId, [{ ...claim, agent: agentName, issueId }]))[0];
+        if (!stored) return JSON.stringify({ error: "commitment claim could not be stored." });
+
+        // The deadline is resolved by code from the stated phrase and the
+        // record's timestamp; the made-date never becomes the deadline (G-04).
+        const events = await getEvents(investigationId);
+        const event = events.find((candidate) => candidate.id === stored.eventId);
+        const referenceIso = claim.ts ?? event?.ts ?? null;
+        const deadlinePhrase = asString(args.deadline)?.trim() || null;
+        const deadline = deadlinePhrase
+          ? extractDeadline(deadlinePhrase, referenceIso)
+          : extractDeadline(claim.text, referenceIso);
+
+        const promisee = asString(args.to)?.trim() || null;
+        const fulfilmentEventIds = Array.isArray(args.fulfilment_item_ids)
+          ? args.fulfilment_item_ids.filter((value): value is string => typeof value === "string")
+          : [];
+        const rawStatus: CommitmentStatus =
+          stored.status === "kept" || stored.status === "broken" ? stored.status : "unclear";
+        const ruled = applyStatusRules({
+          status: rawStatus,
+          fulfilmentEventIds,
+          rationale: asString(args.rationale)?.trim() || null,
+        });
+
+        const commitment = await mergeCommitment(investigationId, {
+          claimId: stored.id,
+          issueId: stored.issueId ?? issueId ?? null,
+          promisor: claim.actor ?? null,
+          promisee,
+          object,
+          conditions: asString(args.conditions)?.trim() || null,
+          deadlinePhrase: deadline?.label ?? deadlinePhrase,
+          deadlineIso: deadline?.iso ?? null,
+          rationale: ruled.rationale,
+          status: ruled.status,
+          fulfilmentEventIds,
+          sourceEventId: stored.eventId,
+          dedupeKey: commitmentDedupeKey({
+            promisor: claim.actor ?? null,
+            promisee,
+            object,
+            deadlineIso: deadline?.iso ?? null,
+          }),
+        });
+
+        return JSON.stringify({
+          commitmentId: commitment.id,
+          claimId: stored.id,
+          status: commitment.status,
+          contested: commitment.contested,
+          issueId: stored.issueId ?? null,
+        });
       }
 
       default:

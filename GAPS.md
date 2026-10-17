@@ -138,6 +138,8 @@ Each is mapped to a gap below.
 
 ### G-05 — A promise is a first-class entity, not a claim
 
+**Status:** **implemented (core) — 2026-10-18.** `commitments` table (014) backed by one verified claim each; the commitments investigator submits via `submit_commitment` (promisor, promisee, date-less object, stated deadline, status + rationale, fulfilment records). CODE keys and merges restatements across sources into one row (`source_event_ids`), applies the rules (kept needs a delivering record, else unclear; broken outweighs kept; disagreement → `contested` with rationale), and resolves the deadline via the hardened parser. The ledger, the bottom line and the briefing narrative all read the same canonical set; per-issue views inherit filtering via the backing claims. UI shows the contested chip and the status rationale. Acceptance test: same promise in three tools → one contested row, `1 of 1 broken` everywhere. Remaining: a code guard against non-promise objects (QA/leave) beyond the tool's structured object requirement, and commitments-native verification (they currently ride their backing claim's verification).
+
 **Type:** data model, commitments, client-facing correctness.
 **Problem:** promises are claims with a sentence. There is no explicit promisor/promisee/object/condition/deadline; near-duplicates across email/Jira/Slack are not merged; non-promises (QA reports, leave notices, merge notes) are counted; one promise can appear with contradictory statuses.
 **Required behaviour**

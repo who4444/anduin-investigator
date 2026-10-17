@@ -26,6 +26,7 @@ export async function GET(
       events: assembled.timeline,
       claims: assembled.claims,
       notes: assembled.skepticNotes,
+      commitments: assembled.commitments,
     });
 
     return json({
@@ -44,12 +45,14 @@ export async function GET(
       briefing: buildBriefing({
         events: assembled.timeline,
         claims: assembled.claims,
+        commitments: assembled.commitments,
       }),
       bottomLine: buildBottomLine({
         events: assembled.timeline,
         claims: assembled.claims,
         notes: assembled.skepticNotes,
         gaps: assembled.gaps,
+        commitments: assembled.commitments,
       }),
       scope: assembled.scope,
       complete: assembled.complete,

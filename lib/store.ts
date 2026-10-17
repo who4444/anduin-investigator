@@ -3,12 +3,16 @@ import type { JSONValue } from "postgres";
 
 import { getPool } from "./db/pool";
 import { toUtcIso } from "./ingest/normalize";
+import { mergeStatuses } from "./pipeline/commitments";
 import { normalizePlanData } from "./pipeline/plan";
 import type {
   Claim,
   ClaimChecks,
   ClaimInput,
   ClaimStatus,
+  Commitment,
+  CommitmentInput,
+  CommitmentStatus,
   Event,
   EventInput,
   Gap,
@@ -381,6 +385,122 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
 export async function setScopeOverrides(id: string, eventIds: string[]): Promise<void> {
   const sql = getPool();
   await sql`update investigations set scope_overrides = ${sql.json(eventIds as unknown as JSONValue)} where id = ${id}`;
+}
+
+/* G-05: commitments keyed by promisor+promisee+object+deadline. A restatement
+   from another source merges into the same row; contested outcomes keep the
+   failing reading and record the disagreement. */
+interface CommitmentRow {
+  id: string;
+  investigation_id: string;
+  claim_id: string;
+  issue_id: string | null;
+  promisor: string | null;
+  promisee: string | null;
+  object: string;
+  conditions: string | null;
+  deadline_phrase: string | null;
+  deadline_iso: Date | string | null;
+  rationale: string | null;
+  status: string;
+  contested: boolean;
+  fulfilment_event_ids: unknown;
+  source_event_ids: unknown;
+  dedupe_key: string;
+  created_at: Date | string;
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function mapCommitment(row: CommitmentRow): Commitment {
+  return {
+    id: row.id,
+    investigationId: row.investigation_id,
+    claimId: row.claim_id,
+    issueId: row.issue_id ?? null,
+    promisor: row.promisor ?? null,
+    promisee: row.promisee ?? null,
+    object: row.object,
+    conditions: row.conditions ?? null,
+    deadlinePhrase: row.deadline_phrase ?? null,
+    deadlineIso: row.deadline_iso ? toIso(row.deadline_iso) : null,
+    rationale: row.rationale ?? null,
+    status: row.status as CommitmentStatus,
+    contested: row.contested,
+    fulfilmentEventIds: stringList(row.fulfilment_event_ids),
+    sourceEventIds: stringList(row.source_event_ids),
+    dedupeKey: row.dedupe_key,
+    createdAt: toIso(row.created_at) as string,
+  };
+}
+
+export async function getCommitments(investigationId: string): Promise<Commitment[]> {
+  const sql = getPool();
+  const rows = await sql<CommitmentRow[]>`
+    select * from commitments where investigation_id = ${investigationId} order by created_at, id
+  `;
+  return rows.map(mapCommitment);
+}
+
+export async function mergeCommitment(
+  investigationId: string,
+  record: CommitmentInput & {
+    status: CommitmentStatus;
+    dedupeKey: string;
+    sourceEventId: string;
+  },
+): Promise<Commitment> {
+  const sql = getPool();
+  const [existingRow] = await sql<CommitmentRow[]>`
+    select * from commitments
+    where investigation_id = ${investigationId} and dedupe_key = ${record.dedupeKey}
+    limit 1
+  `;
+
+  if (existingRow) {
+    const existing = mapCommitment(existingRow);
+    const merged = mergeStatuses([existing.status, record.status], record.rationale ?? existing.rationale);
+    const sourceEventIds = [...new Set([...existing.sourceEventIds, record.sourceEventId])];
+    const fulfilmentEventIds = [
+      ...new Set([...existing.fulfilmentEventIds, ...record.fulfilmentEventIds]),
+    ];
+    const [updated] = await sql<CommitmentRow[]>`
+      update commitments set
+        status = ${merged.status},
+        contested = ${merged.contested},
+        rationale = ${merged.rationale},
+        source_event_ids = ${sql.json(sourceEventIds as unknown as JSONValue)},
+        fulfilment_event_ids = ${sql.json(fulfilmentEventIds as unknown as JSONValue)}
+      where id = ${existing.id}
+      returning *
+    `;
+    return mapCommitment(updated);
+  }
+
+  const [inserted] = await sql<CommitmentRow[]>`
+    insert into commitments (
+      investigation_id, claim_id, issue_id, promisor, promisee, object, conditions,
+      deadline_phrase, deadline_iso, rationale, status, contested,
+      fulfilment_event_ids, source_event_ids, dedupe_key
+    )
+    values (
+      ${investigationId}, ${record.claimId}, ${record.issueId ?? null}, ${record.promisor},
+      ${record.promisee}, ${record.object}, ${record.conditions}, ${record.deadlinePhrase},
+      ${record.deadlineIso}, ${record.rationale}, ${record.status}, false,
+      ${sql.json(record.fulfilmentEventIds as unknown as JSONValue)},
+      ${sql.json([record.sourceEventId] as unknown as JSONValue)}, ${record.dedupeKey}
+    )
+    on conflict (investigation_id, dedupe_key) do nothing
+    returning *
+  `;
+  if (inserted) return mapCommitment(inserted);
+
+  // Lost a race against a concurrent submission: merge with the winner.
+  return mergeCommitment(investigationId, record);
 }
 
 export async function setPlanData(id: string, data: PlanData | null): Promise<void> {

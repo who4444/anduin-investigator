@@ -49,7 +49,7 @@ const KIND_MISSIONS: Record<InvestigatorKind, string> = {
   root_cause:
     "Establish what actually went wrong technically: the change or event that caused the problem, when it first appeared, and which fixes were attempted or failed.",
   commitments:
-    "Establish every promise made (who promised what, to whom, and by when) and whether it was kept. Record each promise ONCE: if the same promise appears in several places, submit a single claim citing where it was actually made — a message relaying the promise to someone else is not a new commitment. Name the person who promised and the recipient in the claim text when the records state them. Set status to kept, broken, or unclear; use n/a for claims that are not commitments.",
+    "Establish every promise made (who promised what, to whom, and by when) and whether it was kept. Record each promise with submit_commitment (not submit_claim): give the promisor (actor) and the promisee (to) when the record states them, what was promised as a short date-less object, the deadline exactly as stated (omit if none), your status with a one-sentence rationale, and fulfilment_item_ids when a record shows the object was delivered. Submit one commitment per source record that states the promise — code merges restatements into a single row. A QA report, a leave notice or a merge note is not a promise. Set status to kept, broken, or unclear.",
   ownership:
     "Establish who decided and owned what: handoffs, escalations, unannounced changes, and messages that went unanswered (process failure).",
 };
