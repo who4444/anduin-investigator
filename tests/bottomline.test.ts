@@ -102,6 +102,30 @@ describe("buildBottomLine", () => {
     expect(byId.get("questions")?.value).toBe("none open");
   });
 
+  it("prefers an unflagged root cause and warns when only a flagged one exists", () => {
+    const events: Event[] = [
+      event({ id: "e1", ts: "2024-09-10T03:00:00.000Z", text: "Timezone change merged." }),
+      event({ id: "e2", ts: "2024-09-11T03:00:00.000Z", text: "Fix attempted." }),
+    ];
+    const flagged = claim({
+      id: "c-flagged",
+      eventId: "e1",
+      text: "The earliest suspected cause is wrong.",
+      skepticFlag: true,
+    });
+    const clean = claim({ id: "c-clean", eventId: "e2", text: "The verified cause is the timezone change." });
+
+    const withBoth = buildBottomLine({ events, claims: [flagged, clean], notes: [], gaps: [] });
+    const causeBoth = withBoth.cells.find((cell) => cell.id === "cause");
+    expect(causeBoth).toMatchObject({ tone: "neutral" });
+    expect(causeBoth?.claimIds[0]).toBe("c-clean");
+
+    const flaggedOnly = buildBottomLine({ events, claims: [flagged], notes: [], gaps: [] });
+    const causeFlagged = flaggedOnly.cells.find((cell) => cell.id === "cause");
+    expect(causeFlagged).toMatchObject({ tone: "warn" });
+    expect(causeFlagged?.detail).toContain("flagged in skeptic review");
+  });
+
   it("counts unclear promises without calling them broken or kept", () => {
     const events: Event[] = [event({ id: "e1", ts: "2024-09-10T03:00:00.000Z", text: "Maybe we ship next week." })];
     const claims: Claim[] = [

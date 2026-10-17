@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateReplyPayload } from "../lib/agents/reply";
+import { validateReplyPayload, pruneStaleReply } from "../lib/agents/reply";
 import {
   buildAudit,
   buildLanes,
@@ -486,5 +486,52 @@ describe("reply validation", () => {
     expect(
       validateReplyPayload(JSON.stringify({ sentences: [{ text: "x", claimIds: [] }] }), known),
     ).toBeNull();
+  });
+
+  it("drops sentences that cite numbers the findings do not contain", () => {
+    const claimsById = new Map([
+      ["c1", { text: "A timezone change in release 4.12 caused the totals error.", quote: "4.12" }],
+      ["c2", { text: "The promised Sep 24 fix did not ship.", quote: "Sep 24" }],
+    ]);
+
+    const result = validateReplyPayload(
+      JSON.stringify({
+        verdict: "v",
+        sentences: [
+          { text: "The fix will now ship in release 5.3.5 on Oct 3.", claimIds: ["c1"] },
+          { text: "The promised Sep 24 fix did not ship.", claimIds: ["c2"] },
+        ],
+      }),
+      known,
+      claimsById,
+    );
+
+    expect(result?.sentences.map((sentence) => sentence.text)).toEqual([
+      "The promised Sep 24 fix did not ship.",
+    ]);
+  });
+
+  it("prunes a stored reply whose cited findings have degraded", () => {
+    const stored = {
+      sentences: [
+        { text: "Verified claim sentence.", claimIds: ["c-still-good"] },
+        { text: "Degraded claim sentence.", claimIds: ["c-degraded"] },
+        { text: "Mixed sentence.", claimIds: ["c-still-good", "c-degraded"] },
+      ],
+    };
+    const claims: Claim[] = [
+      claim({ id: "c-still-good", eventId: "e1", text: "fine", verifyStatus: "verified", skepticFlag: false }),
+      claim({ id: "c-degraded", eventId: "e1", text: "worse", verifyStatus: "supported", skepticFlag: false }),
+    ];
+
+    const pruned = pruneStaleReply(stored, claims);
+
+    expect(pruned?.sentences.map((sentence) => sentence.text)).toEqual(["Verified claim sentence."]);
+
+    const allBad = pruneStaleReply(stored, [
+      claim({ id: "c-still-good", eventId: "e1", text: "fine", verifyStatus: "rejected" }),
+      claim({ id: "c-degraded", eventId: "e1", text: "worse", verifyStatus: "rejected" }),
+    ]);
+    expect(allBad).toBeNull();
   });
 });

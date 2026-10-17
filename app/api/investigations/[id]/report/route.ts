@@ -5,6 +5,7 @@ import { buildResult } from "@/lib/pipeline/assemble";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
 import { buildReportView } from "@/lib/report/build";
+import { pruneStaleReply } from "@/lib/agents/reply";
 import { getReportExtras } from "@/lib/store";
 
 export const maxDuration = 60;
@@ -20,6 +21,7 @@ export async function GET(
   try {
     const assembled = await buildResult(id);
     const extras = await getReportExtras(id);
+    const prunedReply = pruneStaleReply(extras?.reply ?? null, assembled.claims);
     const view = buildReportView({
       events: assembled.timeline,
       claims: assembled.claims,
@@ -35,8 +37,8 @@ export async function GET(
       coverage: assembled.coverage,
       gaps: assembled.gaps,
       skepticNotes: assembled.skepticNotes,
-      verdict: extras?.verdict ?? null,
-      reply: extras?.reply ?? null,
+      verdict: extras ? (prunedReply ? extras.verdict : null) : null,
+      reply: prunedReply,
       ...view,
       briefing: buildBriefing({
         events: assembled.timeline,

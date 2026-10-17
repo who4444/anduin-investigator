@@ -4,6 +4,7 @@ import { BriefingShell } from "@/app/_components/briefing/shell";
 import { buildResult } from "@/lib/pipeline/assemble";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
+import { pruneStaleReply } from "@/lib/agents/reply";
 import { buildReportView, type ReportPayload } from "@/lib/report/build";
 import { getReportExtras } from "@/lib/store";
 
@@ -22,6 +23,7 @@ export default async function ReportPage({
   let report: ReportPayload;
   try {
     const assembled = await buildResult(id);    const extras = await getReportExtras(id);
+    const prunedReply = pruneStaleReply(extras?.reply ?? null, assembled.claims);
     report = {
       investigation: {
         id: assembled.investigation.id,
@@ -38,8 +40,10 @@ export default async function ReportPage({
       coverage: assembled.coverage,
       gaps: assembled.gaps,
       skepticNotes: assembled.skepticNotes,
-      verdict: extras?.verdict ?? null,
-      reply: extras?.reply ?? null,
+      // A stored reply was validated at draft time; findings can degrade
+      // later — re-check before showing either the sentences or the verdict.
+      verdict: extras ? (prunedReply ? extras.verdict : null) : null,
+      reply: prunedReply,
       ...buildReportView({
         events: assembled.timeline,
         claims: assembled.claims,

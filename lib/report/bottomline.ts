@@ -55,10 +55,12 @@ export function buildBottomLine(input: BottomLineInput): BottomLine {
     detail?: string,
   ): BottomLineCell => ({ id, label, value, tone, determined, claimIds, eventIds, ...(detail ? { detail } : {}) });
 
-  // 1. root cause — earliest visible root-cause claim
+  // 1. root cause — prefer an unflagged cause over a contested one, earliest first.
   const causeClaims = visibleClaims(claims)
     .filter((claim) => claim.type === "root_cause" && eventsById.has(claim.eventId))
     .sort((a, b) => {
+      const flag = Number(a.skepticFlag) - Number(b.skepticFlag);
+      if (flag !== 0) return flag;
       const left = eventsById.get(a.eventId)!.ts;
       const right = eventsById.get(b.eventId)!.ts;
       return left < right ? -1 : left > right ? 1 : 0;
@@ -68,11 +70,13 @@ export function buildBottomLine(input: BottomLineInput): BottomLine {
         "cause",
         "What went wrong",
         shorten(causeClaims[0].text),
-        "neutral",
+        causeClaims[0].skepticFlag ? "warn" : "neutral",
         true,
         causeClaims.map((claim) => claim.id),
         [causeClaims[0].eventId],
-        causeClaims[0].text,
+        causeClaims[0].skepticFlag
+          ? `${causeClaims[0].text} — flagged in skeptic review; check before relying on it`
+          : causeClaims[0].text,
       )
     : cell("cause", "What went wrong", "not determined", "neutral", false, [], []);
 
