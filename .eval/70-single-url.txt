@@ -1,1 +1,0 @@
-http://127.0.0.1:3000/investigations/96ea6b2c-03fd-4048-ab0f-206957a0795b?synthetic=1

@@ -53,4 +53,5 @@ sandbox/
 /test-results/
 /playwright-report/
 /blob-report/
-.eval/image.png
+.eval
+/image.png
