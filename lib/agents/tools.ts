@@ -5,6 +5,7 @@ import { splitEventsByScope } from "../pipeline/scope";
 import { getClaims, getEvents, getInvestigation, insertClaims } from "../store";
 import type { ClaimInput, ClaimStatus, Event, InvestigationScope, SourceKind } from "../types";
 import { verifyQuote } from "../verify";
+import { rankEvents } from "./ranking";
 import { compactEvent } from "./summary";
 
 const MAX_SEARCH_RESULTS = 30;
@@ -136,8 +137,23 @@ function matchesQuery(event: Event, needle: string | undefined): boolean {
   return (
     event.text.toLowerCase().includes(lower) ||
     event.channel.toLowerCase().includes(lower) ||
-    (event.actorResolved ?? event.actor).toLowerCase().includes(lower)
+    (event.actorResolved ?? event.actor).toLowerCase().includes(lower) ||
+    (event.refs ?? []).some((ref) => ref.toLowerCase().includes(lower))
   );
+}
+
+/* Search results are relevance-ordered (see ranking.ts), then capped; the
+   count and truncated flag describe the full match set, not the slice. */
+function searchResult(
+  matches: Event[],
+  query: string | undefined,
+): { count: number; items: Record<string, unknown>[]; truncated: boolean } {
+  const ordered = query && query.trim() ? rankEvents(matches, query) : matches;
+  return {
+    count: matches.length,
+    items: ordered.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event) as unknown as Record<string, unknown>),
+    truncated: ordered.length > MAX_SEARCH_RESULTS,
+  };
 }
 
 function normalizeThreadRef(id: string): string {
@@ -234,11 +250,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const matches = (await sourceItems("jira")).filter(
           (event) => matchesQuery(event, query) && matchesWindow(event, from, to),
         );
-        return JSON.stringify({
-          count: matches.length,
-          items: matches.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event)),
-          truncated: matches.length > MAX_SEARCH_RESULTS,
-        });
+        return JSON.stringify(searchResult(matches, query));
       }
 
       case "get_issue": {
@@ -275,11 +287,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
           if (channel && event.channel.toLowerCase() !== channel.toLowerCase()) return false;
           return matchesQuery(event, query) && matchesWindow(event, from, to);
         });
-        return JSON.stringify({
-          count: matches.length,
-          items: matches.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event)),
-          truncated: matches.length > MAX_SEARCH_RESULTS,
-        });
+        return JSON.stringify(searchResult(matches, query));
       }
 
       case "get_slack_thread": {
@@ -311,11 +319,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
           }
           return matchesQuery(event, query) && matchesWindow(event, from, to);
         });
-        return JSON.stringify({
-          count: matches.length,
-          items: matches.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event)),
-          truncated: matches.length > MAX_SEARCH_RESULTS,
-        });
+        return JSON.stringify(searchResult(matches, query));
       }
 
       case "get_email_thread": {

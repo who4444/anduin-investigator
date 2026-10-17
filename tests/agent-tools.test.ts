@@ -394,6 +394,62 @@ describeDb("agent tools", () => {
     }
   });
 
+  it("returns the on-point record first instead of the oldest matches", async () => {
+    const { insertEvents } = await import("../lib/store");
+    const filler = Array.from({ length: 35 }, (_, index) => ({
+      id: `e_rank_fill_${String(index).padStart(2, "0")}`,
+      source: "slack" as const,
+      ts: `2024-09-01T00:${String(index).padStart(2, "0")}:00.000Z`,
+      actor: "Lin Chen",
+      channel: "meridian-billing",
+      text: "Invoice totals review note: fix needed later.",
+    }));
+    await insertEvents(investigationId, [
+      ...filler,
+      {
+        id: "e_rank_point",
+        source: "slack" as const,
+        ts: "2024-09-30T00:00:00.000Z", // newest — chronological truncation would drop it
+        actor: "Priya Nair",
+        channel: "meridian-billing",
+        text: "The invoice fix shipped in the Sep 24 build (MER-202); please verify totals.",
+      },
+    ]);
+
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(await tools.exec("search_slack", { query: "invoice" })) as {
+      count: number;
+      items: { id: string }[];
+      truncated: boolean;
+    };
+
+    expect(result.count).toBeGreaterThan(30);
+    expect(result.truncated).toBe(true);
+    expect(result.items.map((item) => item.id)).toContain("e_rank_point");
+    expect(result.items[0].id).toBe("e_rank_point");
+  });
+
+  it("matches a query that only appears in a record's ticket references", async () => {
+    const { insertEvents } = await import("../lib/store");
+    await insertEvents(investigationId, [
+      {
+        id: "e_ref_only",
+        source: "slack",
+        ts: "2024-09-14T00:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "meridian-billing",
+        text: "Covered in the linked ticket.",
+        refs: ["KST-999"],
+      },
+    ]);
+
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(await tools.exec("search_slack", { query: "KST-999" })) as {
+      items: { id: string }[];
+    };
+    expect(result.items.map((item) => item.id)).toContain("e_ref_only");
+  });
+
   it("rejects a submit_claim without a valid status", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const response = JSON.parse(
