@@ -365,6 +365,8 @@ describeDb("agent tools", () => {
       ticketPrefixes: ["MER"],
       channels: ["meridian-billing"],
       senderDomains: ["northwind.example"],
+      confidence: "scoped",
+      anchors: [],
     });
 
     try {

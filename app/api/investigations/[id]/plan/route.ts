@@ -9,7 +9,7 @@ import {
   runStage,
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
-import { identifyScope } from "@/lib/pipeline/scope";
+import { resolveScope } from "@/lib/pipeline/scope";
 import { getEvents, setScope } from "@/lib/store";
 
 export const maxDuration = 60;
@@ -28,7 +28,12 @@ export async function POST(
     // Identify which client and project this escalation concerns, verified
     // against the registry, before any investigator searches it.
     const events = await getEvents(id);
-    const scope = await identifyScope(found.investigation.escalationText, events, getLlmClient());
+    const scope = await resolveScope(
+      found.investigation.escalationText,
+      events,
+      getLlmClient(),
+      found.investigation.declaredClient,
+    );
     await setScope(id, scope);
 
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);

@@ -2,6 +2,7 @@ import { extractJson, isPlainObject } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import { getLlmClient, runToolLoop } from "../llm";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
+import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
 import { appendStageLog, getClaims, getEvents, getInvestigation, insertClaims, insertGaps } from "../store";
 import type { Claim, ClaimInput, ClaimStatus, GapInput } from "../types";
 import { sampleEvents, summarizeEvents } from "./summary";
@@ -123,6 +124,7 @@ export async function runInvestigator(
   const scopeLine = scopePromptLine(investigation?.scope ?? null);
   // Prompts see only in-scope records, matching what the tools can return.
   const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
+  const digest = renderVocabularyDigest(buildVocabularyDigest(inScope));
 
   const system = [
     `You are the ${KIND_LABELS[kind]} investigator on an incident investigation.`,
@@ -137,6 +139,7 @@ export async function runInvestigator(
     "Investigation plan:",
     plan,
     ...(scopeLine ? ["", scopeLine] : []),
+    ...(digest ? ["", "Vocabulary observed in the records (use these exact terms when searching):", digest] : []),
     "",
     "Evidence Registry summary:",
     summarizeEvents(inScope),

@@ -321,6 +321,24 @@ describeDb("runInvestigator", () => {
     expect(afterSecond[0].count).toBe(afterFirst[0].count);
   });
 
+  it("feeds the vocabulary digest to investigators", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+
+    let seenUserPrompt = "";
+    setLlmClientForTests({
+      chat: async (messages) => {
+        seenUserPrompt = messages.map((message) => message.content ?? "").join("\n");
+        return { content: JSON.stringify({ claims: [], notes: [] }) };
+      },
+    });
+
+    await runInvestigator(investigationId, "root_cause", "1. Reconstruct the timeline.");
+
+    expect(seenUserPrompt).toContain("Vocabulary observed in the records");
+    expect(seenUserPrompt).toContain("MER-101");
+  });
+
   it("rejects an unknown investigator kind", async () => {
     const { runInvestigator } = await import("../lib/agents/investigator");
     await expect(

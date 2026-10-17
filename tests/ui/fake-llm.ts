@@ -132,6 +132,11 @@ function replyTurn(messages: ChatMessage[]) {
 function decide(system: string, messages: ChatMessage[]) {
   if (system.includes("resolve identities")) return content({ merges: [] });
   if (system.includes("identify which client and project")) {
+    const user = String(
+      messages.find((message) => message.role === "user")?.content ?? "",
+    ).toLowerCase();
+    if (user.includes("billing module")) return content({ channels: ["meridian-billing"] });
+    if (user.includes("ghost client")) return content({});
     return content({
       client: "Northwind Logistics",
       project: "Meridian Billing",

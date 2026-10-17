@@ -93,6 +93,8 @@ export interface Investigation {
   plan: string | null;
   createdAt: string;
   scope: InvestigationScope | null;
+  declaredClient: string | null;
+  planData: PlanData | null;
 }
 
 export interface Stage {
@@ -157,6 +159,19 @@ export interface NewInvestigation {
   title: string;
   escalationText: string;
   contentHash: string;
+  declaredClient?: string | null;
+}
+
+export type ScopeConfidence = "scoped" | "partial" | "none";
+
+export type ScopeAnchorKind = "declared-client" | "ticket-prefix" | "channel" | "sender-domain";
+
+export type ScopeAnchorSource = "declared" | "escalation" | "model";
+
+export interface ScopeAnchor {
+  kind: ScopeAnchorKind;
+  value: string;
+  source: ScopeAnchorSource;
 }
 
 export interface InvestigationScope {
@@ -165,4 +180,32 @@ export interface InvestigationScope {
   ticketPrefixes: string[];
   channels: string[];
   senderDomains: string[];
+  confidence: ScopeConfidence;
+  anchors: ScopeAnchor[];
+}
+
+export interface PlanHypothesis {
+  statement: string;
+  test: string;
+  falsify: string;
+}
+
+export interface PlanSource {
+  source: string;
+  approach: string;
+}
+
+export interface PlanDateWindow {
+  from: string | null;
+  to: string | null;
+}
+
+export interface PlanData {
+  framing: string;
+  hypotheses: PlanHypothesis[];
+  sources: PlanSource[];
+  searchTerms: string[];
+  people: string[];
+  dateWindow: PlanDateWindow;
+  unknowns: string[];
 }

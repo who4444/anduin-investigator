@@ -26,6 +26,7 @@ const SCENARIO_ESCALATION =
 export default function StartPage() {
   const router = useRouter();
   const [escalation, setEscalation] = useState("");
+  const [client, setClient] = useState("");
   const [synthetic, setSynthetic] = useState(false);
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
@@ -78,6 +79,7 @@ export default function StartPage() {
 
   function loadScenario() {
     setEscalation(SCENARIO_ESCALATION);
+    setClient("Northwind Logistics");
     setSynthetic(true);
   }
 
@@ -94,6 +96,7 @@ export default function StartPage() {
       form.append("files", new File([blob], name, { type: blob.type }));
     }
     form.append("escalation", escalation);
+    form.append("client", client);
     form.append("title", "Northwind Logistics — invoice totals after release 4.12");
 
     const response = await fetch("/api/investigations", { method: "POST", body: form });
@@ -114,7 +117,7 @@ export default function StartPage() {
     const response = await fetch("/api/sources/pull", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ sources: entries, escalation }),
+      body: JSON.stringify({ sources: entries, escalation, client }),
     });
     const payload = (await response.json().catch(() => ({}))) as { investigationId?: string; error?: string };
     if (!response.ok || !payload.investigationId) throw new Error(payload.error ?? "Could not pull the selected sources.");
@@ -150,6 +153,15 @@ export default function StartPage() {
               setSynthetic(false);
             }}
             placeholder="Paste the escalation message here."
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">Client (if known)</span>
+          <input
+            className="input"
+            value={client}
+            onChange={(event) => setClient(event.target.value)}
+            placeholder="e.g. Northwind Logistics — used to confirm which records belong to this escalation."
           />
         </label>
         <div className="row">

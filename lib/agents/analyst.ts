@@ -1,6 +1,8 @@
 import { getLlmClient } from "../llm";
+import { deriveDateWindow, parsePlanData, renderPlan } from "../pipeline/plan";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
-import { appendStageLog, getEvents, getInvestigation, setPlan } from "../store";
+import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
+import { appendStageLog, getEvents, getInvestigation, setPlan, setPlanData } from "../store";
 import { sampleEvents, summarizeEvents } from "./summary";
 
 const DEFAULT_PLAN = [
@@ -13,10 +15,15 @@ const DEFAULT_PLAN = [
 
 const SYSTEM_PROMPT = [
   "You are the issue analyst on a client-escalation investigation.",
-  "You write the short investigation plan the investigators will work from.",
-  "Base it only on the escalation and the event-store summary you are given.",
-  "Output markdown: a one-paragraph framing plus 4-8 bullets split across root cause, commitments, and decisions/ownership.",
-  "Keep it under 300 words. Do not state findings or answers; you are planning what to look for.",
+  "You write the investigation plan the investigators will work from.",
+  "Base it only on the escalation, the event-store summary and the vocabulary digest you are given.",
+  "Propose hypotheses the investigators should test (each with how to test it and what would falsify it), which sources to search first and how, the seed search terms (include synonyms and the real internal terms from the digest), the people to look at, and a focus window when the escalation suggests one.",
+  "Do not state findings or answers; you are planning what to look for.",
+].join("\n");
+
+const RESPONSE_SCHEMA = [
+  "Reply with JSON only:",
+  '{"framing":"one short paragraph","hypotheses":[{"statement":"...","test":"...","falsify":"..."}],"sources":[{"source":"jira|email|slack","approach":"..."}],"searchTerms":["..."],"people":["..."],"dateWindow":{"from":"YYYY-MM-DD or null","to":"YYYY-MM-DD or null"},"unknowns":["..."]}',
 ].join("\n");
 
 export async function runAnalyst(
@@ -29,11 +36,19 @@ export async function runAnalyst(
   const scopeLine = scopePromptLine(investigation?.scope ?? null);
   const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
 
+  const digest = renderVocabularyDigest(buildVocabularyDigest(inScope));
+  const window = deriveDateWindow(
+    escalation,
+    investigation?.createdAt ?? new Date().toISOString(),
+  );
+
   const user = [
     escalation.trim()
       ? `Escalation from the client:\n${escalation.trim()}`
       : "No escalation text was provided. Infer the likely escalation from the records themselves.",
     ...(scopeLine ? ["", scopeLine] : []),
+    ...(digest ? ["", "Vocabulary observed in the records (use these exact terms):", digest] : []),
+    ...(window.from ? ["", `The escalation's own phrasing points at activity since ${window.from}.`] : []),
     "",
     "Event store summary:",
     summarizeEvents(inScope),
@@ -42,18 +57,27 @@ export async function runAnalyst(
     JSON.stringify(sampleEvents(inScope, 10)),
     "",
     "Write the investigation plan now.",
+    RESPONSE_SCHEMA,
   ].join("\n");
 
-  const response = await getLlmClient().chat([
-    { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: user },
-  ]);
+  const response = await getLlmClient().chat(
+    [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: user },
+    ],
+    { forceJson: true },
+  );
 
-  const plan = response.content.trim() || DEFAULT_PLAN;
+  // Structured plans are preferred; anything unusable degrades to free text.
+  const planData = parsePlanData(response.content);
+  const plan = planData ? renderPlan(planData) : response.content.trim() || DEFAULT_PLAN;
+
+  await setPlanData(investigationId, planData);
   await setPlan(investigationId, plan);
   await appendStageLog(investigationId, "plan", pass, {
     eventCount: events.length,
     planChars: plan.length,
+    structured: planData !== null,
   });
 
   return plan;

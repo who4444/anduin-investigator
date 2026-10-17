@@ -1642,3 +1642,24 @@ table.data td {
 .scope-client {
   font-weight: 700;
 }
+
+.scope-line.tone-partial {
+  color: var(--email);
+}
+
+.scope-line.tone-none {
+  font-weight: 500;
+}
+
+.scope-flag {
+  display: inline-block;
+  border: 1px dashed var(--email);
+  border-radius: var(--radius);
+  color: var(--email);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  margin-right: 8px;
+}

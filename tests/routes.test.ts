@@ -32,6 +32,7 @@ describeDb("pipeline routes", () => {
       title: `Routes ${randomUUID()}`,
       escalationText: "Totals are wrong since 4.12.",
       contentHash: `hash-${randomUUID()}`,
+      declaredClient: "Northwind Logistics",
     });
     created.push(investigationId);
 
@@ -49,7 +50,20 @@ describeDb("pipeline routes", () => {
     setLlmClientForTests({
       chat: async (messages) => {
         const system = messages[0]?.content ?? "";
-        if (system.includes("issue analyst")) return { content: "# Plan\n1. Trace 4.12." };
+        if (system.includes("issue analyst")) {
+          return {
+            content: JSON.stringify({
+              framing: "Trace 4.12 across the sources.",
+              hypotheses: [
+                {
+                  statement: "The 4.12 merge introduced the drift.",
+                  test: "Compare totals before and after Sep 10.",
+                  falsify: "Totals unchanged across the deploy.",
+                },
+              ],
+            }),
+          };
+        }
         if (system.includes("identify which client and project")) {
           return {
             content: JSON.stringify({
@@ -111,14 +125,23 @@ describeDb("pipeline routes", () => {
     expect(body.plan).toContain("Trace 4.12");
     expect((await getStages(investigationId)).find((stage) => stage.stage === "plan")?.status).toBe("done");
 
-    // The identified scope is verified against the registry and persisted.
+    // The structured plan is persisted alongside the rendered text, and the
+    // identified scope is verified against the registry and persisted.
+    // Declared client + one verified identifier is 2 anchors: partial.
     const investigation = await getInvestigation(investigationId);
+    expect(investigation?.planData?.framing).toContain("Trace 4.12");
+    expect(investigation?.planData?.hypotheses[0].statement).toContain("4.12 merge");
     expect(investigation?.scope).toEqual({
       client: "Northwind Logistics",
       project: "Meridian Billing",
       ticketPrefixes: ["MER"],
       channels: [],
       senderDomains: [],
+      confidence: "partial",
+      anchors: [
+        { kind: "declared-client", value: "Northwind Logistics", source: "declared" },
+        { kind: "ticket-prefix", value: "MER", source: "model" },
+      ],
     });
   });
 

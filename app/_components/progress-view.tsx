@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
 import type { CoverageReport } from "@/lib/pipeline/coverage";
+import type { ReportScope } from "@/lib/pipeline/scope";
 import type { Stage } from "@/lib/types";
 
 interface ProgressViewProps {
@@ -77,6 +78,7 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
   const [stages, setStages] = useState<Stage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [coverage, setCoverage] = useState<CoverageReport | null>(null);
+  const [scope, setScope] = useState<ReportScope | null>(null);
   const [summary, setSummary] = useState<{ events: number; channels: number } | null>(null);
   const [showActivity, setShowActivity] = useState(false);
   const started = useRef(false);
@@ -96,8 +98,10 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
     const payload = (await response.json()) as {
       coverage?: CoverageReport;
       events?: { source: string; channel: string }[];
+      scope?: ReportScope | null;
     };
     if (payload.coverage) setCoverage(payload.coverage);
+    if (payload.scope !== undefined) setScope(payload.scope);
     if (payload.events) {
       setSummary({
         events: payload.events.length,
@@ -264,6 +268,17 @@ export function ProgressView({ investigationId, flags, reviewOnly }: ProgressVie
               <span className="tabular">{summary.events} items stored</span>
               {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
             </p>
+            {scope && (
+              <p className={`scope-line small tone-${scope.confidence}`} style={{ fontWeight: 500 }}>
+                {scope.confidence === "none"
+                  ? `No scope could be confirmed${scope.client ? ` for ${scope.client}` : ""} — every stored record was searched.`
+                  : `${scope.confidence === "partial" ? "Unconfirmed scope: " : "Scope: "}${[scope.client, scope.project]
+                      .filter(Boolean)
+                      .join(" · ")}${
+                      scope.excludedRecords > 0 ? ` · ${scope.excludedRecords} out-of-scope records excluded` : ""
+                    }`}
+              </p>
+            )}
             {coverage && (
               <ul className="stack" style={{ gap: 6 }}>
                 {coverage.sources.map((entry) => (

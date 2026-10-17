@@ -3,6 +3,7 @@ import type { JSONValue } from "postgres";
 
 import { getPool } from "./db/pool";
 import { toUtcIso } from "./ingest/normalize";
+import { normalizePlanData } from "./pipeline/plan";
 import type {
   Claim,
   ClaimChecks,
@@ -17,6 +18,8 @@ import type {
   Investigation,
   InvestigationScope,
   NewInvestigation,
+  PlanData,
+  ScopeAnchor,
   SkepticNote,
   SkepticNoteInput,
   SkepticNoteKind,
@@ -45,6 +48,35 @@ interface InvestigationRow {
   plan: string | null;
   created_at: Date | string;
   scope: unknown;
+  declared_client: string | null;
+  plan_data: unknown;
+}
+
+function mapScope(value: unknown): InvestigationScope | null {
+  if (typeof value !== "object" || value === null) return null;
+  const scope = value as Partial<InvestigationScope>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((entry): entry is string => typeof entry === "string") : [];
+  const confidence =
+    scope.confidence === "partial" || scope.confidence === "none" ? scope.confidence : "scoped";
+  return {
+    client: typeof scope.client === "string" ? scope.client : null,
+    project: typeof scope.project === "string" ? scope.project : null,
+    ticketPrefixes: strings(scope.ticketPrefixes),
+    channels: strings(scope.channels),
+    senderDomains: strings(scope.senderDomains),
+    confidence,
+    anchors: Array.isArray(scope.anchors)
+      ? scope.anchors.filter(
+          (anchor): anchor is ScopeAnchor =>
+            typeof anchor === "object" &&
+            anchor !== null &&
+            typeof (anchor as ScopeAnchor).kind === "string" &&
+            typeof (anchor as ScopeAnchor).value === "string" &&
+            typeof (anchor as ScopeAnchor).source === "string",
+        )
+      : [],
+  };
 }
 
 function mapInvestigation(row: InvestigationRow): Investigation {
@@ -56,20 +88,10 @@ function mapInvestigation(row: InvestigationRow): Investigation {
     contentHash: row.content_hash,
     plan: row.plan,
     createdAt: toIso(row.created_at) as string,
-    scope: isPlainScope(row.scope) ? row.scope : null,
+    scope: mapScope(row.scope),
+    declaredClient: row.declared_client ?? null,
+    planData: normalizePlanData(row.plan_data),
   };
-}
-
-function isPlainScope(value: unknown): value is InvestigationScope {
-  if (typeof value !== "object" || value === null) return false;
-  const scope = value as Partial<InvestigationScope>;
-  return (
-    (scope.client === null || typeof scope.client === "string") &&
-    (scope.project === null || typeof scope.project === "string") &&
-    Array.isArray(scope.ticketPrefixes) &&
-    Array.isArray(scope.channels) &&
-    Array.isArray(scope.senderDomains)
-  );
 }
 
 interface EventRow {
@@ -271,8 +293,8 @@ export function claimDedupeKey(eventId: string, text: string): string {
 export async function createInvestigation(input: NewInvestigation): Promise<string> {
   const sql = getPool();
   const rows = await sql<{ id: string }[]>`
-    insert into investigations (title, escalation_text, content_hash)
-    values (${input.title}, ${input.escalationText}, ${input.contentHash})
+    insert into investigations (title, escalation_text, content_hash, declared_client)
+    values (${input.title}, ${input.escalationText}, ${input.contentHash}, ${input.declaredClient ?? null})
     returning id
   `;
   return rows[0].id;
@@ -281,7 +303,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data
     from investigations
     where id = ${id}
     limit 1
@@ -294,10 +316,15 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
   await sql`update investigations set scope = ${scope ? sql.json(scope as unknown as JSONValue) : null} where id = ${id}`;
 }
 
+export async function setPlanData(id: string, data: PlanData | null): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set plan_data = ${data ? sql.json(data as unknown as JSONValue) : null} where id = ${id}`;
+}
+
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data
     from investigations
     where content_hash = ${hash}
     order by created_at desc

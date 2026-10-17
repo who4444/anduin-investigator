@@ -255,6 +255,8 @@ describeDb("verify + assemble", () => {
         ticketPrefixes: ["MER"],
         channels: ["meridian-billing"],
         senderDomains: ["northwind.example"],
+        confidence: "scoped",
+        anchors: [],
       });
 
       const result = await buildResult(id);
@@ -266,6 +268,8 @@ describeDb("verify + assemble", () => {
         ticketPrefixes: ["MER"],
         channels: ["meridian-billing"],
         senderDomains: ["northwind.example"],
+        confidence: "scoped",
+        anchors: [],
         excludedRecords: 2,
       });
     } finally {

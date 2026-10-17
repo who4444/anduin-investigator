@@ -24,6 +24,7 @@ export interface IngestFilesInput {
   title?: string;
   contentHash?: string;
   warnings?: string[];
+  declaredClient?: string | null;
 }
 
 export type IngestFilesResult =
@@ -151,6 +152,7 @@ export async function ingestFiles(input: IngestFilesInput): Promise<IngestFilesR
       title: resolveTitle(input.title, dedupedUpload, input.escalation),
       escalationText: input.escalation,
       contentHash: input.contentHash ?? "",
+      declaredClient: input.declaredClient ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -66,6 +66,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const escalation = typeof body.escalation === "string" ? body.escalation.slice(0, ESCALATION_TEXT_LIMIT) : "";
   const title = typeof body.title === "string" ? body.title.slice(0, TITLE_LIMIT) : "";
+  const declaredClient =
+    typeof body.client === "string" ? body.client.replace(/\s+/g, " ").trim().slice(0, 200) : "";
 
   const files: IngestFile[] = [];
   const warnings: string[] = [];
@@ -113,8 +115,9 @@ export async function POST(request: NextRequest): Promise<Response> {
     files,
     escalation,
     title: title || undefined,
-    contentHash: `pull:${hashParts.join("|")}`,
+    contentHash: `pull:${[declaredClient, ...hashParts].filter(Boolean).join("|")}`,
     warnings,
+    declaredClient,
   });
 
   if (!result.ok) {

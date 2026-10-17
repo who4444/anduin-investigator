@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   deriveScopeUniverse,
-  identifyScope,
   matchScope,
+  resolveScope,
   splitEventsByScope,
 } from "../lib/pipeline/scope";
 import type { Event, InvestigationScope } from "../lib/types";
@@ -25,19 +25,48 @@ const scope: InvestigationScope = {
   ticketPrefixes: ["MER"],
   channels: ["meridian-billing"],
   senderDomains: ["northwind.example"],
+  confidence: "scoped",
+  anchors: [],
 };
+
+const scopeEvents: Event[] = [
+  event({ id: "e-mer-1", channel: "MER-201" }),
+  event({ id: "e-mer-2", channel: "MER-202" }),
+  event({
+    id: "e-slack-mer",
+    source: "slack",
+    channel: "meridian-billing",
+    text: "Sep 24 release is cut; invoice fix included. MER-202",
+    refs: ["MER-202"],
+  }),
+  event({ id: "e-kst", channel: "KST-301", actor: "Ravi Patel", text: "Acme rate limits." }),
+  event({
+    id: "e-slack-kst",
+    source: "slack",
+    channel: "kestrel-eng",
+    actor: "Ravi Patel",
+    text: "Acme's Kestrel change is live.",
+  }),
+  event({
+    id: "e-mail-nw",
+    source: "email",
+    channel: "email",
+    actor: "Priya Nair <priya@northwind.example>",
+    text: "Totals are still wrong after the promised fix.",
+    refs: ["MER-201"],
+  }),
+  event({
+    id: "e-mail-acme",
+    source: "email",
+    channel: "email",
+    actor: "Ravi Patel <support@acme.example>",
+    text: "Acme's limits were raised.",
+  }),
+];
 
 describe("deriveScopeUniverse", () => {
   it("collects jira prefixes, slack channels and email sender domains", () => {
-    const events = [
-      event({ id: "a", channel: "MER-201" }),
-      event({ id: "b", channel: "KST-301" }),
-      event({ id: "c", source: "slack", channel: "meridian-billing" }),
-      event({ id: "d", source: "slack", channel: "kestrel-eng" }),
-      event({ id: "e", source: "email", actor: "Dana Okafor <billing@northwind.example>", channel: "email" }),
-      event({ id: "f", source: "email", actor: "Ravi Patel <support@acme.example>", channel: "email" }),
-    ];
-    expect(deriveScopeUniverse(events)).toEqual({
+    expect(deriveScopeUniverse(scopeEvents)).toEqual({
       ticketPrefixes: ["KST", "MER"],
       channels: ["kestrel-eng", "meridian-billing"],
       senderDomains: ["acme.example", "northwind.example"],
@@ -89,6 +118,11 @@ describe("matchScope", () => {
   it("matches everything when there is no scope", () => {
     expect(matchScope(null, event({ id: "a", channel: "KST-301" }))).toBe(true);
   });
+
+  it("matches everything when the scope could not be confirmed", () => {
+    const unconfirmed: InvestigationScope = { ...scope, confidence: "none" };
+    expect(matchScope(unconfirmed, event({ id: "a", channel: "KST-301" }))).toBe(true);
+  });
 });
 
 describe("splitEventsByScope", () => {
@@ -110,6 +144,8 @@ describe("splitEventsByScope", () => {
       ticketPrefixes: ["MER"],
       channels: [],
       senderDomains: [],
+      confidence: "partial",
+      anchors: [],
     };
     const events = [
       event({
@@ -154,38 +190,159 @@ function scriptedClient(payload: unknown, fail = false): LlmClient {
   };
 }
 
-const universeEvents = [
-  event({ id: "a", channel: "MER-201" }),
-  event({ id: "c", source: "slack", channel: "meridian-billing" }),
-  event({ id: "e", source: "email", actor: "Dana Okafor <billing@northwind.example>", channel: "email" }),
-];
+function capturingClient(payload: unknown): { seen: string[]; client: LlmClient } {
+  const seen: string[] = [];
+  return {
+    seen,
+    client: {
+      chat: async (messages) => {
+        seen.push(messages.map((message) => message.content ?? "").join("\n"));
+        return { content: JSON.stringify(payload) };
+      },
+    },
+  };
+}
 
-describe("identifyScope", () => {
-  it("proposes a scope and drops values that do not exist in the store", async () => {
-    const client = scriptedClient({
-      client: "Northwind Logistics",
-      project: "Meridian Billing",
-      ticketPrefixes: ["MER", "XX"],
-      channels: ["meridian-billing", "nope"],
-      senderDomains: ["northwind.example", "ghost.example"],
-    });
-    await expect(
-      identifyScope("Northwind Logistics reports wrong Meridian Billing invoices", universeEvents, client),
-    ).resolves.toEqual({
+const MER_CHANNEL_PROPOSAL = {
+  client: "Northwind Logistics",
+  project: "Meridian Billing",
+  ticketPrefixes: ["MER"],
+  channels: ["meridian-billing"],
+  senderDomains: [],
+};
+
+describe("resolveScope", () => {
+  it("reaches 'scoped' with more than two convergent anchors", async () => {
+    const resolved = await resolveScope(
+      "Northwind Logistics reports wrong Meridian Billing invoices (MER-201).",
+      scopeEvents,
+      scriptedClient(MER_CHANNEL_PROPOSAL),
+      "Northwind Logistics",
+    );
+
+    expect(resolved).toMatchObject({
       client: "Northwind Logistics",
       project: "Meridian Billing",
       ticketPrefixes: ["MER"],
       channels: ["meridian-billing"],
+      senderDomains: [],
+      confidence: "scoped",
+    });
+    expect(resolved?.anchors.map((anchor) => anchor.source).sort()).toEqual([
+      "declared",
+      "escalation",
+      "model",
+    ]);
+  });
+
+  it("stays 'partial' with only two anchors", async () => {
+    const resolved = await resolveScope(
+      "Something about billing is broken.",
+      scopeEvents,
+      scriptedClient({ ...MER_CHANNEL_PROPOSAL, channels: [] }),
+      null,
+    );
+
+    expect(resolved).toMatchObject({ confidence: "partial", ticketPrefixes: ["MER"] });
+  });
+
+  it("stays 'partial' on a single weak match instead of guessing", async () => {
+    const resolved = await resolveScope(
+      "Your billing module has been wrong since the last update.",
+      scopeEvents,
+      scriptedClient({ channels: ["meridian-billing"] }),
+      null,
+    );
+
+    expect(resolved).toMatchObject({ confidence: "partial", channels: ["meridian-billing"] });
+  });
+
+  it("keeps the declared client but reports 'none' when no records match", async () => {
+    const resolved = await resolveScope(
+      "Escalation from a client we have no records for.",
+      scopeEvents,
+      scriptedClient({}),
+      "Ghost Corp",
+    );
+
+    expect(resolved).toMatchObject({
+      client: "Ghost Corp",
+      project: null,
+      ticketPrefixes: [],
+      channels: [],
+      confidence: "none",
+    });
+    expect(resolved?.anchors).toEqual([{ kind: "declared-client", value: "Ghost Corp", source: "declared" }]);
+  });
+
+  it("returns null when nothing at all is known", async () => {
+    const resolved = await resolveScope("Something broke.", scopeEvents, scriptedClient({}), null);
+    expect(resolved).toBeNull();
+  });
+
+  it("keeps the escalation-evidence component and downgrades on contradictions", async () => {
+    const resolved = await resolveScope(
+      "Northwind says MER-201 is still wrong.",
+      scopeEvents,
+      scriptedClient({ ticketPrefixes: ["MER", "KST"], channels: ["kestrel-eng"], senderDomains: [] }),
+      null,
+    );
+
+    expect(resolved).toMatchObject({
+      ticketPrefixes: ["MER"],
+      channels: [],
+      confidence: "partial",
+    });
+    expect(resolved?.channels).not.toContain("kestrel-eng");
+  });
+
+  it("passes the declared client to the model prompt", async () => {
+    const capture = capturingClient(MER_CHANNEL_PROPOSAL);
+    await resolveScope(
+      "Northwind Logistics reports wrong invoices.",
+      scopeEvents,
+      capture.client,
+      "Northwind Logistics",
+    );
+    expect(capture.seen[0]).toContain("Northwind Logistics");
+  });
+
+  it("derives anchors from the escalation text even when the model fails", async () => {
+    const resolved = await resolveScope(
+      "From: Priya Nair <priya@northwind.example> — MER-201 totals still wrong.",
+      scopeEvents,
+      scriptedClient({}, true),
+      null,
+    );
+
+    expect(resolved).toMatchObject({
+      confidence: "partial",
+      ticketPrefixes: ["MER"],
       senderDomains: ["northwind.example"],
     });
+    expect(resolved?.anchors.every((anchor) => anchor.source === "escalation")).toBe(true);
   });
 
-  it("returns null when no concrete anchor survives verification", async () => {
-    const client = scriptedClient({ client: "Ghost Corp", ticketPrefixes: ["ZZ"], channels: [], senderDomains: [] });
-    await expect(identifyScope("something else entirely", universeEvents, client)).resolves.toBeNull();
-  });
+  it("anchors on the sender of a stored email that matches the escalation text", async () => {
+    const body =
+      "As discussed on our call, our invoices have been wrong since release 4.12 and the promised Sep 24 fix did not arrive.";
+    const events = [
+      ...scopeEvents,
+      event({
+        id: "e-escalation-mail",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okafor <billing@northwind.example>",
+        text: body,
+      }),
+    ];
 
-  it("degrades to null when the model call fails", async () => {
-    await expect(identifyScope("escalation", universeEvents, scriptedClient({}, true))).resolves.toBeNull();
+    const resolved = await resolveScope(body, events, scriptedClient({}, true), null);
+
+    expect(resolved).toMatchObject({ confidence: "partial" });
+    expect(resolved?.senderDomains).toEqual(["northwind.example"]);
+    expect(
+      resolved?.anchors.some((anchor) => anchor.source === "escalation" && anchor.kind === "sender-domain"),
+    ).toBe(true);
   });
 });

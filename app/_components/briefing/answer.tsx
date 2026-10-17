@@ -28,6 +28,16 @@ export function AnswerSection({
   const quietMetrics = report.metrics.filter((metric: Metric) => !QUIET_METRIC_IDS.has(metric.id));
   const { immediate, followUp } = report.actions;
   const scope = report.scope;
+  const scopeParts: string[] = [];
+  if (scope) {
+    if (scope.client) scopeParts.push(scope.client);
+    if (scope.project) scopeParts.push(scope.project);
+    if (scopeParts.length === 0) {
+      if (scope.channels.length > 0) scopeParts.push(`channel ${scope.channels.join(", ")}`);
+      if (scope.ticketPrefixes.length > 0) scopeParts.push(`tickets ${scope.ticketPrefixes.join(", ")}`);
+      if (scope.senderDomains.length > 0) scopeParts.push(`domains ${scope.senderDomains.join(", ")}`);
+    }
+  }
 
   return (
     <section className="briefing-section answer" id="answer" aria-labelledby="answer-title">
@@ -35,11 +45,10 @@ export function AnswerSection({
         The answer
       </h2>
 
-      {scope && (scope.client || scope.project) && (
-        <p className="scope-line">
-          {scope.client && <span className="scope-client">{scope.client}</span>}
-          {scope.client && scope.project && <span aria-hidden> · </span>}
-          {scope.project && <span>{scope.project}</span>}
+      {scope && scope.confidence !== "none" && (
+        <p className={`scope-line tone-${scope.confidence}`}>
+          {scope.confidence === "partial" && <span className="scope-flag">Unconfirmed scope</span>}
+          <span className="scope-client">{scopeParts.join(" · ")}</span>
           {scope.excludedRecords > 0 && (
             <span className="small muted">
               {" "}
@@ -47,6 +56,17 @@ export function AnswerSection({
               clients or projects excluded
             </span>
           )}
+          {scope.confidence === "partial" && (
+            <span className="small muted"> — verify before relying on it.</span>
+          )}
+        </p>
+      )}
+
+      {(!scope || scope.confidence === "none") && (
+        <p className="scope-line tone-none small muted">
+          {scope?.client
+            ? `No scope could be confirmed for ${scope.client} — every stored record was searched.`
+            : "No client or project could be identified from the escalation — every stored record was searched."}
         </p>
       )}
 

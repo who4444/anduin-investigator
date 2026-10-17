@@ -136,6 +136,32 @@ describeDb("POST /api/investigations", () => {
     expect(secondBody.investigationId).not.toBe(firstBody.investigationId);
   });
 
+  it("persists the manager-declared client and treats it as part of the cache key", async () => {
+    const firstForm = buildForm();
+    firstForm.set("client", "Northwind Logistics");
+    const first = await POST(request(firstForm));
+    const firstBody = await first.json();
+    created.push(firstBody.investigationId);
+
+    const { getInvestigation, upsertStage } = await import("../lib/store");
+    expect((await getInvestigation(firstBody.investigationId))?.declaredClient).toBe(
+      "Northwind Logistics",
+    );
+
+    // Same files and escalation but a different declared client must not
+    // reuse the cached run.
+    await upsertStage(firstBody.investigationId, "assemble", 1, "done");
+    const secondForm = buildForm();
+    secondForm.set("client", "Another Client Corp");
+    const second = await POST(request(secondForm));
+    const secondBody = await second.json();
+    created.push(secondBody.investigationId);
+
+    expect(second.status).toBe(201);
+    expect(secondBody.cached).toBe(false);
+    expect(secondBody.investigationId).not.toBe(firstBody.investigationId);
+  });
+
   it("rejects an upload with no files", async () => {
     const response = await POST(request(new FormData()));
     expect(response.status).toBe(400);

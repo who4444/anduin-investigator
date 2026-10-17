@@ -50,16 +50,28 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
 ### Pipeline
 1. Escalation intake: the manager pastes the client's escalation message and
    selects the project sources (Jira project key, Slack channels, mailbox filter).
-2. Issue Analyst: reads the escalation and writes an investigation plan that
-   names which sources and search angles to try (keywords, ticket IDs, people,
-   date ranges), so unsearched sources are visible.
-2b. Scope identification (at plan time, `lib/pipeline/scope.ts`): the model
-   proposes the client, project, ticket prefixes, Slack channels and sender
-   domains from the escalation; CODE keeps only identifiers that actually
-   exist in the registry. All source tools, agent prompts and the report are
-   then scoped to that client/project (email replies follow their thread);
-   excluded records are counted and disclosed in the report. If nothing
-   concrete matches, the investigation runs unscoped as before.
+2. Issue Analyst: reads the escalation and writes a structured investigation
+   plan — hypotheses to test (each with a test and a falsification criterion),
+   a per-source search plan, seed terms/synonyms, people to look at, a focus
+   window, and the unknowns to keep open. It plans against a deterministic
+   vocabulary digest of the in-scope records (ticket keys, version-like
+   builds, channels, domains, frequent terms — `lib/pipeline/vocabulary.ts`),
+   so internal code names and versions are planned for even when the
+   escalation never mentions them. The plan is stored rendered in `plan` and
+   structured in `plan_data` (`lib/pipeline/plan.ts`); unusable model output
+   degrades to free text.
+2b. Scope identification (at plan time, `lib/pipeline/scope.ts`): the manager
+   may declare the client at intake; the model proposes further identifiers
+   (client, project, ticket prefixes, Slack channels, sender domains) from the
+   escalation, and CODE keeps only identifiers that actually exist in the
+   registry. Anchors (declared client, escalation sender/ticket evidence,
+   model proposals) are graded: >2 convergent anchors -> `scoped`, 1-2 ->
+   `partial` (runs scoped but the report shows an "unconfirmed scope" warning
+   with the linking evidence), 0 -> unscoped with an honest "every stored
+   record was searched" line. Contradicting anchors keep the component that
+   carries escalation evidence. All source tools, agent prompts and the report
+   are scoped accordingly (email replies follow their thread); excluded
+   records are counted and disclosed in the report.
 3. Investigators run in PARALLEL, split by QUESTION, not by person. Each may
    search any source:
    - Root cause: what went wrong technically, when it first appeared, failed fixes
@@ -143,7 +155,7 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`) + `run.ts` (shared ingest flow used by both uploads and live pulls).
 - `lib/sources/*`: the Source implementations — `jira.ts`, `slack.ts`, `gmail.ts` (live, read-only), with the upload path as the export fallback.
 - `lib/agents/*`: `tools.ts` (per-source tools + registry tools + `submit_claim`), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
-- `lib/pipeline/*`: `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
+- `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
 - `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route; `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
 - `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → 3 investigators in parallel → skeptic → verify → assemble, then one retry for only the missing kinds). Stage progress is client-driven; `/api/investigations/[id]/events` streams stage/log changes over SSE for the progress screen.
 - `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` table). `migrations/002_report_extras.sql`.
