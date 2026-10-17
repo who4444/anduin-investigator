@@ -101,6 +101,15 @@ function actorEmailDomain(event: Event): string | null {
 /* The domains that count as "the client" for recall purposes: the scope's
    verified domains, plus any registry domain whose name starts with a token
    of the declared client's name. */
+/* The domains that count as "the client" for recall purposes: the scope's
+   verified domains, plus any registry domain whose name starts with a token
+   of the declared client's name. Exported for the case-state builder, which
+   needs the same client identity to find the last client contact (G-06). */
+export function clientDomainsFor(events: Event[], scope: InvestigationScope | null): string[] {
+  if (!scope) return [];
+  return [...computeClientDomains(events, scope)].sort();
+}
+
 function computeClientDomains(events: Event[], scope: InvestigationScope): Set<string> {
   const domains = new Set(scope.senderDomains.map((domain) => domain.toLowerCase()));
   if (scope.client) {

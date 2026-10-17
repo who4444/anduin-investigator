@@ -1,0 +1,72 @@
+Anduin Investigatorinternal report · not for external distribution
+Northwind Logistics — invoice totals after release 4.12
+synthetic datacached result
+Logged 2026-10-17·jiraslack·How this was produced
+The answerWhat happenedWhat was promised?What went wrong?What could not be determined?Draft replyTimeline detail
+The answer
+
+Unconfirmed scopeNorthwind Logistics · Meridian Billing · 17 stored records from other clients or projects excluded — verify before relying on it.
+
+The client says“Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four me…”
+
+Across 2 sources, 3 source-backed findings cover day 1 to day 5 of the incident. 1 of 1 promises read as broken. The record goes quiet for up to 6 days at one stretch. No finding needed a caution flag.
+
+Verification: 3 of 3 claims verified end-to-end.
+
+What went wrongRoot cause finding: Status: In Progress → ResolvedRoot cause finding: Status: In Progress → ResolvedPromises1 of 1 broken0 kept · 0 unclearUnanswered chases4 from Dana Okoro2024-09-06 → 2024-09-07Longest silence6 daysafter Dana Okoro's slack recordOpen questions3 openCould not determine (root cause)
+
+4 days evidence window, first to latest cited recordnot determined first response after the first cited record1 process failures foundnone found times a status update conflicted with other evidencenone found handoffs with no documented handoff0 concerns raised in skeptic review
+
+Do now
+Re-commit to Commitment finding: Status: In Progress → Resolved with a dated plan, or withdraw it in writing.A source-backed promise reads as broken.evidence
+Reply to the unanswered run of 4 from Dana Okoro.Consecutive cited records from one person have no interleaved reply.evidence
+What happened
+2024-09-26Commitment finding: Status: In Progress → ResolvedprocessMWteam2024-09-26Root cause finding: Status: In Progress → ResolvedtechnicalMWteam
+Root cause finding: Status: In Progress → Resolved2024-09-26 → 2024-09-303 findings, 1 broken promise.
+Day 1MWRoot cause finding: Status: In Progress → ResolvedteamjiraDay 1MWCommitment finding: Status: In Progress → ResolvedteamjirabrokenDay 5MWOwnership finding: Has anyone heard back from Northwind about the…teamslack
+What was promised?
+MWMarcus Webbbroken“Commitment finding: Status: In Progress → Resolved”made 2024-09-26 · jira
+What was communicated versus other records
+
+No communicated update was contradicted by another record.
+
+What went wrong?
+2024-09-052024-09-30
+MW Marcus Webb
+2024-09-05 → 2024-09-30
+4d gap from 09-26
+DO Dana Okoro
+2024-09-06 → 2024-09-26
+3d gap from 09-07 · 6d gap from 09-14 · 4d gap from 09-26
+LC Lin Chen
+2024-09-10 → 2024-09-20
+3d gap from 09-20
+PN Priya Nair
+2024-09-10 → 2024-09-10
+Root cause and contributing factors
+technicalRoot cause finding: Status: In Progress → Resolved
+processOwnership finding: Has anyone heard back from Northwind about the totals?
+
+Process findings are judged against generic norms; no SLA was provided in the sources.
+
+What could not be determined?
+Could not determine (root cause)The record does not show who approved the release decision.
+Could not determine (decisions and ownership)The record does not show who approved the release decision.
+Could not determine (commitments)The record does not show who approved the release decision.
+Safe to repeat externally
+verifiedjiraRoot cause finding: Status: In Progress → Resolved
+verifiedslackOwnership finding: Has anyone heard back from Northwind about the totals?
+verifiedjiraCommitment finding: Status: In Progress → Resolved
+Check with a human first
+
+No source-backed finding needs a human check.
+
+Rejected claims (0)
+Draft reply
+
+Draft for human review. Built only from verified findings. Nothing is sent from this app.
+
+No reply has been drafted for this investigation yet.
+
+Draft the client reply
+Timeline detailswimlane board with every finding, silence and lapse

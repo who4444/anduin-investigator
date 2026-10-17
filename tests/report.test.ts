@@ -626,6 +626,68 @@ describe("reply validation", () => {
     ]);
   });
 
+  it("drops a sentence that asserts a status the case state does not carry", async () => {
+    const { buildCaseState } = await import("../lib/report/case-state");
+    const caseState = buildCaseState({
+      events: [
+        event({ id: "cs1", ts: "2024-09-20T10:00:00.000Z", text: "Status: Open → In Progress" }),
+      ],
+      claims: [],
+      clientDomains: [],
+    });
+    const claimsById = new Map([
+      ["c1", { text: "A timezone change caused the totals error.", quote: "timezone change" }],
+    ]);
+
+    const result = validateReplyPayload(
+      JSON.stringify({
+        verdict: "v",
+        sentences: [
+          { text: "The issue is resolved and closed.", claimIds: ["c1"] },
+          { text: "The issue remains in progress.", claimIds: ["c1"] },
+        ],
+      }),
+      new Set(["c1"]),
+      claimsById,
+      caseState,
+    );
+
+    expect(result?.sentences.map((sentence) => sentence.text)).toEqual([
+      "The issue remains in progress.",
+    ]);
+  });
+
+  it("drops ownership claims that contradict the case state", async () => {
+    const { buildCaseState } = await import("../lib/report/case-state");
+    const caseState = buildCaseState({
+      events: [
+        event({ id: "cs1", ts: "2024-09-20T10:00:00.000Z", text: "Assignee: Unassigned → Lin Chen" }),
+      ],
+      claims: [],
+      clientDomains: [],
+    });
+    const claimsById = new Map([
+      ["c1", { text: "A timezone change caused the totals error.", quote: "timezone change" }],
+    ]);
+
+    const result = validateReplyPayload(
+      JSON.stringify({
+        verdict: "v",
+        sentences: [
+          { text: "The work was handed off to Marcus.", claimIds: ["c1"] },
+          { text: "The work was handed off to Lin Chen.", claimIds: ["c1"] },
+        ],
+      }),
+      new Set(["c1"]),
+      claimsById,
+      caseState,
+    );
+
+    expect(result?.sentences.map((sentence) => sentence.text)).toEqual([
+      "The work was handed off to Lin Chen.",
+    ]);
+  });
+
   it("prunes a stored reply whose cited findings have degraded", () => {
     const stored = {
       sentences: [

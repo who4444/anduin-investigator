@@ -1,0 +1,7 @@
+This is Bright Market's formal escalation on LUM-811 (VAT invoice exports show blank totals).
+
+The totals have been blank since your 5.3.0 upgrade four weeks ago. We were told the fix would ship in the Sep 20 release; instead your bot announced 5.3.3 fixes and the ticket was closed while our finance sandbox still showed blank exports. Our chases on the 22nd and 23rd went unanswered.
+
+Please explain what happened and when this was actually fixed.
+
+Dana Okafor, Finance Lead, Bright Market

@@ -30,6 +30,49 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     ],
   },
   "audit": [],
+  "caseState": {
+    "asOf": "2024-09-25T09:00:00.000Z",
+    "currentStatus": {
+      "known": false,
+      "reason": "no status transition was recorded",
+      "value": null,
+    },
+    "fixCheck": {
+      "eventId": "f3-qa",
+      "known": true,
+      "since": "2024-09-25T09:00:00.000Z",
+      "value": "QA is still failing on the Sep 24 build.",
+    },
+    "lastClientContact": {
+      "known": false,
+      "reason": "no client domain is confirmed for this investigation",
+      "value": null,
+    },
+    "lastInternalUpdate": {
+      "eventId": "f3-qa",
+      "known": true,
+      "since": "2024-09-25T09:00:00.000Z",
+      "value": {
+        "actor": "Dana Okoro",
+        "ts": "2024-09-25T09:00:00.000Z",
+      },
+    },
+    "latestFix": {
+      "known": false,
+      "reason": "no release or fix record was found",
+      "value": null,
+    },
+    "nextCommitment": {
+      "known": false,
+      "reason": "no open promise carries a date",
+      "value": null,
+    },
+    "owner": {
+      "known": false,
+      "reason": "no assignee transition was recorded",
+      "value": null,
+    },
+  },
   "causes": [
     {
       "claimId": "f3-c-qa",
@@ -395,6 +438,52 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     ],
   },
   "audit": [],
+  "caseState": {
+    "asOf": "2024-09-30T09:00:00.000Z",
+    "currentStatus": {
+      "known": false,
+      "reason": "no status transition was recorded",
+      "value": null,
+    },
+    "fixCheck": {
+      "known": false,
+      "reason": "no QA record was found",
+      "value": null,
+    },
+    "lastClientContact": {
+      "known": false,
+      "reason": "no client domain is confirmed for this investigation",
+      "value": null,
+    },
+    "lastInternalUpdate": {
+      "eventId": "f1-general-chase-2",
+      "known": true,
+      "since": "2024-09-30T09:00:00.000Z",
+      "value": {
+        "actor": "Dana Okoro <dana.okafor@northwind.example>",
+        "ts": "2024-09-30T09:00:00.000Z",
+      },
+    },
+    "latestFix": {
+      "eventId": "f1-jira",
+      "known": true,
+      "since": "2024-09-10T03:00:00.000Z",
+      "value": {
+        "text": "Timezone change merged for release 4.12.",
+        "ts": "2024-09-10T03:00:00.000Z",
+      },
+    },
+    "nextCommitment": {
+      "known": false,
+      "reason": "no open promise carries a date",
+      "value": null,
+    },
+    "owner": {
+      "known": false,
+      "reason": "no assignee transition was recorded",
+      "value": null,
+    },
+  },
   "causes": [
     {
       "claimId": "f1-c1",

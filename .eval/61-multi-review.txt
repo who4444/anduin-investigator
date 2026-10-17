@@ -1,0 +1,55 @@
+Anduin Investigator
+internal report · not for external distribution
+Investigation in progress
+Open the report
+✓
+Plan
+7s
+·
+Retrieve and investigate
+Root cause pending · Commitments pending · Ownership pending
+·
+Skeptic review
+·
+Verify
+·
+Assemble
+Confirm the issues before I investigate
+
+The plan found 2 independent issues in this escalation. Edit a title or ask, merge them, or remove one — this split decides how the timeline, promises and draft reply are separated. Max 3.
+
+If one fix would resolve all of these, merge them. A failed fix, a premature closure, unanswered chases, or an SLA consequence is usually a facet of the same issue, not a separate one.
+
+2 of 3
+Issue 1
+Remove
+Title
+What the client asks on this issue
+Short description (optional)
+Issue 2
+Remove
+Title
+What the client asks on this issue
+Short description (optional)
+Add issue
+Merge into one issue
+Confirm 2 issues and investigate
+The same evidence is searched once; findings and promises stay separated per issue.
+Summary
+
+32 items stored
+1 Slack channels searched
+
+Unconfirmed scope: Contoso Inc · 18 out-of-scope records excluded
+
+jira
+24 items
+never searched
+email
+0 items
+no data
+slack
+8 items
+never searched
+Activity
+Show activity (0 tool calls)

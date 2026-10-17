@@ -2,6 +2,7 @@ import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types
 import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
+import { buildCaseState, type CaseState } from "./case-state";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
@@ -141,6 +142,7 @@ export interface IssueSummary {
 }
 
 export interface ReportView {
+  caseState: CaseState;
   metrics: Metric[];
   failures: Finding[];
   actions: { immediate: ReportAction[]; followUp: ReportAction[] };
@@ -192,6 +194,8 @@ export interface ReportInput {
   /** G-05: structured commitments, when the run produced them. Absent
       (legacy/cached runs), the ledger falls back to clustering claims. */
   commitments?: Commitment[];
+  /** G-06: the client's domains, for "last client contact". */
+  clientDomains?: string[];
 }
 
 const DAY_MS = 86_400_000;
@@ -1016,6 +1020,7 @@ export function buildTrust(input: ReportInput): {
 
 export function buildReportView(input: ReportInput): ReportView {
   return {
+    caseState: buildCaseState(input),
     metrics: buildMetrics(input),
     failures: buildFailures(input),
     actions: buildActions(input),

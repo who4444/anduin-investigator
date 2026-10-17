@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { errorResponse, json, readId, readInvestigationOrDefault } from "@/lib/api/pipeline";
 import { buildResult } from "@/lib/pipeline/assemble";
+import { clientDomainsFor } from "@/lib/pipeline/scope";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
 import { buildReportView } from "@/lib/report/build";
@@ -27,6 +28,7 @@ export async function GET(
       claims: assembled.claims,
       notes: assembled.skepticNotes,
       commitments: assembled.commitments,
+      clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
     });
 
     return json({

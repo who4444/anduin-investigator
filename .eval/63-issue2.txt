@@ -1,0 +1,309 @@
+Anduin Investigator
+internal report · not for external distribution
+Contoso — two independent issues after 2.1.0
+synthetic data
+Logged 2026-10-17
+·
+jira
+slack
+·
+How this was produced
+Issue 2 of 2
+Finance users cannot sign in via SSO after identity migration
+
+The client asks on this issue: Explain why SSO sign-in still fails for finance users and when it will actually be fixed
+
+All issues
+1 VAT invoice totals blank after 2.1.0 upgrade
+2 Finance users cannot sign in via SSO after identity migration
+The answer
+What happened
+What was promised?
+What went wrong?
+What could not be determined?
+Draft reply
+Timeline detail
+The answer
+
+UNCONFIRMED SCOPEContoso Inc · 18 stored records from other clients or projects excluded — verify before relying on it.
+
+THE CLIENT SAYS
+“Contoso has two independent issues. First, VAT invoice totals have been blank since the 2.1.0 upgrade; the fix was promised for the Sep 20 r…”
+
+Across 2 sources, 11 source-backed findings cover day 1 to day 13 of the incident. 8 of them still need a human check before repeating. 4 of 5 promises read as broken, 1 as unclear. The record goes quiet for up to 8 days at one stretch. 5 findings carry a caution flag from skeptic review.
+
+Verification: 3 of 11 claims verified end-to-end · 8 check before repeating · 5 flagged.
+
+WHAT WENT WRONG
+Root cause of the finance SSO failure: the identity-service…
+Root cause of the finance SSO failure: the identity-service 3.4 migration dropped the SAML signing certificate, and a fix exists in 3.4.1. — flagged in skeptic review; check before relying on it
+PROMISES
+4 of 5 broken
+0 kept · 1 unclear
+UNANSWERED CHASES
+3 from Leo Park
+2024-09-18 → 2024-09-26
+LONGEST SILENCE
+8 days
+after Leo Park's jira record
+OPEN QUESTIONS
+26 open
+Could not determine (commitments)
+
+12 days evidence window, first to latest cited record
+9 days first response after the first cited record
+3 process failures found
+1 times a status update conflicted with other evidence
+none found handoffs with no documented handoff
+8 concerns raised in skeptic review
+
+DO NOW
+Close out the broken promise — “Leo Park committed the SSO fix to the Sep 26 release, a promise the ticket history…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Close out the broken promise — “Leo Park committed on ORB-140 to ship the SSO fix in the Sep 26 release, yet…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Close out the broken promise — “Leo Park told orbit-support on 26 Sep that ORB-140 was resolved with the SSO fix included;…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Reply to the unanswered run of 3 from Leo Park.
+Consecutive cited records from one person have no interleaved reply.
+evidence
+Correct the status the client was given where internal evidence disagrees.
+A status update was flagged against other evidence.
+evidence
+What happened
+2024-09-18
+Leo Park committed the SSO fix to the Sep…
+process
+check before repeating
+LP
+team
+2024-09-18
+Leo Park committed on ORB-140 to ship the SSO…
+process
+check before repeating
+LP
+team
+2024-09-26
+ORB-140 was resolved on the basis that the identity…
+process
+check before repeating
+LP
+team
+2024-09-26
+Leo Park resolved ORB-140 on 26 Sep saying the…
+process
+check before repeating
+LP
+team
+2024-09-26
+Leo Park told orbit-support on 26 Sep that ORB-140…
+communication
+check before repeating
+LP
+team
+Leo Park committed the SSO fix to the…
+2024-09-18 → 2024-09-18
+1 findings, 1 broken promise.
+Day 1
+LP
+Leo Park committed the SSO fix to the Sep 26…
+team
+jira
+broken
+possible conflict
+check before repeating
+Leo Park committed on ORB-140 to ship the…
+2024-09-18 → 2024-09-18
+1 findings, 1 broken promise.
+ORB-140 was resolved on the basis that the…
+2024-09-26 → 2024-09-30
+9 findings, 4 broken promises.
+What was promised?
+LP
+Leo Park
+BROKEN
+check before repeating
+“Leo Park committed the SSO fix to the Sep 26 release, a promise the ticket history shows was not met for finance users.”
+PROMISED BY SEP 26
+DEADLINE PASSED
+made 2024-09-18 · jira
+LP
+Leo Park
+BROKEN
+check before repeating
+“Leo Park committed on ORB-140 to ship the SSO fix in the Sep 26 release, yet after the 26 Sep release Contoso reported SSO still failing for finance and the actual cause was fixed only in identity-service 3.4.1.”
+PROMISED BY SEP 26
+DEADLINE PASSED
+made 2024-09-18 · jira
+LP
+Leo Park
+BROKEN, 25 DAYS LATE
+check before repeating
+“Leo Park resolved ORB-140 on 26 Sep saying the identity migration was complete, yet the migration itself (3.4) had dropped the SAML signing certificate and Contoso finance SSO was still failing the next day.”
+PROMISED BY SEP
+25 DAYS PAST THE DEADLINE
+made 2024-09-26 · jira
+LP
+Leo Park
+BROKEN, 25 DAYS LATE
+check before repeating
+“Leo Park told orbit-support on 26 Sep that ORB-140 was resolved with the SSO fix included; Contoso's Dana Okafor reported on 27 Sep that it was still failing for finance, so the included fix did not resolve the issue.”
+PROMISED BY SEP
+25 DAYS PAST THE DEADLINE
+made 2024-09-26 · slack
+MR
+Maya Rao
+UNCLEAR
+check before repeating
+“Maya Rao stated she verified SSO with Contoso finance and closed ORB-140; this is contradicted by Dana Okafor's 27 Sep 'Still failing for finance. This is not fixed.' and no deployment record of identity-service 3.4.1 to the Contoso tenant is present, so the claim is unverified.”
+PROMISED BY MAY
+STILL UNCLEAR
+made 2024-09-30 · jira
+What was communicated versus other records
+DATE	RECORD THAT WAS COMMUNICATED	WHAT OTHER RECORDS SHOWED	MISMATCH NOTED
+2024-09-26	Marking ORB-140 resolved; the SSO fix is included.	The identity-service 3.4 migration dropped the SAML signing certificate; that is why SSO fails. Fixed in 3.4.1.	Claim 16 states Leo Park told orbit-support on 26 Sep 'the SSO fix is included' and that this 'did not resolve the issue.' But e_2d2e3f6205029a70 does not name which fix, release, or version was included. No record links the 26 Sep release to identity-service 3.4.1 or to the SAML certificate change. The claim that an included fix failed is not supported by the cited item.
+2024-09-18	We will ship the SSO fix in the Sep 26 release.	Still failing for finance. This is not fixed.	Claim 6 and claim 14 say the Sep 26 release commitment was not met for finance users. But no record ties the Sep 26 release to a specific version or shows it shipped. Dana's 27 Sep report (e_e2e1c4ce08dc78fd) shows it was still failing, but nothing in the records identifies what was in the Sep 26 release or whether Leo's promised fix was part of it. Calling this 'broken' relies on an unstated release-to-version link.
+2024-09-29	The 3.4 migration dropped the SAML signing certificate from the tenant config; that is the SSO root cause.	Resolved; the identity migration is complete.	Claim 18 attributes the SSO root cause to Sam Ortiz's ORB-160 note, but Sam Ortiz's ORB-160 entry (e_e3d40dc0edf3ee19) is dated 29 Sep — three days after ORB-140 was resolved on 26 Sep (e_aadddbd3762a3e24) and two days after it was reopened by Dana (e_e2e1c4ce08dc78fd). The draft presents the root cause as established, but the actual diagnosis appears after the mislabeled resolution and closure. The sequencing supports a process-failure framing the draft does not fully make for claim 5 (marked 'kept' with high confidence).
+What went wrong?
+2024-09-18
+2024-09-30
+LP Leo Park
+2024-09-18 → 2024-09-26
+8d gap from 09-18
+DO Dana Okafor
+2024-09-27 → 2024-09-27
+SO Sam Ortiz
+2024-09-29 → 2024-09-29
+MR Maya Rao
+2024-09-30 → 2024-09-30
+Root cause and contributing factors
+technical
+Root cause of the finance SSO failure: the identity-service 3.4 migration dropped the SAML signing certificate, and a fix exists in 3.4.1.
+process
+ORB-140 was resolved on the basis that the identity migration was complete, which was not evidence that the SAML certificate had been restored or that SSO worked.
+process
+The client's own reporter contradicted the 26 Sep resolution the next day, stating SSO was still failing for finance users and not fixed.
+process
+ORB-140 was closed on 30 Sep on Maya Rao's statement that SSO was verified with Contoso finance, but no record shows identity-service 3.4.1 being deployed to the Contoso tenant.
+technical
+Sam Ortiz recorded in ORB-160 that the identity-service 3.4 migration dropped the SAML signing certificate from the tenant config, which is the root cause of the Contoso finance SSO failures.
+process
+Contoso's Dana Okafor contradicted the 26 Sep ORB-140 resolution on 27 Sep, stating SSO was still failing for finance and not fixed.
+
+Process findings are judged against generic norms; no SLA was provided in the sources.
+
+What could not be determined?
+
+No verified finding answered: ownership. Those question groups are listed as gaps above.
+
+Could not determine (commitments)
+Investigation halted at tool-call limit before claims could be verified and submitted; no verify_quote calls succeeded, so no claims are asserted.
+Could not determine (commitments)
+issue_id=783f16d8-6616-4612-b41b-3a02f638c327 — Open question: whether the 'VAT fix scheduled for the Sep 20 release' promise (e_49877edbe18541ac) shipped on Sep 20 and what it contained; release contents and deployment to Contoso not established.
+Could not determine (commitments)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811 — Open question: which identity-service build (3.4 vs 3.4.1) is actually deployed on the Contoso tenant; Sam Ortiz's root-cause note e_cccb8f12d86c7dec states 3.4.1 fixes the dropped SAML certificate but no deployment record was read.
+Could not determine (commitments)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811 — Open question: ORB-140 was moved to Resolved on 2024-09-26 (e_1537f425d460e38e) before the 3.4.1 SAML-certificate fix was confirmed (root cause note dated 2024-09-29), yet the close verification 'Verified SSO with Contoso finance; closing.' (e_96652f35e252e93b) claims success — the basis of that verification could not be established.
+Could not determine (commitments)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811 — Open question: whether a finance user actually signed in successfully on the Contoso tenant after the migration.
+Could not determine (commitments)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811 — Open question: the 22-23 September client chases and whether they were sent via email, Slack, or the portal, and whether any reply exists; no email records were available in the registry summary.
+Could not determine (commitments)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811 — Note: whether ORB-150 and ORB-160 relate to the SSO issue is unknown.
+Could not determine (root cause)
+Investigation could not be completed within tool-call limits; no items were read/verified before the limit, so no quotes could be confirmed and no claims are submitted.
+Could not determine (decisions and ownership)
+issue_id=783f16d8-6616-4612-b41b-3a02f638c327: no evidence read showing replies to any 22-23 Sep chases from the client on the VAT issue.
+Could not determine (decisions and ownership)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811: could not determine whether the Contoso tenant runs identity-service 3.4 or 3.4.1, nor find a deployment record for Contoso.
+Could not determine (decisions and ownership)
+issue_id=1fc9e940-7f9f-4396-9eca-dd21ff2cc811: could not confirm any 22-23 Sep chases or replies on the SSO issue.
+Could not determine (decisions and ownership)
+Relevance of ORB-150 and ORB-160 to either issue could not be established from the events read.
+Could not determine (decisions and ownership)
+No email records were present in the evidence registry summary; all findings rest on jira and slack items.
+Could not determine (root cause)
+No email records exist in the registry for this escalation; the 22-23 Sep chases and any client release notifications could not be located in email or Slack, and no replies to those chases were found.
+Could not determine (root cause)
+Whether the Sep 20 and Sep 26 releases actually shipped and what they contained is not recorded; only the promises and the 2.1.3/2.1.4 version labels are visible.
+Could not determine (root cause)
+Whether the Contoso tenant runs identity-service 3.4 or 3.4.1 is not recorded; no deployment record for 3.4.1 to Contoso exists in the registry, so the 30 Sep SSO closure rests on an unverified internal statement.
+Could not determine (root cause)
+ORB-160 (created 20 Sep by Leo Park: identity-service 3.4 dropped the SAML signing certificate) is the same defect as ORB-140's root cause, but it has only two events and no relation to the VAT issue.
+Could not determine (root cause)
+Ownership of the lingering VAT/SSO follow-up work after 30 Sep is not established in the records.
+The draft assigns a 'broken' status to the Sep 20 commitment, but there is no record of a Sep 20 release date, no deployment or release event, and no version-to-date mapping in the evidence. The question 'did 2.1.3 ship in the Sep 20 release?' is left completely unanswered.
+The draft assigns a 'broken' status to the Sep 20 commitment, but there is no record of a Sep 20 release date, no deployment or release event, and no version-to-date mapping in the evidence. The question 'did 2.1.3 ship in the Sep 20 release?' is left completely unanswered.
+record
+record
+Claim 5 states the identity-service 3.4 migration dropped the SAML certificate and that 3.4.1 fixes it (e_81847ef8c5ff5126), but no record shows 3.4.1 ever deployed to the Contoso tenant, and ORB-140 is closed only on Maya Rao's 'Verified SSO with Contoso finance' (e_96652f35e252e93b). The 26→30 Sep gap with no deployment evidence and no client confirmation is a suspicious silence, and it directly undercuts the 'kept' status of both the SSO root cause and the closure claim.
+Claim 5 states the identity-service 3.4 migration dropped the SAML certificate and that 3.4.1 fixes it (e_81847ef8c5ff5126), but no record shows 3.4.1 ever deployed to the Contoso tenant, and ORB-140 is closed only on Maya Rao's 'Verified SSO with Contoso finance' (e_96652f35e252e93b). The 26→30 Sep gap with no deployment evidence and no client confirmation is a suspicious silence, and it directly undercuts the 'kept' status of both the SSO root cause and the closure claim.
+record
+record
+Claim 4 and claim 12 state 'exports verified with finance' (e_0713b6525819e03a), but there is no record of finance confirming — Dana Okafor or any Contoso finance user does not comment after 27 Sep. The only confirmation is the vendor's own statement. The long silence from the client on ORB-101 after the 2.1.4 fix is a suspicious gap.
+Claim 4 and claim 12 state 'exports verified with finance' (e_0713b6525819e03a), but there is no record of finance confirming — Dana Okafor or any Contoso finance user does not comment after 27 Sep. The only confirmation is the vendor's own statement. The long silence from the client on ORB-101 after the 2.1.4 fix is a suspicious gap.
+record
+record
+No record shows which build the Contoso finance sandbox is on. ORB-101 is closed on 28 Sep via 'Fixed in 2.1.4' but there is no deployment event or sandbox version confirmation. The draft marks this 'unclear' but does not flag the unanswered question of whether 2.1.4 reached the client's environment.
+No record shows which build the Contoso finance sandbox is on. ORB-101 is closed on 28 Sep via 'Fixed in 2.1.4' but there is no deployment event or sandbox version confirmation. The draft marks this 'unclear' but does not flag the unanswered question of whether 2.1.4 reached the client's environment.
+record
+record
+There is a 6-day gap in ORB-101 between the 21 Sep resolution (e_29b5f45b5a41b9c7) and the 26 Sep reopen (e_e69341df2eb99385) during which ORB-150 (rounding, opened 10 Sep) was updated on 24 Sep. No record explains whether Ravi's 'verified on our side' was ever checked against ORB-150 or whether Maya's unreviewed-change finding existed before the reopen. The draft does not address this sequencing question.
+There is a 6-day gap in ORB-101 between the 21 Sep resolution (e_29b5f45b5a41b9c7) and the 26 Sep reopen (e_e69341df2eb99385) during which ORB-150 (rounding, opened 10 Sep) was updated on 24 Sep. No record explains whether Ravi's 'verified on our side' was ever checked against ORB-150 or whether Maya's unreviewed-change finding existed before the reopen. The draft does not address this sequencing question.
+record
+record
+record
+The escalation is from Contoso, and the Summary says the records go up to 30 Sep. ORB-140 is closed 30 Sep on Maya Rao's word (e_96652f35e252e93b), but Dana Okafor — the client reporter who said on 27 Sep it was still failing (e_e2e1c4ce08dc78fd) — never posts again. Whether Contoso's finance users can now sign in is completely unanswered in the record, and the draft does not call that out.
+The escalation is from Contoso, and the Summary says the records go up to 30 Sep. ORB-140 is closed 30 Sep on Maya Rao's word (e_96652f35e252e93b), but Dana Okafor — the client reporter who said on 27 Sep it was still failing (e_e2e1c4ce08dc78fd) — never posts again. Whether Contoso's finance users can now sign in is completely unanswered in the record, and the draft does not call that out.
+record
+record
+get_slack_thread(orbit-support) failed and is listed as NOT searched. The thread most likely contains the back-and-forth behind the commitments and the client confirmations. Treat the Slack thread contents as unexamined evidence rather than relying on the flat list of orbit-support messages.
+get_slack_thread(orbit-support) failed and is listed as NOT searched. The thread most likely contains the back-and-forth behind the commitments and the client confirmations. Treat the Slack thread contents as unexamined evidence rather than relying on the flat list of orbit-support messages.
+record
+record
+record
+record
+No email source results appear in the evidence set despite email being searched, and no deployment or CI/CD source was searched. The draft makes claims about whether 2.1.3, 2.1.4, and 3.4.1 were deployed and about what they contained, but the available deployment and release-record angle was never searched. This is a never-searched angle for the key unresolved questions in claims 4, 9, and 12.
+No email source results appear in the evidence set despite email being searched, and no deployment or CI/CD source was searched. The draft makes claims about whether 2.1.3, 2.1.4, and 3.4.1 were deployed and about what they contained, but the available deployment and release-record angle was never searched. This is a never-searched angle for the key unresolved questions in claims 4, 9, and 12.
+record
+record
+record
+Safe to repeat externally
+verified
+jira
+The client's own reporter contradicted the 26 Sep resolution the next day, stating SSO was still failing for finance users and not fixed.
+verified
+jira
+Contoso's Dana Okafor contradicted the 26 Sep ORB-140 resolution on 27 Sep, stating SSO was still failing for finance and not fixed.
+Check with a human first
+flagged in skeptic review
+Root cause of the finance SSO failure: the identity-service 3.4 migration dropped the SAML signing certificate, and a fix exists in 3.4.1.
+check before repeating
+Leo Park committed the SSO fix to the Sep 26 release, a promise the ticket history shows was not met for finance users.
+check before repeating
+ORB-140 was resolved on the basis that the identity migration was complete, which was not evidence that the SAML certificate had been restored or that SSO worked.
+check before repeating
+ORB-140 was closed on 30 Sep on Maya Rao's statement that SSO was verified with Contoso finance, but no record shows identity-service 3.4.1 being deployed to the Contoso tenant.
+check before repeating
+Leo Park committed on ORB-140 to ship the SSO fix in the Sep 26 release, yet after the 26 Sep release Contoso reported SSO still failing for finance and the actual cause was fixed only in identity-service 3.4.1.
+check before repeating
+Maya Rao stated she verified SSO with Contoso finance and closed ORB-140; this is contradicted by Dana Okafor's 27 Sep 'Still failing for finance. This is not fixed.' and no deployment record of identity-service 3.4.1 to the Contoso tenant is present, so the claim is unverified.
+check before repeating
+Leo Park told orbit-support on 26 Sep that ORB-140 was resolved with the SSO fix included; Contoso's Dana Okafor reported on 27 Sep that it was still failing for finance, so the included fix did not resolve the issue.
+check before repeating
+Sam Ortiz recorded in ORB-160 that the identity-service 3.4 migration dropped the SAML signing certificate from the tenant config, which is the root cause of the Contoso finance SSO failures.
+check before repeating
+Leo Park resolved ORB-140 on 26 Sep saying the identity migration was complete, yet the migration itself (3.4) had dropped the SAML signing certificate and Contoso finance SSO was still failing the next day.
+Rejected claims (0)
+Draft reply
+
+Draft for human review. Built only from verified findings. Nothing is sent from this app.
+
+No reply has been drafted for this investigation yet.
+
+Draft the client reply
+Timeline detail
+swimlane board with every finding, silence and lapse

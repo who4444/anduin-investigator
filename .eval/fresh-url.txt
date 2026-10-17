@@ -1,0 +1,1 @@
+http://127.0.0.1:3000/investigations/40a9137d-73f6-44e3-93ea-5d6a997d86c3

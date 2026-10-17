@@ -1,0 +1,528 @@
+Anduin Investigator
+internal report · not for external distribution
+Northwind Logistics — invoice totals after release 4.12
+synthetic data
+Logged 2026-10-17
+·
+jira
+slack
+·
+How this was produced
+The answer
+What happened
+What was promised?
+What went wrong?
+What could not be determined?
+Draft reply
+Timeline detail
+The answer
+
+UNCONFIRMED SCOPENorthwind Logistics Ltd · 17 stored records from other clients or projects excluded — verify before relying on it.
+
+THE CLIENT SAYS
+“Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four me…”
+
+Client reply confirms the Sep 24 build did not resolve the totals discrepancy, that verification is ongoing, and that a dated follow-up is owed.
+
+Verification: 13 of 41 claims verified end-to-end · 28 check before repeating · 23 flagged.
+
+WHAT WENT WRONG
+MER-87 switched invoice date handling to a UTC conversion…
+MER-87 switched invoice date handling to a UTC conversion merged into release 4.12, and Meridian's wrong totals/timelines off by a day were reported right after the 4.12 deploy.
+PROMISES
+4 of 8 broken
+3 kept · 1 unclear
+UNANSWERED CHASES
+4 from Dana Okoro
+2024-09-06 → 2024-09-07
+LONGEST SILENCE
+6 days
+after Dana Okoro's slack record
+OPEN QUESTIONS
+49 open
+Could not determine (commitments)
+
+24 days evidence window, first to latest cited record
+4 days first response after the first cited record
+15 process failures found
+3 times a status update conflicted with other evidence
+3 handoffs with no documented handoff
+42 concerns raised in skeptic review
+
+DO NOW
+Close out the broken promise — “Marcus Webb committed in the team channel that the MER-87 timezone change was the cause and…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Close out the broken promise — “On 2024-09-23 Marcus Webb told the meridian-billing channel that the MER-87 timezone change was the cause…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Re-commit to Marcus Webb committed on Sep 25 that MER-101 would be kept open until QA passes. with a dated plan, or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Reply to the unanswered run of 4 from Dana Okoro.
+Consecutive cited records from one person have no interleaved reply.
+evidence
+Correct the status the client was given where internal evidence disagrees.
+A status update was flagged against other evidence.
+evidence
+Prevent next time (2)
+What happened
+2024-09-20
+Lin Chen announced on 2024-09-20 that they were on…
+communication
+check before repeating
+LC
+team
+2024-09-20
+Lin Chen told the meridian-billing channel she would be…
+communication
+LC
+team
+2024-09-23
+Marcus Webb committed in the team channel that the…
+process
+MW
+team
+2024-09-24
+The Sep 24 release was declared cut with the…
+process
+check before repeating
+MW
+team
+2024-09-25
+Marcus Webb committed on Sep 25 that MER-101 would…
+process
+check before repeating
+MW
+team
+Dana Okoro stated the PDF renderer dependency bump…
+2024-09-06 → 2024-09-07
+2 findings.
+Day 1
+DO
+Dana Okoro stated the PDF renderer dependency bump (MER-102) was…
+team
+jira
+Day 2
+DO
+Dana Okoro committed that the nightly export would retry on…
+team
+jira
+kept
+possible conflict
+check before repeating
+Lin Chen owned the MER-87 change that made…
+2024-09-10 → 2024-09-20
+13 findings, 1 broken promise.
+Lin Chen told the meridian-billing channel she would…
+2024-09-20 → 2024-09-20
+1 findings, 1 broken promise.
+Marcus Webb attributed Meridian's wrong invoice totals to…
+2024-09-23 → 2024-09-26
+20 findings, 10 broken promises.
+Dana Okoro disputed the resolution basis at the…
+2024-09-26 → 2024-09-26
+1 findings, 1 deciding moment.
+Dana Okoro reported to the team that QA…
+2024-09-26 → 2024-09-26
+1 findings, 1 broken promise.
+Status of Meridian's side was still unknown as…
+2024-09-30 → 2024-09-30
+3 findings, 3 deciding moments.
+What was promised?
+DO
+Dana Okoro → Meridian.
+RECORDED
+“Dana Okoro stated the PDF renderer dependency bump (MER-102) was routine with no customer impact — not a commitment to Meridian.”
+made 2024-09-06 · jira
+DO
+Dana Okoro → Meridian
+KEPT
+check before repeating
+“Dana Okoro committed that the nightly export would retry on failure and reported it retries twice now (unrelated to Meridian invoices).”
+made 2024-09-07 · jira
+LC
+Lin Chen
+BROKEN
+“Lin Chen told the meridian-billing channel she would be on leave until Oct 2 and had set up no handoff for MER-101.”
+PROMISED BY OCT 2
+DEADLINE PASSED
+made 2024-09-20 · slack
+MW
+Marcus Webb
+KEPT
+check before repeating
+2 findings merged
+“Marcus Webb committed in MER-101 that the fix for Meridian's wrong invoice totals was scheduled for the Sep 24 release.”
+PROMISED BY MAR
+DELIVERED
+made 2024-09-23 · jira
+MW
+Marcus Webb
+BROKEN, 206 DAYS LATE
+2 findings merged
+“Marcus Webb committed in the team channel that the MER-87 timezone change was the cause and the fix was targeted at the Sep 24 release.”
+PROMISED BY MAR
+206 DAYS PAST THE DEADLINE
+made 2024-09-23 · slack
+MW
+Marcus Webb
+KEPT
+“Marcus Webb committed to the team that the invoice fix was included in the Sep 24 release once it was cut.”
+PROMISED BY MAR
+DELIVERED
+made 2024-09-24 · slack
+MW
+Marcus Webb
+BROKEN, 208 DAYS LATE
+check before repeating
+“Marcus Webb committed on Sep 25 that MER-101 would be kept open until QA passes.”
+PROMISED BY MAR
+208 DAYS PAST THE DEADLINE
+made 2024-09-25 · slack
+DO
+Dana Okoro
+BROKEN, 2 DAYS LATE
+check before repeating
+“Dana Okoro reported to the team that QA was still failing on the Sep 24 build, contradicting the claim of a verified fix; the tested build did not contain the fix.”
+PROMISED BY SEP 24
+2 DAYS PAST THE DEADLINE
+made 2024-09-26 · slack
+What was communicated versus other records
+DATE	RECORD THAT WAS COMMUNICATED	WHAT OTHER RECORDS SHOWED	MISMATCH NOTED
+2024-09-23	Root cause looks like the MER-87 timezone change. Fix scheduled for the Sep 24 release.	QA is still failing on the Sep 24 build; totals are off by a day in test.	Claim 0 presents Marcus Webb's attribution of MER-87 and scheduling of the fix as accepted fact, but event e_fb36a8025ad0877c is dated 2024-09-23 in 04:05 UTC while claim text says 'Sep 24 release'—yet the same claim's framing implies certainty. More importantly, claim 0 omits that the same attribution was later contradicted by QA: the event itself merely states a hypothesis ('looks like') and a schedule, not a confirmed root cause.
+2024-09-25	Let us keep MER-101 open until QA passes.	Marking MER-101 resolved; the fix is in the Sep 24 build.	Claim 2 says Webb 'reversed that decision the next day,' but e_23d8387f36162c8f (decision to keep open) is 2024-09-25T09:05Z and e_a13abd6673d984e8 / e_838176db0228905f are 2024-09-26T02:00–02:10Z—technically the next calendar day but only hours apart; also claim 2's quote 'Marking MER-101 resolved; the fix is in the Sep 24 build' is from Slack, while the actual status change is a separate Jira event (e_838176db0228905f). The 'reverse' allegedly occurred before Dana's objection (02:20Z), which claim 3 then handles—but claims 2 and 3 narrate the same objection inconsistently (claim 2 says 'despite QA still failing,' claim 3 says objection 'not acted on before closed').
+2024-09-30	Has anyone heard back from Northwind about the totals?	Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.	Claim 6 says status of Meridian's side was 'still unknown as of Sep 30,' but the escalation is itself from Northwind Logistics—Meridian is the customer per claims 9/14. The wording conflates Northwind (the requesting client in scope) with Meridian, and the event references Northwind while the issue is Meridian's totals. Scope/labeling inconsistency between client and subject.
+2024-09-10	4.12 is live on production as of this morning.	Issue created: Invoice totals wrong for Meridian after 4.12	Claim 8 says Marcus Webb 'owned the release and declared 4.12 live on production on Sep 10, the deploy Meridian later tied its wrong totals to.' But MER-101 was created at 12:00Z on Sep 10 (e_33710584a8d8ae86)—the complaint came hours after the deploy, not clearly 'later' in a meaningful sense, and there is no event showing Meridian itself (vs. Priya/Marcus) tying it to 4.12; that attribution is internal.
+2024-09-25	Let us keep MER-101 open until QA passes.	Marking MER-101 resolved; the fix is in the Sep 24 build.	Claims 1 and 17 both state the same event e_23d8387f36162c8f as a firm decision ('decided to keep...'), but claim 1's status is 'broken' and quote is a proposal ('Let us keep...'). The event text is a suggestion, not a recorded decision, and no event confirms acceptance—calling it a 'decision' (and then a 'reversal') overstates the record.
+2024-09-10	Merged to release branch 4.12; invoices now use a UTC conversion.	4.12 is live on production as of this morning.	Claim asserts MER-87 was merged 'hours before 4.12 went live on production,' but the evidence shows merge at 03:00 and Webb's 'live' message at 03:10 the same day — the claim's framing of order is inferential, and MER-87 status is separately shown resolved at 08:00, after the deploy, which is unaddressed.
+2024-09-24	Sep 24 release is cut; invoice fix included.	QA is still failing on the Sep 24 build; totals are off by a day in test.	Claim 23 says the Sep 24 release was declared to include the invoice fix and that QA 'the next day showed the fix was not effective,' while claim 2/34 assert the fix 'was in the Sep 24 build' per Webb and Dana says it was 'not in the build I tested.' Whether the fix was shipped-but-ineffective or never shipped is left contradictory across claims.
+2024-09-26	It is not in the build I tested, but ok.	QA is still failing on the Sep 24 build; totals are off by a day in test.	Claim 30 attributes to Dana Okoro a statement about a build containing the fix, but the quoted message ('It is not in the build I tested, but ok.') is a reply disputing Webb, not a QA-failure report; it is conflated with claim 4's separate QA-failing message.
+What went wrong?
+2024-09-05
+2024-09-30
+MW Marcus Webb
+2024-09-05 → 2024-09-30
+4d gap from 09-26
+DO Dana Okoro
+2024-09-06 → 2024-09-26
+3d gap from 09-07 · 6d gap from 09-14 · 4d gap from 09-26
+LC Lin Chen
+2024-09-10 → 2024-09-20
+3d gap from 09-20
+PN Priya Nair
+2024-09-10 → 2024-09-10
+Root cause and contributing factors
+technical
+Marcus Webb attributed Meridian's wrong invoice totals to the MER-87 timezone change and scheduled the fix for the Sep 24 release.
+process
+Marcus Webb decided to keep MER-101 open until QA passed, after Dana Okoro reported QA still failing on the Sep 24 build.
+process
+Marcus Webb reversed that decision the next day, marking MER-101 resolved claiming the fix was in the Sep 24 build, despite QA still failing on that build.
+process
+Dana Okoro explicitly disagreed that the fix was in the tested build, and her objection was not acted on before MER-101 was closed.
+process
+Dana Okoro reported that QA was still failing on the Sep 24 build with totals off by a day in test, showing the Sep 24 release did not fix the issue.
+process
+Lin Chen went on leave until Oct 2 with no handoff set up for MER-101, leaving the client issue without a named owner.
+process
+Status of Meridian's side was still unknown as of Sep 30, when Marcus Webb asked whether anyone had heard back from Northwind about the totals, indicating no confirmed client-side follow-up by end of the window.
+process
+Lin Chen owned the MER-87 change that made invoices use a UTC conversion, merged to the 4.12 release branch hours before 4.12 went live on production.
+process
+Marcus Webb owned the release and declared 4.12 live on production on Sep 10, the deploy Meridian later tied its wrong totals to.
+process
+Priya Nair was the one who raised Meridian's report that invoice totals were wrong since the 4.12 deploy with timelines off by a day.
+process
+Marcus Webb asserted on Sep 24 that the Sep 24 release was cut with the invoice fix included, which QA later contradicted.
+technical
+MER-87 changed invoice date handling to UTC and was merged to release branch 4.12 on 2024-09-10 by Lin Chen ("invoices now use a UTC conversion"), making it the change that introduced the day-off invoice totals.
+technical
+Release 4.12 went live to production on the morning of 2024-09-10, before Meridian's wrong totals were reported that same day at 12:00–12:30 UTC, consistent with the MER-87 change being the cause rather than a pre-existing bug.
+technical
+Meridian reported that invoice totals were wrong only since the 4.12 deploy, with timelines off by a day — a date-handling symptom matching the MER-87 UTC conversion, first appearing 2024-09-10.
+process
+On 2024-09-23 Marcus Webb attributed the MER-101 issue to the MER-87 timezone change and scheduled the fix for the Sep 24 release, so the causal link was an internal, accepted finding rather than only a customer suspicion.
+process
+On 2024-09-25 Dana Okoro reported QA was still failing on the Sep 24 build with totals off by a day in test, showing the scheduled fix did not resolve the issue.
+process
+After the QA failure, Marcus Webb explicitly decided on 2024-09-25 to keep MER-101 open until QA passes — a decision subsequently reversed.
+process
+Marcus Webb marked MER-101 resolved on 2024-09-26 claiming the fix was in the Sep 24 build, despite QA still failing the day before — resolving the issue without verification.
+process
+Dana Okoro disputed the resolution basis at the time, stating the fix was not in the build she tested, yet the issue was resolved anyway.
+process
+MER-101 was moved from In Progress to Resolved on 2024-09-26, two days after the Sep 24 release and one day after QA reported failure, with no recorded verification step or customer confirmation.
+process
+Lin Chen announced on 2024-09-20 that they were on leave until Oct 2 with no handoff set up for MER-101, leaving ownership of the client issue unassigned during the critical fix window.
+communication
+As of 2024-09-30 the team was still uncertain whether the client had responded, with Marcus Webb asking the channel if anyone had heard back from Northwind — indicating no recorded outbound client communication on the totals.
+process
+The Sep 24 release was declared cut with the invoice fix included on 2024-09-24, but QA the next day showed the fix was not effective for Meridian's totals.
+communication
+Meridian's wrong totals were first internally acknowledged in the channel on 2024-09-12, two days after the client report, showing the client issue sat in the working channel without a tracked response owner.
+technical
+MER-87 switched invoice date handling to a UTC conversion merged into release 4.12, and Meridian's wrong totals/timelines off by a day were reported right after the 4.12 deploy.
+technical
+Meridian (via Priya Nair) reported to the Meridian team that invoice totals were wrong since the 4.12 deploy and timelines were off by a day — the symptom attributed to the MER-87 timezone change.
+process
+Marcus Webb marked MER-101 as resolved on the claim the fix was in the Sep 24 build, one day after QA was reported still failing and no customer verification was recorded.
+process
+QA remained failing on the Sep 24 build — totals still off by a day in test — after Marcus Webb claimed the fix had shipped.
+communication
+As of Sep 30 there was still no reply to Northwind/Meridian: Marcus Webb asked the channel 'Has anyone heard back from Northwind about the totals?', showing no confirmed customer response.
+communication
+Marcus Webb took ownership of investigating Meridian's wrong totals against MER-101 on Sep 12; no explicit owner for responding to Meridian is recorded.
+process
+Release 4.12, which contained the MER-87 UTC date change, went live on production on the morning of Sep 10, 2024.
+
+Process findings are judged against generic norms; no SLA was provided in the sources.
+
+What could not be determined?
+Could not determine (commitments)
+I was unable to read additional evidence or call verify_quote before reaching the tool-call limit; no claims are submitted.
+Could not determine (commitments)
+Items visible only in the Evidence Registry summary sample include: MER-87 created by Marcus Webb (e_a2652cb5dd0e2594, 2024-09-05), MER-87 status transitions Open→In Progress (e_eb979178fcebfe71, 2024-09-10) and In Progress→Resolved (e_1f213c44812c5530, 2024-09-10), Priya Nair's MER-101 report that Meridian invoice totals are wrong since 4.12 and timelines off by a day (e_9ebd247d5f5b10e5, 2024-09-10), Lin Chen on leave until Oct 2 with no MER-101 handoff (e_446b588245ce29a1, 2024-09-20), Marcus Webb's MER-101 root-cause note blaming MER-87 timezone change with fix scheduled for Sep 24 release (e_fb36a8025ad0877c, 2024-09-23), Dana Okoro's QA still failing on Sep 24 build with totals off by a day in test (e_9fc7b2c228d4e4a8, 2024-09-25), MER-101 status In Progress→Resolved (e_838176db0228905f, 2024-09-26), and Marcus Webb asking if anyone heard back from Northwind (e_44a0831730570fab, 2024-09-30). These could not be quoted verbatim or verified and are not submitted as claims.
+Could not determine (commitments)
+Could not determine: exact content and dates of Meridian's four unanswered messages; whether internal replies were drafted but unsent; deployment date/content of release 4.12; whether the Sep 24 release included the fix or was verified; current MER-101 status and whether Meridian confirmed resolution; whether other clients are affected by the timezone change; who was responsible for responding while Lin Chen was on leave; whether MER-101 resolution was based on internal testing or customer confirmation.
+Could not determine (decisions and ownership)
+No email records are stored for this investigation; the claimed 'four unanswered Meridian messages' could not be located or quoted — neither Meridian's inbound texts nor any draft replies exist in the Evidence Registry.
+Could not determine (decisions and ownership)
+MER-87 was merged to release branch 4.12 and 4.12 went live on production only hours later (Sep 10 03:00–03:10 UTC); whether that shortened window was itself a process failure (insufficient QA before deploy) cannot be established from the records.
+Could not determine (decisions and ownership)
+Whether MER-87 was deployed as part of 4.12 or any earlier release cannot be confirmed — the only deployment statement is '4.12 is live on production as of this morning.'
+Could not determine (decisions and ownership)
+The exact deployment content of the Sep 24 release and whether it was verified internally or by Meridian is unknown; QA contradicted the 'fix included' claim but no changelog or deployment log exists.
+Could not determine (decisions and ownership)
+No draft-but-unsent replies to Meridian exist in the registry.
+Could not determine (decisions and ownership)
+Who (if anyone) took ownership of Meridian communication while Lin Chen was on leave is never stated; Marcus Webb and Dana Okoro discussed MER-101 but no explicit reassignment was recorded.
+Could not determine (decisions and ownership)
+Whether other clients are affected by the same UTC/timezone change cannot be determined; no records for other clients or projects are present.
+Could not determine (decisions and ownership)
+MER-102 (PDF renderer dependency bump) and MER-104 (nightly export retry) appear routine and unrelated to the wrong-totals issue; no causal link established.
+Could not determine (decisions and ownership)
+No customer confirmation of resolution exists; MER-101 status was set to Resolved (Sep 26 02:00) on the basis of Marcus Webb's assertion, not QA or Meridian confirmation.
+Could not determine (decisions and ownership)
+Missing thread data: get_slack_thread returned no stored thread for the Lin Chen leave message or the Marcus Webb resolution message, so reply-level context (who responded, if anyone) is unavailable.
+Could not determine (root cause)
+No email records exist in the Evidence Registry for 2024-09-01 to 2024-09-30; nothing could be established about Meridian's four unanswered messages, their content, send dates, or any drafted-but-unsent replies.
+Could not determine (root cause)
+Slack thread retrieval returned no stored threads, so replies within the meridian-billing messages could not be reconstructed beyond the flat message list.
+Could not determine (root cause)
+The deployment contents/diff of release 4.12 and of the Sep 24 release could not be inspected — only narrative statements that the fix was included.
+Could not determine (root cause)
+Whether QA passed MER-101 at any later point after 2024-09-26 is not recorded; the last QA evidence is the Sep 25 failure.
+Could not determine (root cause)
+Whether Meridian/Northwind ever confirmed any resolution, or was notified of the Sep 26 resolution, is unknown.
+Could not determine (root cause)
+Who was responsible for responding to Meridian while Lin Chen was on leave is not recorded anywhere.
+Could not determine (root cause)
+Whether other clients were also affected by the MER-87 UTC change cannot be determined; no other client records are visible.
+Could not determine (root cause)
+Whether the MER-101 resolution was based on internal testing or customer confirmation is unknown — no confirmation by either route is recorded.
+Could not determine (root cause)
+MER-102 (PDF renderer dependency bump, 'no customer impact') and MER-104 (nightly export retry) appear unrelated to the totals issue and are not claimed as causes.
+Could not determine (root cause)
+Exact invoice figures or the magnitude of the totals discrepancy are not present in the records.
+Claim 25 says the issue was 'first internally acknowledged' on Sep 12 (e_a292939da099edc4), but the Jira MER-101 issue was created Sep 10 (e_33710584a8d8ae86) and there is no event explaining the two-day gap between creation and the Slack mention. The claim characterizes this as a tracking gap but the gap itself—what happened Sep 10–12—is undocumented.
+Claim 25 says the issue was 'first internally acknowledged' on Sep 12 (e_a292939da099edc4), but the Jira MER-101 issue was created Sep 10 (e_33710584a8d8ae86) and there is no event explaining the two-day gap between creation and the Slack mention. The claim characterizes this as a tracking gap but the gap itself—what happened Sep 10–12—is undocumented.
+record
+record
+Large unexplained silences: no events between 2024-09-14T15:00Z (e_5d8526abeb3b3a53, coffee machine) and 2024-09-20T09:00Z (Lin leave), and no MER-101 activity between 2024-09-12 and 2024-09-23 (status Open→In Progress). The six-day gap before work started on MER-101 is unexamined.
+Large unexplained silences: no events between 2024-09-14T15:00Z (e_5d8526abeb3b3a53, coffee machine) and 2024-09-20T09:00Z (Lin leave), and no MER-101 activity between 2024-09-12 and 2024-09-23 (status Open→In Progress). The six-day gap before work started on MER-101 is unexamined.
+record
+record
+record
+Claim 20 states MER-101 moved In Progress→Resolved with 'no recorded verification step or customer confirmation.' The record indeed lacks confirmation, but no claim addresses whether verification was ever requested, whether a rollout/revert plan existed, or what the Sep 24 build actually contained. The absence is noted but not investigated as an open question.
+Claim 20 states MER-101 moved In Progress→Resolved with 'no recorded verification step or customer confirmation.' The record indeed lacks confirmation, but no claim addresses whether verification was ever requested, whether a rollout/revert plan existed, or what the Sep 24 build actually contained. The absence is noted but not investigated as an open question.
+record
+record
+Dana Okoro's objection (e_74e730159ddbde9e) got no recorded reply or follow-up—the thread simply ends on 'but ok.' There is no event showing Marcus, Priya, or anyone responding to or resolving the disagreement, and no root-cause finding flags this unanswered challenge beyond noting the close.
+Dana Okoro's objection (e_74e730159ddbde9e) got no recorded reply or follow-up—the thread simply ends on 'but ok.' There is no event showing Marcus, Priya, or anyone responding to or resolving the disagreement, and no root-cause finding flags this unanswered challenge beyond noting the close.
+record
+record
+Lin Chen's leave message (e_446b588245ce29a1) received no reply and no handoff event exists; yet later claims assign resolution activity to Marcus. No event confirms who actually owned the MER-101 fix after Sep 20, leaving the ownership gap unexamined beyond the raw leave note.
+Lin Chen's leave message (e_446b588245ce29a1) received no reply and no handoff event exists; yet later claims assign resolution activity to Marcus. No event confirms who actually owned the MER-101 fix after Sep 20, leaving the ownership gap unexamined beyond the raw leave note.
+record
+The final event (e_44a0831730570fab, Sep 30) is a question with no reply in the record. Whether Northwind ever responded, and whether Meridian's totals were corrected, remains open—yet claims 6 and 22 treat the ambiguity as a finding rather than flagging it as an unresolved question requiring follow-up.
+The final event (e_44a0831730570fab, Sep 30) is a question with no reply in the record. Whether Northwind ever responded, and whether Meridian's totals were corrected, remains open—yet claims 6 and 22 treat the ambiguity as a finding rather than flagging it as an unresolved question requiring follow-up.
+record
+get_slack_thread(meridian-billing) FAILED and was not retried. Threaded replies to the key messages (the Sep 24 'fix included,' the Sep 25 decision, the Sep 26 objection) are therefore unsearched—those threads could contain the verification, client communication, or rebuttals the findings say are missing. This angle must be treated as not searched.
+get_slack_thread(meridian-billing) FAILED and was not retried. Threaded replies to the key messages (the Sep 24 'fix included,' the Sep 25 decision, the Sep 26 objection) are therefore unsearched—those threads could contain the verification, client communication, or rebuttals the findings say are missing. This angle must be treated as not searched.
+record
+record
+record
+record
+No search was run against the email source for thread-level or per-recipient queries (only broad 'search_email(all)' and term searches); given the escalation originates from Northwind, any email correspondence with the client about totals would be the key evidence and the searches returned no such events, leaving a suspicious silence in the email channel.
+No search was run against the email source for thread-level or per-recipient queries (only broad 'search_email(all)' and term searches); given the escalation originates from Northwind, any email correspondence with the client about totals would be the key evidence and the searches returned no such events, leaving a suspicious silence in the email channel.
+record
+Could not determine (commitments)
+No email records exist in the registry at all; searches returned zero results, so Meridian's four unanswered messages, their content, senders and dates could not be established.
+Could not determine (commitments)
+The claim that Meridian sent four unanswered messages is not supported by any item in the Evidence Registry; no inbound Meridian message or outbound reply after Sep 12 is recorded.
+Could not determine (commitments)
+Whether any internal replies to Meridian were drafted but unsent cannot be determined (no email/draft records).
+Could not determine (commitments)
+No deployment logs or diff for release 4.12 exist; the only evidence of the 4.12 deploy is Marcus Webb's Sep 10 Slack message and Lin Chen's merge comment in MER-87.
+Could not determine (commitments)
+Whether the Sep 24 release actually contained the MER-101 fix is contradictory: Webb said included; Dana Okoro said it was not in the build she tested. Unresolved.
+Could not determine (commitments)
+No customer confirmation of resolution from Meridian/Northwind exists in the records; MER-101 remains Resolved in Jira despite failing QA.
+Could not determine (commitments)
+Whether other clients are affected by the MER-87 UTC change cannot be determined — no other-client records appear in scope.
+Could not determine (commitments)
+Who was responsible for responding to Meridian while Lin Chen was on leave is not recorded anywhere.
+Could not determine (commitments)
+Exact deployment date of the MER-101 fix (as opposed to the targeted Sep 24 release) cannot be verified due to missing deployment records.
+Could not determine (commitments)
+Dana Okoro's comment 'It is not in the build I tested, but ok' was submitted as a broken-testing status rather than a promise; its exact intent (whether she meant the fix or something else) is partly ambiguous.
+Webb's Sep 30 question 'Has anyone heard back from Northwind about the totals?' has no recorded reply in the registry; whether Northwind/Meridian ever responded is left unanswered.
+Webb's Sep 30 question 'Has anyone heard back from Northwind about the totals?' has no recorded reply in the registry; whether Northwind/Meridian ever responded is left unanswered.
+record
+Claim calls the MER-87 causal link an 'accepted finding,' but no independent confirmation (reproduction, code review, repro steps) exists in the record; whether anyone verified the root cause is unanswered.
+Claim calls the MER-87 causal link an 'accepted finding,' but no independent confirmation (reproduction, code review, repro steps) exists in the record; whether anyone verified the root cause is unanswered.
+record
+Between the Sep 26 resolution and the Sep 30 question there is a four-day gap with no recorded status, client update, or follow-up; the registry contains no events explaining this silence.
+Between the Sep 26 resolution and the Sep 30 question there is a four-day gap with no recorded status, client update, or follow-up; the registry contains no events explaining this silence.
+record
+record
+Lin Chen announced leave until Oct 2 on Sep 20, yet the MER-101 thread shows no reassignment, and Lin Chen authored the MER-87 fix. Ownership during the leave window is never resolved in the record.
+Lin Chen announced leave until Oct 2 on Sep 20, yet the MER-101 thread shows no reassignment, and Lin Chen authored the MER-87 fix. Ownership during the leave window is never resolved in the record.
+record
+Claim infers 'no recorded outbound client communication on the totals,' but the search set never shows whether Meridian/Northwind were actually notified of either the root cause or the resolution; whether the client was ever told anything is unanswered.
+Claim infers 'no recorded outbound client communication on the totals,' but the search set never shows whether Meridian/Northwind were actually notified of either the root cause or the resolution; whether the client was ever told anything is unanswered.
+record
+Claim states Lin Chen 'told the meridian-billing channel she would be on leave … and had set up no handoff,' but the event does not establish gender/pronoun; more substantively, whether a handoff was later arranged before Oct 2 is never shown.
+Claim states Lin Chen 'told the meridian-billing channel she would be on leave … and had set up no handoff,' but the event does not establish gender/pronoun; more substantively, whether a handoff was later arranged before Oct 2 is never shown.
+record
+Slack thread retrieval for meridian-billing failed (get_slack_thread error), so the full conversation threading, including any replies to Webb's Sep 30 question and any client-facing updates, was never actually examined; message-level search does not substitute for thread context.
+Slack thread retrieval for meridian-billing failed (get_slack_thread error), so the full conversation threading, including any replies to Webb's Sep 30 question and any client-facing updates, was never actually examined; message-level search does not substitute for thread context.
+record
+record
+Claim says MER-101 moved to Resolved with 'no recorded verification step or customer confirmation,' but the record also never shows whether the fix was ever subsequently validated or the ticket reopened; final disposition is unanswered.
+Claim says MER-101 moved to Resolved with 'no recorded verification step or customer confirmation,' but the record also never shows whether the fix was ever subsequently validated or the ticket reopened; final disposition is unanswered.
+record
+Safe to repeat externally
+verified
+slack
+Dana Okoro reported that QA was still failing on the Sep 24 build with totals off by a day in test, showing the Sep 24 release did not fix the issue.
+verified
+slack
+Marcus Webb committed in the team channel that the MER-87 timezone change was the cause and the fix was targeted at the Sep 24 release.
+verified
+slack
+On 2024-09-25 Dana Okoro reported QA was still failing on the Sep 24 build with totals off by a day in test, showing the scheduled fix did not resolve the issue.
+verified
+slack
+Dana Okoro disputed the resolution basis at the time, stating the fix was not in the build she tested, yet the issue was resolved anyway.
+verified
+slack
+Marcus Webb committed to the team that the invoice fix was included in the Sep 24 release once it was cut.
+verified
+slack
+QA remained failing on the Sep 24 build — totals still off by a day in test — after Marcus Webb claimed the fix had shipped.
+verified
+slack
+As of Sep 30 there was still no reply to Northwind/Meridian: Marcus Webb asked the channel 'Has anyone heard back from Northwind about the totals?', showing no confirmed customer response.
+verified
+jira
+Dana Okoro stated the PDF renderer dependency bump (MER-102) was routine with no customer impact — not a commitment to Meridian.
+Check with a human first
+flagged in skeptic review
+Marcus Webb attributed Meridian's wrong invoice totals to the MER-87 timezone change and scheduled the fix for the Sep 24 release.
+check before repeating
+Marcus Webb decided to keep MER-101 open until QA passed, after Dana Okoro reported QA still failing on the Sep 24 build.
+check before repeating
+Marcus Webb reversed that decision the next day, marking MER-101 resolved claiming the fix was in the Sep 24 build, despite QA still failing on that build.
+check before repeating
+Dana Okoro explicitly disagreed that the fix was in the tested build, and her objection was not acted on before MER-101 was closed.
+flagged in skeptic review
+Lin Chen went on leave until Oct 2 with no handoff set up for MER-101, leaving the client issue without a named owner.
+check before repeating
+Status of Meridian's side was still unknown as of Sep 30, when Marcus Webb asked whether anyone had heard back from Northwind about the totals, indicating no confirmed client-side follow-up by end of the window.
+check before repeating
+Lin Chen owned the MER-87 change that made invoices use a UTC conversion, merged to the 4.12 release branch hours before 4.12 went live on production.
+check before repeating
+Marcus Webb owned the release and declared 4.12 live on production on Sep 10, the deploy Meridian later tied its wrong totals to.
+check before repeating
+Priya Nair was the one who raised Meridian's report that invoice totals were wrong since the 4.12 deploy with timelines off by a day.
+check before repeating
+Marcus Webb asserted on Sep 24 that the Sep 24 release was cut with the invoice fix included, which QA later contradicted.
+check before repeating
+MER-87 changed invoice date handling to UTC and was merged to release branch 4.12 on 2024-09-10 by Lin Chen ("invoices now use a UTC conversion"), making it the change that introduced the day-off invoice totals.
+check before repeating
+Release 4.12 went live to production on the morning of 2024-09-10, before Meridian's wrong totals were reported that same day at 12:00–12:30 UTC, consistent with the MER-87 change being the cause rather than a pre-existing bug.
+check before repeating
+Meridian reported that invoice totals were wrong only since the 4.12 deploy, with timelines off by a day — a date-handling symptom matching the MER-87 UTC conversion, first appearing 2024-09-10.
+flagged in skeptic review
+On 2024-09-23 Marcus Webb attributed the MER-101 issue to the MER-87 timezone change and scheduled the fix for the Sep 24 release, so the causal link was an internal, accepted finding rather than only a customer suspicion.
+check before repeating
+After the QA failure, Marcus Webb explicitly decided on 2024-09-25 to keep MER-101 open until QA passes — a decision subsequently reversed.
+check before repeating
+Marcus Webb marked MER-101 resolved on 2024-09-26 claiming the fix was in the Sep 24 build, despite QA still failing the day before — resolving the issue without verification.
+check before repeating
+MER-101 was moved from In Progress to Resolved on 2024-09-26, two days after the Sep 24 release and one day after QA reported failure, with no recorded verification step or customer confirmation.
+check before repeating
+Lin Chen announced on 2024-09-20 that they were on leave until Oct 2 with no handoff set up for MER-101, leaving ownership of the client issue unassigned during the critical fix window.
+flagged in skeptic review
+As of 2024-09-30 the team was still uncertain whether the client had responded, with Marcus Webb asking the channel if anyone had heard back from Northwind — indicating no recorded outbound client communication on the totals.
+check before repeating
+The Sep 24 release was declared cut with the invoice fix included on 2024-09-24, but QA the next day showed the fix was not effective for Meridian's totals.
+check before repeating
+On 2024-09-23 Marcus Webb told the meridian-billing channel that the MER-87 timezone change was the cause and the fix was targeted at the Sep 24 release — a commitment to a release date that did not deliver a working fix.
+check before repeating
+Meridian's wrong totals were first internally acknowledged in the channel on 2024-09-12, two days after the client report, showing the client issue sat in the working channel without a tracked response owner.
+check before repeating
+Marcus Webb committed in MER-101 that the fix for Meridian's wrong invoice totals was scheduled for the Sep 24 release.
+check before repeating
+Marcus Webb told the meridian-billing channel the Meridian invoice fix was targeted at the Sep 24 release (same commitment as MER-101, restated internally).
+check before repeating
+Marcus Webb committed on Sep 25 that MER-101 would be kept open until QA passes.
+check before repeating
+Dana Okoro reported to the team that QA was still failing on the Sep 24 build, contradicting the claim of a verified fix; the tested build did not contain the fix.
+flagged in skeptic review
+Lin Chen told the meridian-billing channel she would be on leave until Oct 2 and had set up no handoff for MER-101.
+check before repeating
+MER-87 switched invoice date handling to a UTC conversion merged into release 4.12, and Meridian's wrong totals/timelines off by a day were reported right after the 4.12 deploy.
+check before repeating
+Meridian (via Priya Nair) reported to the Meridian team that invoice totals were wrong since the 4.12 deploy and timelines were off by a day — the symptom attributed to the MER-87 timezone change.
+check before repeating
+Marcus Webb marked MER-101 as resolved on the claim the fix was in the Sep 24 build, one day after QA was reported still failing and no customer verification was recorded.
+check before repeating
+Marcus Webb took ownership of investigating Meridian's wrong totals against MER-101 on Sep 12; no explicit owner for responding to Meridian is recorded.
+check before repeating
+Release 4.12, which contained the MER-87 UTC date change, went live on production on the morning of Sep 10, 2024.
+check before repeating
+Dana Okoro committed that the nightly export would retry on failure and reported it retries twice now (unrelated to Meridian invoices).
+Rejected claims (0)
+Draft reply
+
+Draft for human review. Built only from verified findings. Nothing is sent from this app.
+
+Our Sep 24 build was intended to address a timezone-related change affecting invoice totals, but testing on that build still showed totals off by a day in the test environment.
+The scheduled fix did not resolve the issue, and QA remained failing on the Sep 24 build following the claim that the fix had shipped.
+We are continuing to investigate the totals discrepancy and will verify the correction in the test environment before any further release is described as complete.
+A further update will be provided by Sep 30.
+Copy reply
+Redraft
+
+Each sentence opens the verified finding behind it.
+
+Timeline detail
+swimlane board with every finding, silence and lapse
+2024-09-23T04:30:00.000Z · Marcus Webb · meridian-billing · slack
+Close
+
+MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.
+
+Cited by: Marcus Webb committed in the team channel that the MER-87 timezone change was the cause and the fix was targeted at the Sep 24 release.
+
+verified end-to-end
+Quote: found verbatim in this stored record.
+Actor and time: match this record (Marcus Webb).
+Isolated model check: supports the claim.
+
+Related tickets: MER-87
+
+Copy text

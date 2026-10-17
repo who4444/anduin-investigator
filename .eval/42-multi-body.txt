@@ -1,0 +1,278 @@
+Anduin Investigator
+internal report · not for external distribution
+Contoso — two independent issues after 2.1.0
+synthetic data
+Logged 2026-10-17
+·
+jira
+slack
+·
+How this was produced
+Issue 1 of 2
+VAT invoice totals blank since 2.1.0 upgrade; early closure on 2.1.3 (ORB-101)
+All issues
+1 VAT invoice totals blank since 2.1.0 upgrade; early closure on 2.1.3 (ORB-101)
+2 SSO sign-in failure for finance users after identity migration (ORB-140)
+The answer
+What happened
+What was promised?
+What went wrong?
+What could not be determined?
+Draft reply
+Timeline detail
+The answer
+
+UNCONFIRMED SCOPEContoso · Orbit · 18 stored records from other clients or projects excluded — verify before relying on it.
+
+THE CLIENT SAYS
+“Contoso has two independent issues. First, VAT invoice totals have been blank since the 2.1.0 upgrade; the fix was promised for the Sep 20 r…”
+
+Across 2 sources, 19 source-backed findings cover day 1 to day 29 of the incident. 15 of them still need a human check before repeating. 1 of 5 promises read as broken, 3 as kept, 1 as unclear. The record goes quiet for up to 11 days at one stretch. No finding needed a caution flag.
+
+Verification: 4 of 19 claims verified end-to-end · 15 check before repeating.
+
+WHAT WENT WRONG
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT invoice…
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT invoice exports showing blank totals after the 2.1.0 upgrade, with finance blocked on reconciliation — the client-visible symptom that the 2.1.3 fix did not clear.
+PROMISES
+1 of 5 broken
+3 kept · 1 unclear
+UNANSWERED CHASES
+5 from Maya Rao
+2024-09-24 → 2024-09-30
+LONGEST SILENCE
+11 days
+after Ravi Menon's jira record
+OPEN QUESTIONS
+none open
+
+28 days evidence window, first to latest cited record
+3 days first response after the first cited record
+2 process failures found
+none found times a status update conflicted with other evidence
+none found handoffs with no documented handoff
+0 concerns raised in skeptic review
+
+DO NOW
+Close out the broken promise — “Ravi Menon promised (to the Contoso ticket on ORB-101) that the VAT fix was scheduled for…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Reply to the unanswered run of 5 from Maya Rao.
+Consecutive cited records from one person have no interleaved reply.
+evidence
+What happened
+2024-09-05
+Ravi Menon promised (to the Contoso ticket on ORB-101)…
+communication
+check before repeating
+RM
+team
+2024-09-21
+Ravi Menon resolved ORB-101 on 2024-09-21 stating 'totals verified…
+communication
+check before repeating
+RM
+team
+2024-09-26
+Maya Rao reopened ORB-101 on 2024-09-26 because the client's…
+technical
+check before repeating
+MR
+team
+2024-09-21
+Ravi Menon closed ORB-101 as Resolved in 2.1.3 on…
+communication
+check before repeating
+RM
+team
+2024-09-21
+Ravi Menon announced on the orbit-support channel on 2024-09-21…
+communication
+check before repeating
+RM
+team
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT…
+2024-09-02 → 2024-09-02
+3 findings, 3 deciding moments.
+Day 1
+DO
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT invoice exports…
+team
+jira
+check before repeating
+Day 1
+DO
+The client's original report (Dana Okafor, 2024-09-02) ties the blank…
+team
+jira
+kept
+Day 1
+DO
+Contoso reported that VAT invoice exports showed blank totals since…
+team
+jira
+kept
+Ravi Menon promised (to the Contoso ticket on…
+2024-09-05 → 2024-09-05
+1 findings, 1 broken promise.
+Ravi Menon committed the VAT fix to the…
+2024-09-05 → 2024-09-05
+1 findings.
+The VAT rounding regression had its own tracking…
+2024-09-10 → 2024-09-10
+1 findings, 1 deciding moment.
+Ravi Menon closed ORB-101 as Resolved in 2.1.3…
+2024-09-21 → 2024-09-21
+3 findings, 2 broken promises.
+Ravi Menon announced on the orbit-support channel on…
+2024-09-21 → 2024-09-21
+1 findings, 1 deciding moment.
+Maya Rao identified on ORB-150 that the BILLING-V2…
+2024-09-24 → 2024-09-30
+9 findings, 2 broken promises.
+What was promised?
+RM
+Ravi Menon
+BROKEN
+check before repeating
+“Ravi Menon promised (to the Contoso ticket on ORB-101) that the VAT fix was scheduled for the Sep 20 release; that release shipped as 2.1.3 but the client's finance sandbox still showed blank VAT totals on 2.1.3, so the commitment was not met.”
+PROMISED BY SEP 20
+DEADLINE PASSED
+made 2024-09-05 · jira
+RM
+Ravi Menon
+KEPT
+check before repeating
+“Ravi Menon committed the VAT fix to the Sep 20 release on 2024-09-05, both on ORB-101 and on the orbit-support channel.”
+PROMISED BY SEP 20
+DELIVERED
+made 2024-09-05 · jira
+MR
+Maya Rao
+RECORDED
+check before repeating
+“Maya Rao reopened ORB-101 on 2024-09-26 because the finance sandbox still showed blank VAT totals on 2.1.3, contradicting the earlier Resolved status; the ticket was only re-resolved in 2.1.4 on 2024-09-28, which is the delivery date of the actual VAT fix.”
+PROMISED BY MAY
+STILL UNCLEAR
+made 2024-09-26 · jira
+MR
+Maya Rao
+KEPT
+check before repeating
+“The actual VAT fix landed in 2.1.4, with Maya Rao recording on 2024-09-28 that the VAT rounding path was corrected and exports verified with finance — the real delivery eight days after the Sep 20 commitment.”
+PROMISED BY MAY
+DELIVERED
+made 2024-09-28 · jira
+MR
+Maya Rao
+KEPT
+check before repeating
+“Maya Rao confirmed on orbit-support on 2024-09-30 that the VAT fix is in 2.1.4 with exports verified with finance.”
+PROMISED BY MAY
+DELIVERED
+made 2024-09-30 · slack
+What was communicated versus other records
+
+No communicated update was contradicted by another record.
+
+What went wrong?
+2024-09-02
+2024-09-30
+DO Dana Okafor
+2024-09-02 → 2024-09-02
+3d gap from 09-02
+RM Ravi Menon
+2024-09-05 → 2024-09-21
+5d gap from 09-05 · 11d gap from 09-10 · 3d gap from 09-21
+MR Maya Rao
+2024-09-24 → 2024-09-30
+Root cause and contributing factors
+process
+Ravi Menon closed ORB-101 as Resolved in 2.1.3 on internal-only verification ('totals verified on our side') without reproducing the client's finance sandbox export path; Maya Rao reopened it five days later because the sandbox still showed blank VAT totals on 2.1.3, showing the verification was premature and mis-scoped.
+technical
+Maya Rao identified on ORB-150 that the BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, dropping fractional cents and blanking the export totals, and that the change was still unreviewed — i.e. the defect was a separate rounding root cause that the 2.1.3 release did not address.
+process
+Maya Rao recorded the VAT fix as delivered in 2.1.4, with the VAT rounding path corrected and exports verified with finance — the actual delivery milestone for the blank-totals defect, after the Sep 20/2.1.3 commitment failed.
+technical
+The VAT blank-totals defect was caused by the BILLING-V2 refactor moving VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export totals; that change was never reviewed (ORB-150).
+technical
+Contoso reported that VAT invoice exports showed blank totals since the 2.1.0 upgrade, blocking finance reconciliation — the client-visible symptom of the rounding regression.
+technical
+VAT blank-totals root cause: the BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, dropping fractional cents and blanking export totals, and that change remains unreviewed (ORB-150).
+technical
+The VAT rounding regression had its own tracking ticket, ORB-150 (BILLING-V2: VAT rounding regression), opened by Ravi Menon on 2024-09-10 — separate from client ticket ORB-101 and never linked into the 2.1.3 resolution.
+process
+Ravi Menon resolved ORB-101 on 2024-09-21 stating 'totals verified on our side' for 2.1.3 — an internal-only verification, with no record of reproducing the client's finance sandbox export path.
+process
+Ravi Menon announced the ORB-101 closure on the support channel as 'the VAT fix is in 2.1.3', propagating the premature resolution to the client-facing channel.
+technical
+Maya Rao reopened ORB-101 on 2024-09-26 because the client's finance sandbox still showed blank VAT totals on 2.1.3, confirming the Sep 20/2.1.3 fix did not resolve the defect.
+process
+The reopen was also announced on orbit-support by Maya Rao on 2024-09-26, publicly correcting the earlier 'fixed in 2.1.3' claim.
+technical
+The client's original report (Dana Okafor, 2024-09-02) ties the blank totals to the 2.1.0 upgrade and states finance is blocked on reconciliation.
+technical
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT invoice exports showing blank totals after the 2.1.0 upgrade, with finance blocked on reconciliation — the client-visible symptom that the 2.1.3 fix did not clear.
+process
+Ravi Menon announced on the orbit-support channel on 2024-09-21 that ORB-101 was being marked resolved because the VAT fix was in 2.1.3, on the same basis as the internal ticket resolution that the client's sandbox later disproved.
+
+Process findings are judged against generic norms; no SLA was provided in the sources.
+
+What could not be determined?
+
+The retrieved sources left no obvious gaps.
+
+Safe to repeat externally
+verified
+jira
+The VAT blank-totals defect was caused by the BILLING-V2 refactor moving VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export totals; that change was never reviewed (ORB-150).
+verified
+jira
+Contoso reported that VAT invoice exports showed blank totals since the 2.1.0 upgrade, blocking finance reconciliation — the client-visible symptom of the rounding regression.
+verified
+jira
+VAT blank-totals root cause: the BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, dropping fractional cents and blanking export totals, and that change remains unreviewed (ORB-150).
+verified
+jira
+The client's original report (Dana Okafor, 2024-09-02) ties the blank totals to the 2.1.0 upgrade and states finance is blocked on reconciliation.
+Check with a human first
+check before repeating
+Ravi Menon promised (to the Contoso ticket on ORB-101) that the VAT fix was scheduled for the Sep 20 release; that release shipped as 2.1.3 but the client's finance sandbox still showed blank VAT totals on 2.1.3, so the commitment was not met.
+check before repeating
+Ravi Menon closed ORB-101 as Resolved in 2.1.3 on internal-only verification ('totals verified on our side') without reproducing the client's finance sandbox export path; Maya Rao reopened it five days later because the sandbox still showed blank VAT totals on 2.1.3, showing the verification was premature and mis-scoped.
+check before repeating
+Maya Rao identified on ORB-150 that the BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, dropping fractional cents and blanking the export totals, and that the change was still unreviewed — i.e. the defect was a separate rounding root cause that the 2.1.3 release did not address.
+check before repeating
+Maya Rao reopened ORB-101 on 2024-09-26 because the finance sandbox still showed blank VAT totals on 2.1.3, contradicting the earlier Resolved status; the ticket was only re-resolved in 2.1.4 on 2024-09-28, which is the delivery date of the actual VAT fix.
+check before repeating
+Maya Rao recorded the VAT fix as delivered in 2.1.4, with the VAT rounding path corrected and exports verified with finance — the actual delivery milestone for the blank-totals defect, after the Sep 20/2.1.3 commitment failed.
+check before repeating
+The VAT rounding regression had its own tracking ticket, ORB-150 (BILLING-V2: VAT rounding regression), opened by Ravi Menon on 2024-09-10 — separate from client ticket ORB-101 and never linked into the 2.1.3 resolution.
+check before repeating
+Ravi Menon committed the VAT fix to the Sep 20 release on 2024-09-05, both on ORB-101 and on the orbit-support channel.
+check before repeating
+Ravi Menon resolved ORB-101 on 2024-09-21 stating 'totals verified on our side' for 2.1.3 — an internal-only verification, with no record of reproducing the client's finance sandbox export path.
+check before repeating
+Ravi Menon announced the ORB-101 closure on the support channel as 'the VAT fix is in 2.1.3', propagating the premature resolution to the client-facing channel.
+check before repeating
+Maya Rao reopened ORB-101 on 2024-09-26 because the client's finance sandbox still showed blank VAT totals on 2.1.3, confirming the Sep 20/2.1.3 fix did not resolve the defect.
+check before repeating
+The reopen was also announced on orbit-support by Maya Rao on 2024-09-26, publicly correcting the earlier 'fixed in 2.1.3' claim.
+check before repeating
+The actual VAT fix landed in 2.1.4, with Maya Rao recording on 2024-09-28 that the VAT rounding path was corrected and exports verified with finance — the real delivery eight days after the Sep 20 commitment.
+check before repeating
+Maya Rao confirmed on orbit-support on 2024-09-30 that the VAT fix is in 2.1.4 with exports verified with finance.
+check before repeating
+Dana Okafor logged ORB-101 on 2024-09-02 as VAT invoice exports showing blank totals after the 2.1.0 upgrade, with finance blocked on reconciliation — the client-visible symptom that the 2.1.3 fix did not clear.
+check before repeating
+Ravi Menon announced on the orbit-support channel on 2024-09-21 that ORB-101 was being marked resolved because the VAT fix was in 2.1.3, on the same basis as the internal ticket resolution that the client's sandbox later disproved.
+Rejected claims (0)
+Draft reply
+
+Draft for human review. Built only from verified findings. Nothing is sent from this app.
+
+No reply has been drafted for this investigation yet.
+
+Draft the client reply
+Timeline detail
+swimlane board with every finding, silence and lapse

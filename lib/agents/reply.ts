@@ -1,6 +1,16 @@
 import { extractJson, isPlainObject } from "../json";
 import { getLlmClient } from "../llm";
-import { getClaims, getEvents, getIssues, upsertIssueReportExtras, upsertReportExtras } from "../store";
+import {
+  getClaims,
+  getCommitments,
+  getEvents,
+  getInvestigation,
+  getIssues,
+  upsertIssueReportExtras,
+  upsertReportExtras,
+} from "../store";
+import { clientDomainsFor } from "../pipeline/scope";
+import { buildCaseState, type CaseState } from "../report/case-state";
 import type { Claim, Issue } from "../types";
 
 export interface ReplySentence {
@@ -26,6 +36,12 @@ const SYSTEM_PROMPT = [
 
 const NUMBER_TOKEN = /\b\d[\d.,:%/-]*\b/g;
 
+/* G-06: words that assert "now". A sentence may only use them when its own
+   cited findings (or the computed case state) carry them. */
+const STATUS_TALK =
+  /\b(resolved|reopened|closed|fixed|shipped|delivered|released|in progress|done|live|deployed)\b/gi;
+const OWNER_TALK = /\b(owner|owns|owned by|assigned to|handed off to|handed to|reassigned)\b/i;
+
 function numbersIn(text: string): string[] {
   return [...new Set(text.match(NUMBER_TOKEN) ?? [])];
 }
@@ -34,6 +50,7 @@ export function validateReplyPayload(
   content: string,
   knownClaimIds: Set<string>,
   claimsById?: Map<string, { text: string; quote: string }>,
+  caseState?: CaseState | null,
 ): { verdict: string; sentences: ReplySentence[] } | null {
   const parsed = extractJson(content);
   if (!isPlainObject(parsed)) return null;
@@ -67,6 +84,23 @@ export function validateReplyPayload(
         }
       }
       if (numbersIn(text).some((number) => !allowed.has(number))) continue;
+    }
+
+    // G-06: the sentence cannot assert a status or an owner the cited
+    // findings (or the computed case state) do not carry.
+    if (caseState) {
+      const cited = claimIds
+        .map((id) => claimsById?.get(id))
+        .filter((source): source is { text: string; quote: string } => Boolean(source))
+        .map((source) => `${source.text} ${source.quote}`)
+        .join(" ");
+      const allowedNow = `${cited} ${caseState.currentStatus.value ?? ""}`.toLowerCase();
+      const statusWords = text.match(STATUS_TALK) ?? [];
+      if (statusWords.some((word) => !allowedNow.includes(word.toLowerCase()))) continue;
+      if (OWNER_TALK.test(text)) {
+        const owner = caseState.owner.value?.toLowerCase() ?? null;
+        if (!owner || !text.toLowerCase().includes(owner)) continue;
+      }
     }
 
     sentences.push({ text, claimIds });
@@ -122,6 +156,18 @@ export async function generateReply(
   const events = await getEvents(investigationId);
   const eventsById = new Map(events.map((event) => [event.id, event]));
 
+  // G-06: the computed "now" bounds what the draft may assert.
+  const [investigation, commitments] = await Promise.all([
+    getInvestigation(investigationId),
+    getCommitments(investigationId),
+  ]);
+  const caseState = buildCaseState({
+    events,
+    claims: allClaims,
+    commitments,
+    clientDomains: clientDomainsFor(events, investigation?.scope ?? null),
+  });
+
   const payload = verified.map((claim) => ({
     id: claim.id,
     type: claim.type,
@@ -163,7 +209,7 @@ export async function generateReply(
   const claimsById = new Map(
     verified.map((claim) => [claim.id, { text: claim.text, quote: claim.quote }]),
   );
-  const validated = validateReplyPayload(response.content, known, claimsById);
+  const validated = validateReplyPayload(response.content, known, claimsById, caseState);
   if (!validated) {
     throw new Error("The draft reply did not cite any verified findings and was discarded.");
   }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BriefingShell } from "@/app/_components/briefing/shell";
 import { pruneStaleReply } from "@/lib/agents/reply";
 import { buildResult } from "@/lib/pipeline/assemble";
+import { clientDomainsFor } from "@/lib/pipeline/scope";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
 import {
@@ -146,6 +147,7 @@ export default async function ReportPage({
         claims: activeClaims,
         notes: activeNotes,
         commitments: assembled.commitments,
+        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
       }),
       briefing: buildBriefing({
         events: activeEvents,

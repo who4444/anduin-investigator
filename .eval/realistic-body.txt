@@ -1,0 +1,528 @@
+Anduin Investigator
+internal report · not for external distribution
+LUM-811: Issue created: VAT invoice exports show blank totals
+Logged 2026-10-17
+·
+email
+jira
+·
+How this was produced
+The answer
+What happened
+What was promised?
+What went wrong?
+What could not be determined?
+Draft reply
+Timeline detail
+The answer
+
+UNCONFIRMED SCOPEBright Market · LUM · 256 stored records from other clients or projects excluded — verify before relying on it.
+
+THE CLIENT SAYS
+“This is Bright Market's formal escalation on LUM-811 (VAT invoice exports show blank totals). The totals have been blank since your 5.3.0 up…”
+
+Across 2 sources, 39 source-backed findings cover day 1 to day 27 of the incident. 31 of them still need a human check before repeating. 5 of 10 promises read as broken, 2 as kept, 3 as unclear. The record goes quiet for up to 8 days at one stretch. 11 findings carry a caution flag from skeptic review.
+
+Verification: 8 of 39 claims verified end-to-end · 31 check before repeating · 11 flagged.
+
+WHAT WENT WRONG
+The blank VAT totals were traced to the KESTREL/billing-v2…
+The blank VAT totals were traced to the KESTREL/billing-v2 refactor that moved VAT rounding to integer math in 5.3.0, a change recorded as still unreviewed; Nadia Chen noted this while triaging LUM-811.
+PROMISES
+5 of 10 broken
+2 kept · 3 unclear
+UNANSWERED CHASES
+2 from Ravi Menon
+2024-09-18 → 2024-09-18
+LONGEST SILENCE
+8 days
+after Alex Weinstein's jira record
+OPEN QUESTIONS
+35 open
+Could not determine (root cause)
+
+26 days evidence window, first to latest cited record
+46h first response after the first cited record
+10 process failures found
+4 times a status update conflicted with other evidence
+none found handoffs with no documented handoff
+12 concerns raised in skeptic review
+
+DO NOW
+Close out the broken promise — “Ravi Menon (Lumen) promised Bright Market via email on 2024-09-02 that a fix for the blank…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Close out the broken promise — “Priya Nair (Lumen) told the client on 2024-09-04 that LUM-811 was "Also tracking in 5.3.3" and…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Close out the broken promise — “Ravi Menon recorded in LUM-811 on 2024-09-18 that the "Fix is scheduled for the Sep 20…”. Set a dated plan or withdraw it in writing.
+A source-backed promise reads as broken.
+evidence
+Reply to the unanswered run of 2 from Ravi Menon.
+Consecutive cited records from one person have no interleaved reply.
+evidence
+Correct the status the client was given where internal evidence disagrees.
+A status update was flagged against other evidence.
+evidence
+Prevent next time (1)
+What happened
+2024-09-02
+Ravi Menon (Lumen) promised Bright Market via email on…
+communication
+check before repeating
+RM
+team
+2024-09-02
+On 2 Sep, Ravi Menon committed to Bright Market…
+process
+check before repeating
+RM
+team
+2024-09-04
+Priya Nair (Lumen) told the client on 2024-09-04 that…
+communication
+check before repeating
+PN
+team
+2024-09-18
+Ravi Menon recorded in LUM-811 on 2024-09-18 that the…
+communication
+check before repeating
+RM
+team
+2024-09-21
+Priya Nair resolved LUM-811 (In Progress → Resolved) on…
+process
+check before repeating
+PN
+team
+On 2024-09-02 Ravi Menon told the client a…
+2024-09-02 → 2024-09-10
+8 findings, 4 broken promises.
+Day 1
+RM
+On 2024-09-02 Ravi Menon told the client a fix had…
+team
+email
+unclear
+possible conflict
+check before repeating
+Day 1
+RM
+Ravi Menon (Lumen) promised Bright Market via email on 2024-09-02…
+team
+email
+broken
+check before repeating
+Day 1
+RM
+On 2 Sep, Ravi Menon committed to Bright Market by…
+team
+email
+broken
+check before repeating
+Day 3
+PN
+Priya Nair told the client on 2024-09-04 that "the billing-v2…
+team
+email
+check before repeating
+Day 3
+PN
+On 4 Sep, Priya Nair told the client the work…
+team
+email
+broken
+check before repeating
+Day 3
+PN
+Priya Nair (Lumen) told the client on 2024-09-04 that LUM-811…
+team
+email
+broken
+check before repeating
+Day 3
+PN
+On 2024-09-04 Priya Nair stated LUM-811 was being tracked in…
+team
+email
+kept
+possible conflict
+Day 9
+AW
+Root cause was recorded under LUM-804 (the KESTREL/billing-v2 refactor ticket…
+team
+jira
+check before repeating
+Work on LUM-811 sat in Open from creation…
+2024-09-18 → 2024-09-18
+3 findings, 1 broken promise.
+Ravi Menon repeated the Sep 20 fix schedule…
+2024-09-18 → 2024-09-18
+1 findings.
+Priya Nair resolved LUM-811 (In Progress → Resolved)…
+2024-09-21 → 2024-09-23
+10 findings, 5 broken promises.
+Bright Market's 23 Sep email recorded a fourth…
+2024-09-23 → 2024-09-23
+1 findings, 1 broken promise.
+On 2024-09-23 the client sent a fourth follow-up…
+2024-09-23 → 2024-09-23
+1 findings, 1 deciding moment.
+The real fix shipped in 5.3.4, announced by…
+2024-09-26 → 2024-09-28
+15 findings, 3 broken promises.
+What was promised?
+RM
+Ravi Menon <ravi.menon@lumen.example>
+BROKEN, 185 DAYS LATE
+check before repeating
+“Ravi Menon (Lumen) promised Bright Market via email on 2024-09-02 that a fix for the blank VAT export totals was scheduled for the Sep 20 release ("We have scheduled a fix for the Sep 20 release"); that Sep 20 fix was not delivered — the client recorded no confirmation on Sep 20 and the actual fix was stated as 5.3.4 on 26 Sep, so the promise was broken.”
+PROMISED BY MAR
+185 DAYS PAST THE DEADLINE
+made 2024-09-02 · email
+RM
+Ravi Menon <ravi.menon@lumen.example> → Bright Market
+BROKEN, 1 DAYS LATE
+check before repeating
+“On 2 Sep, Ravi Menon committed to Bright Market by email that a fix was scheduled for the Sep 20 release.”
+PROMISED BY SEP
+1 DAY PAST THE DEADLINE
+made 2024-09-02 · email
+RM
+Ravi Menon
+UNCLEAR
+check before repeating
+“On 2024-09-02 Ravi Menon told the client a fix had been scheduled for the Sep 20 release; the same commitment was repeated in Jira on 18 Sep.”
+PROMISED BY 2024-09-02
+STILL UNCLEAR
+made 2024-09-02 · email
+PN
+Priya Nair <priya.nair@lumen.example>
+BROKEN
+check before repeating
+“Priya Nair (Lumen) told the client on 2024-09-04 that LUM-811 was "Also tracking in 5.3.3" and asked them to confirm receipt — effectively presenting 5.3.3 as the delivering version; the client's finance sandbox still showed blank exports after 5.3.3, so that expectation was not met.”
+PROMISED BY 2024-09-04
+DEADLINE PASSED
+made 2024-09-04 · email
+RM
+Ravi Menon
+BROKEN
+check before repeating
+“Ravi Menon recorded in LUM-811 on 2024-09-18 that the "Fix is scheduled for the Sep 20 release" and asked the reporter to confirm which finance sandbox the export came from; the Sep 20 release did not resolve the issue (no Sep 20 confirmation per the client, and the ticket was resolved on 21 Sep against 5.3.3, then reopened on 26 Sep).”
+PROMISED BY 2024-09-18
+DEADLINE PASSED
+made 2024-09-18 · jira
+RM
+Ravi Menon
+UNCLEAR
+“On 2024-09-18 Ravi Menon again stated the fix was scheduled for the Sep 20 release and asked which finance sandbox the export came from.”
+PROMISED BY 2024-09-18
+STILL UNCLEAR
+made 2024-09-18 · jira
+RM
+Ravi Menon
+UNCLEAR
+check before repeating
+“Ravi Menon repeated the Sep 20 fix schedule in Jira on 18 Sep and asked the client which finance sandbox the export came from, but no client answer to that question appears in the records.”
+PROMISED BY SEP 20
+STILL UNCLEAR
+made 2024-09-18 · jira
+PN
+Priya Nair
+BROKEN
+check before repeating
+“Priya Nair stated on 2024-09-21 that LUM-811 was "Resolved with the 5.3.3 rollout; exports verified on our side" — an internal-verification claim that was not kept: the finance sandbox totals were still blank when re-checked on 26 Sep and the real fix was 5.3.4.”
+PROMISED BY 2024-09-21
+DEADLINE PASSED
+made 2024-09-21 · jira
+NC
+Nadia Chen <nadia.chen@lumen.example>
+KEPT
+check before repeating
+“Nadia Chen committed on 2024-09-26 that the VAT rounding root cause was found and "Fixed properly in 5.3.4 tomorrow", i.e. 5.3.4 on 27 Sep; the 28 Sep records report 5.3.4 shipped with the VAT rounding path corrected, consistent with that promise.”
+PROMISED BY 2024-09-26
+DELIVERED
+made 2024-09-26 · email
+DO
+Dana Okafor <billing@brightmarket.example>
+KEPT
+check before repeating
+“Client-side confirmation of the 5.3.4 fix came on 28 Sep, after the escalation, with Bright Market noting the imports were verified but took longer than it should have (the message says 'Imports', not exports).”
+PROMISED BY SEP
+DELIVERED
+made 2024-09-28 · email
+What was communicated versus other records
+DATE	RECORD THAT WAS COMMUNICATED	WHAT OTHER RECORDS SHOWED	MISMATCH NOTED
+2024-09-04	Also tracking in 5.3.3; the billing-v2 piece is separate. Confirm receipt.	Follow-up while triaging LUM-811: the KESTREL refactor (billing-v2) moved VAT rounding to integer math in 5.3.0, which d	Claim 1 frames Priya Nair's 4 Sep 'billing-v2 piece is separate' as decoupling LUM-811 from the actual cause, but the same agent elsewhere (claim 34) calls this an 'internal inconsistency' with the root-cause note. The claim set uses the identical quote both to assert decoupling happened and to assert the decoupling was wrong; the draft does not reconcile which reading is intended.
+2024-09-21	Resolved with the 5.3.3 rollout; exports verified on our side. Flagging as done.	Fix is scheduled for the Sep 20 release. Please confirm which finance sandbox the export came from.	Claim 4 says no client sandbox confirmation was recorded before the 21 Sep resolution, yet on 18 Sep Ravi Menon had already asked which sandbox — and the 21 Sep note says 'exports verified on our side.' The draft treats 'our side' as purely internal, but nothing in the event text specifies whose sandbox; the internal-only characterization is an inference, contradicted by the possibility the verification was against a shared finance sandbox.
+2024-09-26	Correct root found: the VAT rounding change in 5.3.0. Fixed properly in 5.3.4 tomorrow.	Imports verified. Thank you — this took longer than it should have.	Claim 14 records Nadia Chen's 26 Sep 'Fixed properly in 5.3.4 tomorrow' as a kept commitment with 5.3.4 on 27 Sep, but the registry has no release event on 27 Sep and the earliest post-Commit evidence is the 28 Sep client 'Imports verified.' The 27 Sep ship date is inferred, not recorded, while claim 14's status 'kept' implies verification the records do not contain.
+What went wrong?
+2024-09-02
+2024-09-28
+DO Dana Okafor <billing@brightmarket.example>
+2024-09-02 → 2024-09-28
+3d gap from 09-23
+RM Ravi Menon <ravi.menon@lumen.example>
+2024-09-02 → 2024-09-02
+DO Dana Okafor
+2024-09-02 → 2024-09-02
+PN Priya Nair
+2024-09-02 → 2024-09-21
+PN Priya Nair <priya.nair@lumen.example>
+2024-09-04 → 2024-09-04
+6d gap from 09-04
+AW Alex Weinstein
+2024-09-10 → 2024-09-10
+8d gap from 09-10
+RM Ravi Menon
+2024-09-18 → 2024-09-18
+3d gap from 09-18
+NC Nadia Chen
+2024-09-22 → 2024-09-28
+NC Nadia Chen <nadia.chen@lumen.example>
+2024-09-26 → 2024-09-26
+Root cause and contributing factors
+technical
+The blank VAT export totals were caused by the KESTREL refactor (billing-v2), which moved VAT rounding to integer math in 5.3.0 and dropped fractional cents, blanking totals on export; the change was still unreviewed.
+process
+On 2024-09-04 Priya Nair stated LUM-811 was being tracked in 5.3.3 and that the billing-v2 piece was separate — decoupling the ticket from the change that was later identified as its actual cause.
+process
+LUM-811 was marked Resolved on 2024-09-21 by Priya Nair as fixed by the 5.3.3 rollout based only on internal verification ('our side'), with no client sandbox confirmation recorded before the resolution.
+technical
+The 5.3.3 fix did not work: on 2024-09-26 Nadia Chen reopened LUM-811 after re-checking the finance sandbox and finding VAT layout totals still blank.
+technical
+The real fix shipped in 5.3.4, announced by Nadia Chen on 2024-09-26 as 'Fixed properly in 5.3.4 tomorrow' and recorded in LUM-811 on 2024-09-28 as the VAT rounding path corrected with exports verified with finance.
+technical
+Final resolution on 2024-09-28 records the fix as the 5.3.4 correction of the VAT rounding path with exports verified with finance, confirming 5.3.4 — not the Sep 20 release or 5.3.3 — was the fixing ship.
+process
+The client's 2024-09-23 message notes it was the fourth follow-up since Sep 2 with no confirmation on Sep 20; the email record contains no lumen-side reply to it until Nadia Chen's 2024-09-26 message.
+technical
+Bright Market's 2024-09-28 escalation states the totals had been blank since the 5.3.0 upgrade, that the fix was promised for the Sep 20 release, that 5.3.3 fixes were announced and the ticket closed while the finance sandbox still showed blanks, and that the 22nd/23rd chases went unanswered.
+communication
+On 4 Sep, Priya Nair told the client the work was being tracked in 5.3.3 while stating the billing-v2 piece was separate — an early 5.3.3 fix-version expectation that later did not hold.
+process
+LUM-811 was moved to Resolved on 21 Sep on the strength of internal verification only ('exports verified on our side'), with no client or finance-sandbox confirmation documented before closure.
+process
+Priya Nair resolved LUM-811 (In Progress → Resolved) on 21 Sep, before the 26 Sep reopen that established the sandbox totals were still blank.
+technical
+The blank VAT totals were traced to the KESTREL/billing-v2 refactor that moved VAT rounding to integer math in 5.3.0, a change recorded as still unreviewed; Nadia Chen noted this while triaging LUM-811.
+process
+Root cause was recorded under LUM-804 (the KESTREL/billing-v2 refactor ticket created by Alex Weinstein on 10 Sep), not LUM-811, so the cause of LUM-811 lived outside the customer-facing ticket.
+process
+Bright Market's 23 Sep email recorded a fourth follow-up since Sep 2 with no confirmation on the promised Sep 20 release.
+process
+The client's chases on the 22nd and 23rd went unanswered — the only inbound emails in the 21–24 Sep window are the client's own, with no internal reply recorded before Nadia Chen's 26 Sep email.
+process
+Nadia Chen reassigned LUM-811 from Alex Weinstein to Ravi Menon on 22 Sep — the day after the ticket had already been marked Resolved — indicating ownership was unsettled after the premature closure.
+process
+As late as 26 Sep, the real root cause had only just been identified and the actual fix was moved to 5.3.4 — not the Sep 20 release and not 5.3.3.
+process
+Nadia Chen reopened LUM-811 on 26 Sep after re-checking the finance sandbox and finding the VAT totals still blank, showing the 21 Sep Resolve and 5.3.3 rollout had not fixed the client's problem.
+process
+LUM-811 was finally resolved on 28 Sep as fixed in 5.3.4, with the VAT rounding path corrected and exports verified with finance.
+process
+Work on LUM-811 sat in Open from creation on 2 Sep until Ravi Menon moved it to In Progress on 18 Sep, a 16-day period with no recorded triage progress.
+technical
+Root cause recorded by Nadia Chen on LUM-804 (2024-09-22): the KESTREL refactor (billing-v2) moved VAT rounding to integer math in 5.3.0, which drops fractional cents and blanks the export totals, and that change was still unreviewed — a cause in a 5.3.0 change, identified only on 22 Sep, after LUM-811 had already been resolved against 5.3.3.
+process
+LUM-811 moved In Progress → Resolved on 2024-09-21, before the client's finance sandbox was checked: the reopen on 26 Sep recorded totals still blank, showing the resolution was premature relative to client-side verification.
+process
+On 2024-09-26 Nadia Chen reopened LUM-811 after re-checking the finance sandbox and finding totals still blank on VAT layouts — confirming the 5.3.3 fix announced on 21 Sep did not resolve the client's issue.
+process
+LUM-811's real fix shipped in 5.3.4, not the Sep 20 release or 5.3.3: Nadia Chen closed the ticket on 2024-09-28 stating the VAT rounding path was corrected in 5.3.4 and exports verified with finance.
+communication
+Priya Nair told the client on 2024-09-04 that "the billing-v2 piece is separate" from LUM-811, but the later root-cause note ties LUM-811's blank totals to the billing-v2/KESTREL VAT rounding change — an internal inconsistency between the decoupled LUM-811 workstream and the actual cause.
+communication
+Bright Market's escalation of 2024-09-28 asserts the gap between records and experience: they were told the Sep 20 release would carry the fix, but an automated bot announcement of 5.3.3 fixes and the ticket closure occurred while their finance sandbox still showed blank exports, and their 22–23 Sep chases went unanswered.
+communication
+On 2024-09-23 the client sent a fourth follow-up since 2 Sep noting no confirmation on the Sep 20 release; no reply from Lumen to this chase appears in the registry — Lumen's next message was Nadia Chen's internal-investigation note on 26 Sep.
+process
+Client-side corroboration that the fix landed: on 2024-09-28 Dana Okafor reported "Imports verified" while noting it took longer than it should have, indicating the VAT export path was working after 5.3.4.
+process
+LUM-811 was set In Progress → Resolved a second time on 2024-09-28 by Nadia Chen, seven days after the first (premature) resolution; this second closure follows the 5.3.4 fix and client verification.
+
+Process findings are judged against generic norms; no SLA was provided in the sources.
+
+What could not be determined?
+Could not determine (root cause)
+No Slack events were sampled, so internal informal discussion of LUM-811, VAT rounding, or 5.3.3/5.3.4 could not be examined.
+Could not determine (root cause)
+Exact ship dates of 5.3.3 and 5.3.4 builds are not recorded; only that 5.3.4 was described as shipping 'tomorrow' on 2024-09-26 and the resolution dated 2024-09-28.
+Could not determine (root cause)
+No record shows a reply to the client's 22nd chase or of what (if anything) was sent between 2024-09-23 and 2024-09-26; absence of a reply is inferred only from the email record.
+Could not determine (root cause)
+No documented client-side sandbox verification exists before the 2024-09-21 Resolve; the only verification cited was internal ('our side').
+Could not determine (root cause)
+The escalation refers to 'your bot' announcing 5.3.3 fixes and closing the ticket, but the records attribute the Resolve to Priya Nair (a person), not to automation; whether an automated announcement/closure mechanism existed cannot be established.
+Could not determine (root cause)
+The client's 'four weeks ago' 5.3.0 upgrade timing cannot be reconciled to an internal release date because no 5.3.0 release record exists in scope.
+Could not determine (root cause)
+Whether the 5.3.4 fix was independently confirmed by Bright Market's finance sandbox is not corroborated; the only client message after the fix ('Imports verified') is dated 2024-09-28 and does not reference VAT export totals explicitly.
+Could not determine (root cause)
+LUM-804 has only two records (creation on 2024-09-10 and Nadia Chen's 2024-09-22 follow-up); its review status, linkage history, and whether the unreviewed 5.3.0 change bypassed normal review gates cannot be determined.
+Could not determine (decisions and ownership)
+Slack contained no matching messages (zero results for LUM-811); all internal decision context comes from Jira and email only.
+Could not determine (decisions and ownership)
+The 'bot announced 5.3.3 fixes' claim exists only in the client's 28 Sep escalation email; no record of an automated announcement, bot message, or the automation that closed the ticket was found — the closure appears in Jira as a Priya Nair transition to Resolved.
+Could not determine (decisions and ownership)
+No email on the 22nd is present in the registry; only a 23 Sep client email ('Fourth follow-up since Sep 2'). Whether a 22 Sep chase exists outside these records is undetermined.
+Could not determine (decisions and ownership)
+No client reply to Ravi Menon's 18 Sep question about which finance sandbox was used is in the records.
+Could not determine (decisions and ownership)
+Actual ship dates for 5.3.3 and 5.3.4 are not established: 5.3.4 is described as 'tomorrow' relative to 26 Sep, but no release record confirms the build shipped or its date.
+Could not determine (decisions and ownership)
+No record confirms what 5.3.3 specifically contained; the 21 Sep note claims the 5.3.3 rollout fixed it, but the 26 Sep reopen shows it did not.
+Could not determine (decisions and ownership)
+Whether the Sep 20 release shipped at all, and with what contents, is not evidenced.
+Could not determine (decisions and ownership)
+Whether LUM-804/KESTREL and LUM-811 share the same code path is only asserted by Nadia Chen's triage note; no code or review record corroborates it, and the statement that billing-v2 is 'separate' (Priya, 4 Sep) conflicts with that note.
+Could not determine (decisions and ownership)
+Client's 'four weeks ago' 5.3.0 timing cannot be validated — internal 5.3.0 release date is not in the records.
+Could not determine (decisions and ownership)
+The 28 Sep client confirmation refers to 'Imports', not 'exports'; whether it confirms the VAT export totals is ambiguous.
+Could not determine (decisions and ownership)
+No Slack evidence was available to capture informal decisions or known-issue chatter.
+Could not determine (commitments)
+No Slack records exist (search returned zero), so informal decisions/known-issue chatter could not be examined.
+Could not determine (commitments)
+No client message dated 22 Sep exists in the registry; only the 23 Sep 'Fourth follow-up since Sep 2' plus the 28 Sep escalation asserting chases on the 22nd and 23rd. The exact text of any 22 Sep chase is unknown.
+Could not determine (commitments)
+No Lumen reply to the 23 Sep chase appears; cannot determine whether an out-of-registry reply was sent.
+Could not determine (commitments)
+Exact ship dates of the 5.3.3 and 5.3.4 builds are not stated in the records; 5.3.4 is only referred to as 'tomorrow' (27 Sep) on 26 Sep.
+Could not determine (commitments)
+The 'your bot announced 5.3.3 fixes and the ticket was closed' claim comes only from the client; no automated/bot announcement record or explicit automated-closure event exists in the registry beyond Priya Nair's Resolved transition comment.
+Could not determine (commitments)
+The Sep 20 release's actual contents and whether anything shipped on Sep 20 at all could not be established.
+Could not determine (commitments)
+Whether the client's finance sandbox was ever checked before the 21 Sep Resolve is not documented; only Priya's 'exports verified on our side' statement.
+Could not determine (commitments)
+'Four weeks ago' upgrade timing cannot be verified against internal 5.3.0 release dates — no release calendar records.
+Could not determine (commitments)
+LUM-804 has only creation and the one Nadia Chen follow-up comment; no transition/closure history to show how billing-v2 work was decoupled from LUM-811.
+The Sep 20 fix commitment (and its 18 Sep repeat) is treated as a delivered/scheduled plan, but there is no record of any Sep 20 release event, deployment note, or release changelog for the Sep 20 release anywhere in the registry — the only sources on that release are the client's assertion it never arrived and Lumen's promise. The 'Sep 20 release' itself is never evidenced as existing or shipping.
+The Sep 20 fix commitment (and its 18 Sep repeat) is treated as a delivered/scheduled plan, but there is no record of any Sep 20 release event, deployment note, or release changelog for the Sep 20 release anywhere in the registry — the only sources on that release are the client's assertion it never arrived and Lumen's promise. The 'Sep 20 release' itself is never evidenced as existing or shipping.
+record
+record
+record
+Ravi Menon asked on 18 Sep 'which finance sandbox the export came from'; no answer from the client appears in the registry before Nadia Chen's 26 Sep reopen note. Ownership claims note this (claim 16) but the investigation never addresses whether the question was answered out of band or simply dropped — it is an unanswered question left in the record.
+Ravi Menon asked on 18 Sep 'which finance sandbox the export came from'; no answer from the client appears in the registry before Nadia Chen's 26 Sep reopen note. Ownership claims note this (claim 16) but the investigation never addresses whether the question was answered out of band or simply dropped — it is an unanswered question left in the record.
+record
+record
+Claim 8 and claim 23 assert 'no lumen-side reply' between 23 and 26 Sep and that 22–23 Sep chases went unanswered, but the registry contains only 7 email records total and email search queries listed (search_email(all), search_email('follow-up'), etc.) cannot establish a negative without thread completeness. The gap between 23 Sep and 26 Sep could reflect un-captured outbound mail; the draft asserts absence as fact.
+Claim 8 and claim 23 assert 'no lumen-side reply' between 23 and 26 Sep and that 22–23 Sep chases went unanswered, but the registry contains only 7 email records total and email search queries listed (search_email(all), search_email('follow-up'), etc.) cannot establish a negative without thread completeness. The gap between 23 Sep and 26 Sep could reflect un-captured outbound mail; the draft asserts absence as fact.
+record
+record
+record
+The root cause is stated as the KESTREL refactor being 'still unreviewed' in 5.3.0, but no record explains how an unreviewed change reached a release, who approved/shipped 5.3.0, or whether a review process exists. The investigation flags 'unreviewed' as a fact but never asks the obvious follow-up the records leave open.
+The root cause is stated as the KESTREL refactor being 'still unreviewed' in 5.3.0, but no record explains how an unreviewed change reached a release, who approved/shipped 5.3.0, or whether a review process exists. The investigation flags 'unreviewed' as a fact but never asks the obvious follow-up the records leave open.
+record
+record
+Claim 35 paraphrases the escalation's allegation that 'your bot announced 5.3.3 fixes' and the ticket was closed pre-maturely, but no release-bot, changelog, or announcement record for 5.3.3 appears in the registry (search_email('bot') was run but yielded nothing). The bot announcement the client relies on is never located, so the 'bot announced 5.3.3' premise is unverified from Lumen's own records.
+Claim 35 paraphrases the escalation's allegation that 'your bot announced 5.3.3 fixes' and the ticket was closed pre-maturely, but no release-bot, changelog, or announcement record for 5.3.3 appears in the registry (search_email('bot') was run but yielded nothing). The bot announcement the client relies on is never located, so the 'bot announced 5.3.3' premise is unverified from Lumen's own records.
+record
+record
+Priya Nair resolved LUM-811 on 21 Sep, but the registry never records who Priya is, her authority to close, or why 'our side' verification was accepted as closure criteria. The 'premature closure' finding is asserted without evidence of the closure policy or approver.
+Priya Nair resolved LUM-811 on 21 Sep, but the registry never records who Priya is, her authority to close, or why 'our side' verification was accepted as closure criteria. The 'premature closure' finding is asserted without evidence of the closure policy or approver.
+record
+record
+Slack was searched with search_slack('LUM-811') and search_slack(all) but no Slack events appear in the registry despite 4 named Lumen actors and multiple internal triage steps (22 Sep assignment, 26 Sep root find). Internal coordination on this incident is conspicuously absent from the captured record; the investigation should flag that internal-tooling evidence may be missing.
+Slack was searched with search_slack('LUM-811') and search_slack(all) but no Slack events appear in the registry despite 4 named Lumen actors and multiple internal triage steps (22 Sep assignment, 26 Sep root find). Internal coordination on this incident is conspicuously absent from the captured record; the investigation should flag that internal-tooling evidence may be missing.
+record
+record
+record
+Safe to repeat externally
+verified
+jira
+LUM-811 was moved to Resolved on 21 Sep on the strength of internal verification only ('exports verified on our side'), with no client or finance-sandbox confirmation documented before closure.
+verified
+email
+Bright Market's 23 Sep email recorded a fourth follow-up since Sep 2 with no confirmation on the promised Sep 20 release.
+verified
+email
+As late as 26 Sep, the real root cause had only just been identified and the actual fix was moved to 5.3.4 — not the Sep 20 release and not 5.3.3.
+verified
+jira
+LUM-811's real fix shipped in 5.3.4, not the Sep 20 release or 5.3.3: Nadia Chen closed the ticket on 2024-09-28 stating the VAT rounding path was corrected in 5.3.4 and exports verified with finance.
+Check with a human first
+flagged in skeptic review
+The blank VAT export totals were caused by the KESTREL refactor (billing-v2), which moved VAT rounding to integer math in 5.3.0 and dropped fractional cents, blanking totals on export; the change was still unreviewed.
+flagged in skeptic review
+On 2024-09-04 Priya Nair stated LUM-811 was being tracked in 5.3.3 and that the billing-v2 piece was separate — decoupling the ticket from the change that was later identified as its actual cause.
+check before repeating
+On 2024-09-02 Ravi Menon told the client a fix had been scheduled for the Sep 20 release; the same commitment was repeated in Jira on 18 Sep.
+flagged in skeptic review
+On 2024-09-18 Ravi Menon again stated the fix was scheduled for the Sep 20 release and asked which finance sandbox the export came from.
+check before repeating
+LUM-811 was marked Resolved on 2024-09-21 by Priya Nair as fixed by the 5.3.3 rollout based only on internal verification ('our side'), with no client sandbox confirmation recorded before the resolution.
+check before repeating
+The 5.3.3 fix did not work: on 2024-09-26 Nadia Chen reopened LUM-811 after re-checking the finance sandbox and finding VAT layout totals still blank.
+check before repeating
+The real fix shipped in 5.3.4, announced by Nadia Chen on 2024-09-26 as 'Fixed properly in 5.3.4 tomorrow' and recorded in LUM-811 on 2024-09-28 as the VAT rounding path corrected with exports verified with finance.
+check before repeating
+Final resolution on 2024-09-28 records the fix as the 5.3.4 correction of the VAT rounding path with exports verified with finance, confirming 5.3.4 — not the Sep 20 release or 5.3.3 — was the fixing ship.
+check before repeating
+The client's 2024-09-23 message notes it was the fourth follow-up since Sep 2 with no confirmation on Sep 20; the email record contains no lumen-side reply to it until Nadia Chen's 2024-09-26 message.
+check before repeating
+Bright Market's 2024-09-28 escalation states the totals had been blank since the 5.3.0 upgrade, that the fix was promised for the Sep 20 release, that 5.3.3 fixes were announced and the ticket closed while the finance sandbox still showed blanks, and that the 22nd/23rd chases went unanswered.
+check before repeating
+Ravi Menon (Lumen) promised Bright Market via email on 2024-09-02 that a fix for the blank VAT export totals was scheduled for the Sep 20 release ("We have scheduled a fix for the Sep 20 release"); that Sep 20 fix was not delivered — the client recorded no confirmation on Sep 20 and the actual fix was stated as 5.3.4 on 26 Sep, so the promise was broken.
+check before repeating
+Priya Nair (Lumen) told the client on 2024-09-04 that LUM-811 was "Also tracking in 5.3.3" and asked them to confirm receipt — effectively presenting 5.3.3 as the delivering version; the client's finance sandbox still showed blank exports after 5.3.3, so that expectation was not met.
+check before repeating
+Ravi Menon recorded in LUM-811 on 2024-09-18 that the "Fix is scheduled for the Sep 20 release" and asked the reporter to confirm which finance sandbox the export came from; the Sep 20 release did not resolve the issue (no Sep 20 confirmation per the client, and the ticket was resolved on 21 Sep against 5.3.3, then reopened on 26 Sep).
+check before repeating
+Priya Nair stated on 2024-09-21 that LUM-811 was "Resolved with the 5.3.3 rollout; exports verified on our side" — an internal-verification claim that was not kept: the finance sandbox totals were still blank when re-checked on 26 Sep and the real fix was 5.3.4.
+check before repeating
+Nadia Chen committed on 2024-09-26 that the VAT rounding root cause was found and "Fixed properly in 5.3.4 tomorrow", i.e. 5.3.4 on 27 Sep; the 28 Sep records report 5.3.4 shipped with the VAT rounding path corrected, consistent with that promise.
+check before repeating
+On 2 Sep, Ravi Menon committed to Bright Market by email that a fix was scheduled for the Sep 20 release.
+check before repeating
+Ravi Menon repeated the Sep 20 fix schedule in Jira on 18 Sep and asked the client which finance sandbox the export came from, but no client answer to that question appears in the records.
+check before repeating
+On 4 Sep, Priya Nair told the client the work was being tracked in 5.3.3 while stating the billing-v2 piece was separate — an early 5.3.3 fix-version expectation that later did not hold.
+check before repeating
+Priya Nair resolved LUM-811 (In Progress → Resolved) on 21 Sep, before the 26 Sep reopen that established the sandbox totals were still blank.
+check before repeating
+The blank VAT totals were traced to the KESTREL/billing-v2 refactor that moved VAT rounding to integer math in 5.3.0, a change recorded as still unreviewed; Nadia Chen noted this while triaging LUM-811.
+check before repeating
+Root cause was recorded under LUM-804 (the KESTREL/billing-v2 refactor ticket created by Alex Weinstein on 10 Sep), not LUM-811, so the cause of LUM-811 lived outside the customer-facing ticket.
+check before repeating
+The client's chases on the 22nd and 23rd went unanswered — the only inbound emails in the 21–24 Sep window are the client's own, with no internal reply recorded before Nadia Chen's 26 Sep email.
+check before repeating
+Nadia Chen reassigned LUM-811 from Alex Weinstein to Ravi Menon on 22 Sep — the day after the ticket had already been marked Resolved — indicating ownership was unsettled after the premature closure.
+check before repeating
+Nadia Chen reopened LUM-811 on 26 Sep after re-checking the finance sandbox and finding the VAT totals still blank, showing the 21 Sep Resolve and 5.3.3 rollout had not fixed the client's problem.
+check before repeating
+LUM-811 was finally resolved on 28 Sep as fixed in 5.3.4, with the VAT rounding path corrected and exports verified with finance.
+check before repeating
+Client-side confirmation of the 5.3.4 fix came on 28 Sep, after the escalation, with Bright Market noting the imports were verified but took longer than it should have (the message says 'Imports', not exports).
+check before repeating
+Work on LUM-811 sat in Open from creation on 2 Sep until Ravi Menon moved it to In Progress on 18 Sep, a 16-day period with no recorded triage progress.
+check before repeating
+Root cause recorded by Nadia Chen on LUM-804 (2024-09-22): the KESTREL refactor (billing-v2) moved VAT rounding to integer math in 5.3.0, which drops fractional cents and blanks the export totals, and that change was still unreviewed — a cause in a 5.3.0 change, identified only on 22 Sep, after LUM-811 had already been resolved against 5.3.3.
+check before repeating
+LUM-811 moved In Progress → Resolved on 2024-09-21, before the client's finance sandbox was checked: the reopen on 26 Sep recorded totals still blank, showing the resolution was premature relative to client-side verification.
+check before repeating
+On 2024-09-26 Nadia Chen reopened LUM-811 after re-checking the finance sandbox and finding totals still blank on VAT layouts — confirming the 5.3.3 fix announced on 21 Sep did not resolve the client's issue.
+check before repeating
+Priya Nair told the client on 2024-09-04 that "the billing-v2 piece is separate" from LUM-811, but the later root-cause note ties LUM-811's blank totals to the billing-v2/KESTREL VAT rounding change — an internal inconsistency between the decoupled LUM-811 workstream and the actual cause.
+flagged in skeptic review
+Bright Market's escalation of 2024-09-28 asserts the gap between records and experience: they were told the Sep 20 release would carry the fix, but an automated bot announcement of 5.3.3 fixes and the ticket closure occurred while their finance sandbox still showed blank exports, and their 22–23 Sep chases went unanswered.
+check before repeating
+On 2024-09-23 the client sent a fourth follow-up since 2 Sep noting no confirmation on the Sep 20 release; no reply from Lumen to this chase appears in the registry — Lumen's next message was Nadia Chen's internal-investigation note on 26 Sep.
+check before repeating
+Client-side corroboration that the fix landed: on 2024-09-28 Dana Okafor reported "Imports verified" while noting it took longer than it should have, indicating the VAT export path was working after 5.3.4.
+check before repeating
+LUM-811 was set In Progress → Resolved a second time on 2024-09-28 by Nadia Chen, seven days after the first (premature) resolution; this second closure follows the 5.3.4 fix and client verification.
+Rejected claims (0)
+Draft reply
+
+Draft for human review. Built only from verified findings. Nothing is sent from this app.
+
+No reply has been drafted for this investigation yet.
+
+Draft the client reply
+Timeline detail
+swimlane board with every finding, silence and lapse

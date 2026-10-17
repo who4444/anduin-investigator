@@ -162,6 +162,8 @@ Each is mapped to a gap below.
 
 ### G-06 — Current state, owner, and next action
 
+**Status:** **implemented (core) — 2026-10-18.** `buildCaseState` computes the "now" from stored records only: current status (latest transition wins — a reopen beats a premature resolve), latest version-bearing fix + QA check, owner (latest assignee transition; an unassignment reads as no-owner), next commitment (earliest open dated promise beyond the record horizon), last client contact (by confirmed client domain) and last internal update — each evidence-linked or explicitly unknown with a reason, with `asOf` = the record horizon. Rendered as the "now" strip under the answer; a missing owner renders in the critical tone. The draft-reply validator now drops sentences asserting a status or owner the case state and cited findings do not carry. Remaining: role labels for owners (needs identity data), and folding CaseState into the action list (that is G-09/G-11 territory).
+
 **Type:** decision layer, missing model.
 **Problem:** the report is historical. The client asks "when is this fixed?"; the manager asks "who acts now?" There is no current status, current owner, latest fix, latest verification, next commitment, or named client-comms owner.
 **Required behaviour**

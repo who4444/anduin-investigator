@@ -1,11 +1,109 @@
 "use client";
 
+import type { CaseState } from "@/lib/report/case-state";
 import type { Metric, ReportPayload } from "@/lib/report/build";
 
 function firstEvidenceId(claimIds: string[], eventIds: string[]): { claimId?: string; eventId?: string } {
   if (claimIds.length > 0) return { claimId: claimIds[0] };
   if (eventIds.length > 0) return { eventId: eventIds[0] };
   return {};
+}
+
+/* G-06: the "now" strip. Every field is evidence-linked or explicitly
+   unknown — a missing owner is a critical condition, not a blank. */
+function CaseStateBlock({
+  state,
+  onEvent,
+}: {
+  state: CaseState;
+  onEvent: (eventId: string) => void;
+}) {
+  const when = (iso: string) => <span className="now-when">· {iso.slice(0, 10)}</span>;
+  const record = (eventId: string | null | undefined) =>
+    eventId ? (
+      <button
+        type="button"
+        className="btn btn-quiet btn-claim now-open"
+        onClick={() => onEvent(eventId)}
+      >
+        record
+      </button>
+    ) : null;
+
+  return (
+    <div className="now-block" role="group" aria-label="Current state">
+      <div className="now-item">
+        <span className="now-label">Current status</span>
+        {state.currentStatus.known ? (
+          <span className="now-value">
+            {state.currentStatus.value} {state.currentStatus.since && when(state.currentStatus.since)}
+          </span>
+        ) : (
+          <span className="now-unknown">{state.currentStatus.reason}</span>
+        )}
+      </div>
+
+      <div className={`now-item${state.owner.known ? "" : " now-bad"}`}>
+        <span className="now-label">Owner now</span>
+        {state.owner.known ? (
+          <span className="now-value">
+            {state.owner.value} {state.owner.since && when(state.owner.since)}
+          </span>
+        ) : (
+          <span className="now-unknown">no current owner — {state.owner.reason}</span>
+        )}
+      </div>
+
+      <div className="now-item">
+        <span className="now-label">Latest fix</span>
+        {state.latestFix.known ? (
+          <span className="now-value">
+            {state.latestFix.value.text} {when(state.latestFix.value.ts)}
+          </span>
+        ) : (
+          <span className="now-unknown">{state.latestFix.reason}</span>
+        )}
+        {state.fixCheck.known && <span className="now-sub">check: {state.fixCheck.value}</span>}
+      </div>
+
+      <div className="now-item">
+        <span className="now-label">Next commitment</span>
+        {state.nextCommitment.known ? (
+          <span className="now-value">
+            {state.nextCommitment.value.object}{" "}
+            {state.nextCommitment.value.deadline && when(state.nextCommitment.value.deadline)}
+            {state.nextCommitment.eventId && <span> {record(state.nextCommitment.eventId)}</span>}
+          </span>
+        ) : (
+          <span className="now-unknown">{state.nextCommitment.reason}</span>
+        )}
+      </div>
+
+      <div className="now-item">
+        <span className="now-label">Last client contact</span>
+        {state.lastClientContact.known ? (
+          <span className="now-value">
+            {state.lastClientContact.value.actor} {when(state.lastClientContact.value.ts)}{" "}
+            {record(state.lastClientContact.eventId)}
+          </span>
+        ) : (
+          <span className="now-unknown">{state.lastClientContact.reason}</span>
+        )}
+      </div>
+
+      <div className="now-item">
+        <span className="now-label">Last internal update</span>
+        {state.lastInternalUpdate.known ? (
+          <span className="now-value">
+            {state.lastInternalUpdate.value.actor} {when(state.lastInternalUpdate.value.ts)}{" "}
+            {record(state.lastInternalUpdate.eventId)}
+          </span>
+        ) : (
+          <span className="now-unknown">{state.lastInternalUpdate.reason}</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function escalationSummary(text: string): string {
@@ -114,6 +212,8 @@ export function AnswerSection({
         {report.stats.rejected > 0 ? ` · ${report.stats.rejected} rejected` : ""}
         {report.stats.flagged > 0 ? ` · ${report.stats.flagged} flagged` : ""}.
       </p>
+
+      <CaseStateBlock state={report.caseState} onEvent={onEvent} />
 
       <div className="scoreboard" role="list" aria-label="The five answers">
         {report.bottomLine.cells.map((cell) => {

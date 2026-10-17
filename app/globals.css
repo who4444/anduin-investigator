@@ -924,6 +924,68 @@ button.finding:hover {
   color: var(--muted);
 }
 
+/* ---------- case state ("now" strip, G-06) ---------- */
+
+.now-block {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0 20px;
+}
+
+.now-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.now-item.now-bad {
+  border-top-color: var(--broken);
+}
+
+.now-item.now-bad .now-label {
+  color: var(--broken);
+}
+
+.now-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.now-value {
+  font-size: var(--fs-base);
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.now-when {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.now-unknown {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.now-sub {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.now-open {
+  font-size: var(--fs-xs);
+  padding: 0;
+}
+
 /* ---------- excluded records review (G-01) ---------- */
 
 .excluded-panel {
