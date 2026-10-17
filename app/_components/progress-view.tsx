@@ -46,8 +46,14 @@ function reportHref(id: string, flags: ProgressViewProps["flags"]) {
 
 function formatElapsed(stage: Stage | undefined): string {
   if (!stage?.startedAt) return "";
+  const start = Date.parse(stage.startedAt);
   const end = stage.finishedAt ? Date.parse(stage.finishedAt) : Date.now();
-  const seconds = Math.max(0, Math.round((end - Date.parse(stage.startedAt)) / 1000));
+  const millis = Math.max(0, end - start);
+  // Sub-second phases are real (offline/cached runs); "0m 00s" reads as
+  // broken, "<1s" is honest.
+  if (millis < 1000) return "<1s";
+  const seconds = Math.round(millis / 1000);
+  if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
 }
 
