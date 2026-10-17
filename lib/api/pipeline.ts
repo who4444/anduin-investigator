@@ -1,5 +1,5 @@
 import type { Investigation, Stage, StageName } from "../types";
-import { getInvestigation, upsertStage } from "../store";
+import { acquireStageLease, clearStageLease, getInvestigation, upsertStage } from "../store";
 
 export function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
@@ -50,6 +50,15 @@ export async function runStage<T>(
   pass: number,
   work: () => Promise<T>,
 ): Promise<Response> {
+  // One stage at a time per investigation: without this, a second tab (or a
+  // reload mid-run) would run parallel LLM pipelines and interleave passes.
+  const leased = await acquireStageLease(investigationId);
+  if (!leased) {
+    return errorResponse(
+      "A stage is already running for this investigation. Wait for it to finish, then reload.",
+      409,
+    );
+  }
   try {
     await upsertStage(investigationId, stage, pass, "running");
     const result = await work();
@@ -61,6 +70,10 @@ export async function runStage<T>(
       // Surfacing the original failure matters more than recording it.
     });
     return errorResponse(message, 500);
+  } finally {
+    await clearStageLease(investigationId).catch(() => {
+      // The lease also expires on its own; never mask the stage's outcome.
+    });
   }
 }
 

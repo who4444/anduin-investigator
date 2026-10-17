@@ -514,6 +514,49 @@ export async function setIngestWarnings(id: string, warnings: string[]): Promise
   await sql`update investigations set ingest_warnings = ${sql.json(warnings as unknown as JSONValue)} where id = ${id}`;
 }
 
+const STAGE_LEASE_SECONDS = 180;
+const STALE_RUNNING_SECONDS = 180;
+
+export async function acquireStageLease(
+  investigationId: string,
+  ttlSeconds = STAGE_LEASE_SECONDS,
+): Promise<boolean> {
+  const sql = getPool();
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+  const rows = await sql<{ id: string }[]>`
+    update investigations
+    set lease = ${sql.json({ expiresAt } as unknown as JSONValue)}
+    where id = ${investigationId}
+      and (
+        lease is null
+        or (lease ->> 'expiresAt')::timestamptz < now()
+      )
+    returning id
+  `;
+  return rows.length > 0;
+}
+
+export async function clearStageLease(investigationId: string): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set lease = null where id = ${investigationId}`;
+}
+
+/* A hard-killed function never records done/error; sweep those rows so the
+   UI stops showing an eternal spinner, and the reload can retry the stage. */
+export async function sweepStaleStages(investigationId: string): Promise<void> {
+  const sql = getPool();
+  await sql`
+    update stages
+    set status = 'error',
+        error = 'Function was killed mid-run; no completion was recorded.',
+        finished_at = now()
+    where investigation_id = ${investigationId}
+      and status = 'running'
+      and started_at is not null
+      and started_at < now() - (${STALE_RUNNING_SECONDS} || ' seconds')::interval
+  `;
+}
+
 export async function getGaps(investigationId: string): Promise<Gap[]> {
   const sql = getPool();
   const rows = await sql<GapRow[]>`
@@ -579,6 +622,7 @@ export async function appendStageLog(
 }
 
 export async function getStages(investigationId: string): Promise<Stage[]> {
+  await sweepStaleStages(investigationId);
   const sql = getPool();
   const rows = await sql<StageRow[]>`
     select stage, "pass", status, error, log, started_at, finished_at

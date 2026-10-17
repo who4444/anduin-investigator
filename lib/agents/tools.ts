@@ -265,6 +265,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
           const scope = investigation?.scope ?? null;
           if (
             scope &&
+            scope.confidence !== "none" &&
             !scope.ticketPrefixes.some((prefix) =>
               key.toUpperCase().startsWith(`${prefix.toUpperCase()}-`),
             )

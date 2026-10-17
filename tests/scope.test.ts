@@ -275,6 +275,18 @@ describe("resolveScope", () => {
     expect(resolved?.anchors).toEqual([{ kind: "declared-client", value: "Ghost Corp", source: "declared" }]);
   });
 
+  it("ignores a declared client that is not a real name", async () => {
+    const resolved = await resolveScope(
+      "Something about billing is broken.",
+      scopeEvents,
+      scriptedClient({ ticketPrefixes: ["MER"], channels: ["meridian-billing"] }),
+      "&&&",
+    );
+
+    // Junk punctuation cannot be an anchor: 2 registry anchors stay partial.
+    expect(resolved).toMatchObject({ confidence: "partial", ticketPrefixes: ["MER"] });
+  });
+
   it("returns null when nothing at all is known", async () => {
     const resolved = await resolveScope("Something broke.", scopeEvents, scriptedClient({}), null);
     expect(resolved).toBeNull();

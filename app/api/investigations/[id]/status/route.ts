@@ -10,13 +10,20 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const id = await readId(context.params);
-  const found = await readInvestigationOrDefault(id);
-  if ("response" in found) return found.response;
 
-  const stages = await getStages(id);
+  try {
+    const found = await readInvestigationOrDefault(id);
+    if ("response" in found) return found.response;
 
-  return json({
-    investigation: found.investigation,
-    stages: tailLog(stages),
-  });
+    const stages = await getStages(id);
+
+    return json({
+      investigation: found.investigation,
+      stages: tailLog(stages),
+    });
+  } catch (error) {
+    // A database hiccup must read as a JSON 500, not an HTML crash page.
+    const message = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: `Status unavailable: ${message}` }, { status: 500 });
+  }
 }

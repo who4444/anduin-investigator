@@ -361,7 +361,9 @@ export async function resolveScope(
   client: LlmClient,
   declaredClient?: string | null,
 ): Promise<InvestigationScope | null> {
-  const declared = declaredClient?.replace(/\s+/g, " ").trim().slice(0, 120) || null;
+  const declaredRaw = declaredClient?.replace(/\s+/g, " ").trim().slice(0, 120) || null;
+  // Punctuation noise ("&&&") must not count as a declared-client anchor.
+  const declared = declaredRaw && /\p{L}/u.test(declaredRaw) ? declaredRaw : null;
   const universe = deriveScopeUniverse(events);
   const emptyUniverse =
     universe.ticketPrefixes.length === 0 &&

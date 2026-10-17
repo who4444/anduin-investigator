@@ -197,6 +197,38 @@ describeDb("pipeline routes", () => {
     expect((await resultResponse.json()).error).toMatch(/valid identifier/i);
   });
 
+  it("refuses a stage while another run holds the lease, and releases it after", async () => {
+    const { POST: plan } = await import("../app/api/investigations/[id]/plan/route");
+    const { acquireStageLease, clearStageLease } = await import("../lib/store");
+
+    try {
+      expect(await acquireStageLease(investigationId, 60)).toBe(true);
+
+      const blocked = await plan(post("http://localhost/plan"), context(investigationId));
+      expect(blocked.status).toBe(409);
+      expect((await blocked.json()).error).toMatch(/already running/i);
+    } finally {
+      await clearStageLease(investigationId);
+    }
+
+    const released = await plan(post("http://localhost/plan"), context(investigationId));
+    expect(released.status).toBe(200);
+  });
+
+  it("sweeps a stage stuck in running and surfaces it as an error", async () => {
+    const { upsertStage, getStages } = await import("../lib/store");
+    const { getPool } = await import("../lib/db/pool");
+    const sql = getPool();
+
+    await upsertStage(investigationId, "verify", 1, "running");
+    await sql`update stages set started_at = now() - interval '10 minutes' where investigation_id = ${investigationId} and stage = 'verify'`;
+
+    const stages = await getStages(investigationId);
+    const swept = stages.find((stage) => stage.stage === "verify");
+    expect(swept?.status).toBe("error");
+    expect(swept?.error).toMatch(/killed|no completion/i);
+  });
+
   it("serves complete:false for an investigation whose pipeline has not run", async () => {
     const { createInvestigation } = await import("../lib/store");
     const { GET: resultRoute } = await import("../app/api/investigations/[id]/result/route");
