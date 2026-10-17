@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
 import { resolveScope } from "@/lib/pipeline/scope";
-import { getEvents, setScope } from "@/lib/store";
+import { getEvents, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
 
 export const maxDuration = 60;
 
@@ -26,15 +26,23 @@ export async function POST(
 
   return runStage(id, "plan", pass, async () => {
     // Identify which client and project this escalation concerns, verified
-    // against the registry, before any investigator searches it.
+    // against the registry, before any investigator searches it. Anchors
+    // learned from earlier confirmed investigations for the same declared
+    // client are offered as prior evidence (re-verified here).
     const events = await getEvents(id);
+    const declared = found.investigation.declaredClient;
+    const learned = await getLearnedScope(declared);
     const scope = await resolveScope(
       found.investigation.escalationText,
       events,
       getLlmClient(),
-      found.investigation.declaredClient,
+      declared,
+      learned,
     );
     await setScope(id, scope);
+    if (scope?.confidence === "scoped" && scope.client) {
+      await upsertLearnedScope(scope.client, scope);
+    }
 
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);
     return { plan, scope };

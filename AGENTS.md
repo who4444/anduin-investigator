@@ -64,14 +64,20 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
    may declare the client at intake; the model proposes further identifiers
    (client, project, ticket prefixes, Slack channels, sender domains) from the
    escalation, and CODE keeps only identifiers that actually exist in the
-   registry. Anchors (declared client, escalation sender/ticket evidence,
-   model proposals) are graded: >2 convergent anchors -> `scoped`, 1-2 ->
-   `partial` (runs scoped but the report shows an "unconfirmed scope" warning
-   with the linking evidence), 0 -> unscoped with an honest "every stored
-   record was searched" line. Contradicting anchors keep the component that
-   carries escalation evidence. All source tools, agent prompts and the report
-   are scoped accordingly (email replies follow their thread); excluded
-   records are counted and disclosed in the report.
+   registry (a key mentioned or referenced in any record exists — an
+   engagement may live entirely in Slack/email). Anchors (declared client,
+   escalation sender/ticket evidence, previously learned identifiers, model
+   proposals) are graded: >2 convergent anchors -> `scoped`, 1-2 -> `partial`
+   (runs scoped but the report shows an "unconfirmed scope" warning with the
+   linking evidence), 0 -> unscoped with an honest "every stored record was
+   searched" line. Convergence is bridged by shared records AND shared email
+   threads. Anchors carrying escalation evidence or learned identifiers are
+   never dropped when components disagree — they union and confidence stays
+   capped. Confirmed scopes are learned per declared client
+   (`learned_scopes` table, migrations/011) and offered back as re-verified
+   prior anchors on the next investigation. All source tools, agent prompts
+   and the report are scoped accordingly (email replies follow their thread);
+   excluded records AND claims are counted and disclosed in the report.
 3. Investigators run in PARALLEL, split by QUESTION, not by person. Each may
    search any source:
    - Root cause: what went wrong technically, when it first appeared, failed fixes

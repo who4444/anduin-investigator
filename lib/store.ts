@@ -344,6 +344,29 @@ export async function setPlanData(id: string, data: PlanData | null): Promise<vo
   await sql`update investigations set plan_data = ${data ? sql.json(data as unknown as JSONValue) : null} where id = ${id}`;
 }
 
+export async function upsertLearnedScope(declaredClient: string, scope: InvestigationScope): Promise<void> {
+  const sql = getPool();
+  const normalized = declaredClient.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!normalized) return;
+  await sql`
+    insert into learned_scopes (declared_client, scope)
+    values (${normalized}, ${sql.json(scope as unknown as JSONValue)})
+    on conflict (declared_client) do update set
+      scope = excluded.scope,
+      learned_at = now()
+  `;
+}
+
+export async function getLearnedScope(declaredClient: string | null | undefined): Promise<InvestigationScope | null> {
+  const sql = getPool();
+  const normalized = declaredClient?.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await sql<{ scope: unknown }[]>`
+    select scope from learned_scopes where declared_client = ${normalized} limit 1
+  `;
+  return rows.length ? mapScope(rows[0].scope) : null;
+}
+
 export interface InvestigationSummary {
   id: string;
   title: string;

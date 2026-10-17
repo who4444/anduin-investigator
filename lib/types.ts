@@ -171,7 +171,7 @@ export type ScopeConfidence = "scoped" | "partial" | "none";
 
 export type ScopeAnchorKind = "declared-client" | "ticket-prefix" | "channel" | "sender-domain";
 
-export type ScopeAnchorSource = "declared" | "escalation" | "model";
+export type ScopeAnchorSource = "declared" | "escalation" | "learned" | "model";
 
 export interface ScopeAnchor {
   kind: ScopeAnchorKind;

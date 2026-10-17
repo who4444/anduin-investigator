@@ -229,6 +229,93 @@ describeDb("pipeline routes", () => {
     expect(swept?.error).toMatch(/killed|no completion/i);
   });
 
+  it("persists learned anchors from a confirmed scope and re-uses them", async () => {
+    const { createInvestigation, insertEvents, getLearnedScope, setScope, deleteInvestigation } =
+      await import("../lib/store");
+    const { getPool } = await import("../lib/db/pool");
+    const sql = getPool();
+    // Clear anything learned for this client from earlier runs.
+    await sql`delete from learned_scopes where declared_client = 'northwind logistics'`;
+
+    const id = await createInvestigation({
+      title: `Learn ${randomUUID()}`,
+      escalationText: "Northwind Logistics escalation about Meridian Billing ticket MER-101.",
+      contentHash: `hash-${randomUUID()}`,
+      declaredClient: "Northwind Logistics",
+    });
+    created.push(id);
+    await insertEvents(id, [
+      {
+        id: "e_learn_bridge",
+        source: "slack",
+        ts: "2024-09-20T09:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "meridian-billing",
+        text: "Northwind escalation (MER-101): fix is scheduled.",
+        refs: ["MER-101"],
+      },
+    ]);
+
+    try {
+      // Pass 1: the model cooperates and the scope confirms.
+      const scripted = await import("../lib/llm");
+      scripted.setLlmClientForTests({
+        chat: async (messages) => {
+          const system = messages[0]?.content ?? "";
+          const user = messages.map((message) => message.content ?? "").join("\n").toLowerCase();
+          if (system.includes("issue analyst")) return { content: "plan" };
+          if (system.includes("identify which client and project")) {
+            return {
+              content: JSON.stringify({
+                client: "Northwind Logistics",
+                project: "Meridian Billing",
+                ticketPrefixes: ["MER"],
+                channels: ["meridian-billing"],
+                senderDomains: ["northwind.example"],
+              }),
+            };
+          }
+          if (system.includes("skeptic")) return { content: JSON.stringify({ issues: [] }) };
+          if (system.includes("one claim against one quote")) return { content: '{"supports":"yes"}' };
+          if (messages.some((message) => message.role === "tool")) return { content: '{"claims":[],"notes":[]}' };
+          return { content: "" };
+        },
+      });
+
+      const { POST: plan } = await import("../app/api/investigations/[id]/plan/route");
+      const first = await plan(post("http://localhost/plan"), context(id));
+      expect(first.status).toBe(200);
+      const firstScope = (await first.json()) as { scope?: { confidence?: string } };
+      expect(firstScope.scope?.confidence).toBe("scoped");
+      expect((await getLearnedScope("Northwind Logistics"))?.ticketPrefixes).toEqual(["MER"]);
+
+      // Pass 2: wipe the scope and have the model propose NOTHING — the
+      // learned anchors must carry the resolution.
+      await setScope(id, null);
+      scripted.setLlmClientForTests({
+        chat: async (messages) => {
+          const system = messages[0]?.content ?? "";
+          if (system.includes("issue analyst")) return { content: "plan" };
+          if (system.includes("identify which client and project")) return { content: "{}" };
+          if (system.includes("skeptic")) return { content: JSON.stringify({ issues: [] }) };
+          if (system.includes("one claim against one quote")) return { content: '{"supports":"yes"}' };
+          if (messages.some((message) => message.role === "tool")) return { content: '{"claims":[],"notes":[]}' };
+          return { content: "" };
+        },
+      });
+
+      const second = await plan(post("http://localhost/plan"), context(id));
+      const secondScope = (await second.json()) as {
+        scope?: { confidence?: string; ticketPrefixes?: string[]; channels?: string[] };
+      };
+      expect(secondScope.scope?.ticketPrefixes).toEqual(["MER"]);
+      expect(secondScope.scope?.channels).toEqual(["meridian-billing"]);
+    } finally {
+      await sql`delete from learned_scopes where declared_client = 'northwind logistics'`;
+      await deleteInvestigation(id);
+    }
+  });
+
   it("serves complete:false for an investigation whose pipeline has not run", async () => {
     const { createInvestigation } = await import("../lib/store");
     const { GET: resultRoute } = await import("../app/api/investigations/[id]/result/route");

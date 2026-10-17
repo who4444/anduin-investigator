@@ -41,6 +41,15 @@ export function deriveScopeUniverse(events: Event[]): ScopeUniverse {
       const match = event.actor.match(EMAIL_DOMAIN);
       if (match) domains.add(match[1].toLowerCase());
     }
+    // A ticket key mentioned or referenced in ANY record exists in the
+    // registry — an engagement may live entirely in Slack/email.
+    for (const match of event.text.matchAll(TICKET_ANYWHERE)) {
+      prefixes.add(match[1].toUpperCase());
+    }
+    for (const ref of event.refs ?? []) {
+      const match = ref.match(TICKET_KEY);
+      if (match) prefixes.add(match[1].toUpperCase());
+    }
   }
   return {
     ticketPrefixes: [...prefixes].sort(),
@@ -125,8 +134,9 @@ function anchorKey(anchor: ScopeAnchor): string {
 }
 
 const SOURCE_PRECEDENCE: Record<ScopeAnchor["source"], number> = {
-  declared: 3,
-  escalation: 2,
+  declared: 4,
+  escalation: 3,
+  learned: 2,
   model: 1,
 };
 
@@ -331,6 +341,19 @@ async function proposeFromModel(
   };
 }
 
+/* Two anchors are bridged when their record sets share a record, or share an
+   email thread — a reply that cites no ticket still ties its sender's domain
+   to the ticket its root discusses. */
+function anchorFootprint(anchor: ScopeAnchor, events: Event[]): Set<string> {
+  const footprint = new Set<string>();
+  for (const event of events) {
+    if (!matchesAnchor(anchor, event)) continue;
+    footprint.add(event.id);
+    if (event.threadId) footprint.add(`t:${event.threadId}`);
+  }
+  return footprint;
+}
+
 function anchorComponents(anchors: ScopeAnchor[], events: Event[]): ScopeAnchor[][] {
   const parent = anchors.map((_, index) => index);
   const find = (index: number): number =>
@@ -339,11 +362,17 @@ function anchorComponents(anchors: ScopeAnchor[], events: Event[]): ScopeAnchor[
     parent[find(a)] = find(b);
   };
 
+  const footprints = anchors.map((anchor) => anchorFootprint(anchor, events));
   for (let i = 0; i < anchors.length; i += 1) {
     for (let j = i + 1; j < anchors.length; j += 1) {
-      if (events.some((event) => matchesAnchor(anchors[i], event) && matchesAnchor(anchors[j], event))) {
-        union(i, j);
+      let shared = false;
+      for (const entry of footprints[i]) {
+        if (footprints[j].has(entry)) {
+          shared = true;
+          break;
+        }
       }
+      if (shared) union(i, j);
     }
   }
 
@@ -360,6 +389,7 @@ export async function resolveScope(
   events: Event[],
   client: LlmClient,
   declaredClient?: string | null,
+  learned?: InvestigationScope | null,
 ): Promise<InvestigationScope | null> {
   const declaredRaw = declaredClient?.replace(/\s+/g, " ").trim().slice(0, 120) || null;
   // Punctuation noise ("&&&") must not count as a declared-client anchor.
@@ -389,11 +419,27 @@ export async function resolveScope(
       ]
     : [];
 
+  // Previously verified identifiers for a declared client count as evidence
+  // again when they still exist in this registry; otherwise they are dropped.
+  const learnedAnchors: ScopeAnchor[] = learned
+    ? [
+        ...learned.ticketPrefixes
+          .filter((prefix) => universe.ticketPrefixes.includes(prefix.toUpperCase()))
+          .map((value): ScopeAnchor => ({ kind: "ticket-prefix", value: value.toUpperCase(), source: "learned" })),
+        ...learned.channels
+          .filter((channel) => universe.channels.includes(channel.toLowerCase()))
+          .map((value): ScopeAnchor => ({ kind: "channel", value: value.toLowerCase(), source: "learned" })),
+        ...learned.senderDomains
+          .filter((domain) => universe.senderDomains.includes(domain.toLowerCase()))
+          .map((value): ScopeAnchor => ({ kind: "sender-domain", value: value.toLowerCase(), source: "learned" })),
+      ]
+    : [];
+
   const declaredAnchor: ScopeAnchor | null = declared
     ? { kind: "declared-client", value: declared, source: "declared" }
     : null;
 
-  const registryAnchors = dedupeAnchors([...escalationAnchors, ...modelAnchors]);
+  const registryAnchors = dedupeAnchors([...escalationAnchors, ...learnedAnchors, ...modelAnchors]);
 
   if (registryAnchors.length === 0) {
     if (!declared) return null;
@@ -409,16 +455,17 @@ export async function resolveScope(
   }
 
   // Contradicting anchors (disjoint record sets) cannot all describe one
-  // client. Anchors carrying escalation evidence are never dropped — when
-  // they span multiple components, they are all kept and confidence is
-  // capped, so a casual prose mention can never vote the real ticket out.
+  // client. Anchors carrying escalation evidence — or previously verified
+  // identifiers for the declared client — are never dropped: when they span
+  // multiple components, they are all kept and confidence is capped, so a
+  // casual prose mention can never vote the real ticket out.
   let contradiction = false;
   let kept = registryAnchors;
   const components = anchorComponents(registryAnchors, events);
   if (components.length > 1) {
     contradiction = true;
     const evidenceComponents = components.filter((component) =>
-      component.some((anchor) => anchor.source === "escalation"),
+      component.some((anchor) => anchor.source === "escalation" || anchor.source === "learned"),
     );
     kept =
       evidenceComponents.length > 0
@@ -436,8 +483,8 @@ export async function resolveScope(
     !contradiction && total >= SCOPED_MIN_ANCHORS ? "scoped" : "partial";
 
   return {
-    client: declared ?? proposal?.client ?? null,
-    project: proposal?.project ?? null,
+    client: declared ?? proposal?.client ?? learned?.client ?? null,
+    project: proposal?.project ?? learned?.project ?? null,
     ticketPrefixes,
     channels,
     senderDomains,

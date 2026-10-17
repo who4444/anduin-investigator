@@ -275,6 +275,74 @@ describe("resolveScope", () => {
     expect(resolved?.anchors).toEqual([{ kind: "declared-client", value: "Ghost Corp", source: "declared" }]);
   });
 
+  it("re-uses re-verified learned anchors even when the model proposes nothing", async () => {
+    const learned: InvestigationScope = {
+      client: "Bright Market",
+      project: "Lumen Ledger",
+      ticketPrefixes: ["LUM"],
+      channels: ["lumen-general"],
+      senderDomains: ["brightmarket.example"],
+      confidence: "scoped",
+      anchors: [],
+    };
+
+    // Realistic-workspace-like registry: LUM prefix and brightmarket domain
+    // exist, so the learned identifiers re-verify; lumen-general bridges via
+    // the promise message.
+    const events = [
+      event({ id: "e-lum", channel: "LUM-811", text: "VAT invoice exports blank." }),
+      event({
+        id: "e-bridge",
+        source: "slack",
+        channel: "lumen-general",
+        text: "Bright Market escalation (LUM-811): fix scheduled.",
+        refs: ["LUM-811"],
+      }),
+      event({
+        id: "e-mail",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okafor <billing@brightmarket.example>",
+        text: "Checking in.",
+      }),
+    ];
+
+    const resolved = await resolveScope(
+      "Something is broken again.",
+      events,
+      scriptedClient({}),
+      "Bright Market",
+      learned,
+    );
+
+    expect(resolved).toMatchObject({
+      client: "Bright Market",
+      project: "Lumen Ledger",
+      ticketPrefixes: ["LUM"],
+      channels: ["lumen-general"],
+      // Disjoint record sets stay honestly partial — but the anchors SURVIVE
+      // (filtering applies), which is what scope memory buys.
+      confidence: "partial",
+    });
+    expect(resolved?.anchors.some((anchor) => anchor.source === "learned")).toBe(true);
+  });
+
+  it("drops learned identifiers that no longer exist in the registry", async () => {
+    const learned: InvestigationScope = {
+      client: "Bright Market",
+      project: "Lumen Ledger",
+      ticketPrefixes: ["LUM"],
+      channels: ["lumen-general"],
+      senderDomains: ["brightmarket.example"],
+      confidence: "scoped",
+      anchors: [],
+    };
+    // An empty registry universe: nothing re-verifies — the declared client
+    // is kept with an honest none state, no filtering.
+    const resolved = await resolveScope("broken.", [], scriptedClient({}), "Bright Market", learned);
+    expect(resolved).toMatchObject({ client: "Bright Market", confidence: "none", ticketPrefixes: [] });
+  });
+
   it("ignores a declared client that is not a real name", async () => {
     const resolved = await resolveScope(
       "Something about billing is broken.",
