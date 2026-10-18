@@ -10,6 +10,7 @@ import type {
 import { isPromiseLike } from "../pipeline/commitments";
 import type { CoverageReport } from "../pipeline/coverage";
 import { buildCaseState } from "./case-state";
+import { buildStory, type StoryInput, type StoryPromiseInput } from "./story";
 import { computeSilences, type Silences } from "./silence";
 import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
 import { rankGaps, type GapCategory, type GapTag } from "./gaps";
@@ -1030,146 +1031,91 @@ function buildActions(
   return actions.slice(0, 3);
 }
 
+/* D1-D3: the headline IS the answer-first story. buildStory computes the
+   deterministic sentences; this adapter feeds it the canonical decision
+   inputs and attaches the finding citations the report page links to. */
 function buildHeadline(
   input: ReportModelInput,
   findings: ReportFindingModel[],
   state: ReportStateModel,
-  client: ReportClientModel,
   openQuestions: OpenQuestionGroup[],
   counts: ReportCounts,
 ): ReportHeadline {
-  const sources = [...new Set(input.events.map((event) => event.source))];
-  const dates = input.events.map((event) => event.ts).sort();
-  const stats = [
-    `${counts.findings} finding${counts.findings === 1 ? "" : "s"}`,
-    `${counts.verified} verified`,
-    `${counts.needsCheck} needs check`,
-    `${counts.openQuestions} open question${counts.openQuestions === 1 ? "" : "s"}`,
-    sources.join(", "),
-    dates.length > 0 ? `${dateOnly(dates[0])} – ${dateOnly(dates[dates.length - 1])}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-  if (findings.length === 0) {
-    return {
-      sentences: [
-        {
-          text: "No records were found for this escalation; a full account is not possible.",
-          findingIds: [],
-        },
+  const visibleClaimIds = new Set(
+    input.claims
+      .filter((claim) => claim.verifyStatus !== "rejected" && !claim.review)
+      .map((claim) => claim.id),
+  );
+  const promises: StoryPromiseInput[] = [];
+  for (const commitment of input.commitments ?? []) {
+    if (!visibleClaimIds.has(commitment.claimId)) continue;
+    promises.push({
+      promisor: commitment.promisor,
+      promisee: commitment.promisee,
+      object: commitment.object,
+      deadlinePhrase: commitment.deadlinePhrase,
+      status: commitment.status,
+      findingIds: [
+        ...new Set(
+          findings
+            .filter(
+              (finding) =>
+                finding.claimIds.includes(commitment.claimId) ||
+                commitment.sourceEventIds.some((eventId) => finding.eventIds.includes(eventId)),
+            )
+            .map((finding) => finding.id),
+        ),
       ],
-      statsLine: stats,
-      nextStep: "Connect another source or confirm the client.",
-      tooThin: true,
-    };
+    });
   }
 
-  const tooThin = input.events.length < 4;
-  const sentences: HeadlineSentence[] = [];
-  const day = (iso: string): string =>
-    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-  const kindLabel = (finding: ReportFindingModel): string => {
-    switch (finding.kind) {
-      case "promise":
-        return "a promise";
-      case "technical_finding":
-        return "a technical finding";
-      case "process_failure":
-        return "a process failure";
-      case "communication":
-        return "a client message";
-      case "status_change":
-        return "a status change";
-      default:
-        return "a record";
-    }
+  const causeFinding = findings.find((finding) => finding.kind === "technical_finding") ?? null;
+  const cause: StoryInput["cause"] = causeFinding
+    ? {
+        statement: causeFinding.text,
+        ts: causeFinding.ts,
+        channel: causeFinding.channel,
+        state: causeFinding.verification === "rejected" ? "unverified" : causeFinding.verification,
+        findingIds: [causeFinding.id],
+      }
+    : null;
+
+  const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
+  const clientActors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
+  const isClientAuthored = (event: Event): boolean => {
+    const domain = emailDomain(event.actorResolved ?? event.actor);
+    if (domain && clientDomains.has(domain)) return true;
+    return [event.actor, event.actorResolved ?? ""].some((value) => clientActors.has(normalizeName(value)));
   };
-  const statusFinding = findings.find((finding) => finding.kind === "status_change");
-  const communicationFinding = findings.find((finding) => finding.kind === "communication");
-  const status = statusFinding?.eventText.match(STATUS_TRANSITION);
-  const assignee = statusFinding?.eventText.match(ASSIGNEE_TRANSITION);
-  const happened: string[] = [];
-  if (statusFinding) {
-    happened.push(
-      assignee
-        ? `${assignee[2].trim()} took ownership on ${day(statusFinding.ts)}`
-        : status
-          ? `the ticket moved to ${status[2].trim()} on ${day(statusFinding.ts)}`
-          : `a status change was recorded on ${day(statusFinding.ts)}`,
-    );
-  } else if (findings[0]) {
-    happened.push(`the first record is ${kindLabel(findings[0])} on ${day(findings[0].ts)}`);
-  }
-  if (communicationFinding) {
-    happened.push(`the client followed up on ${day(communicationFinding.ts)}`);
-  } else if (findings.length > 1) {
-    happened.push(`the latest record is ${kindLabel(findings[findings.length - 1])} on ${day(findings[findings.length - 1].ts)}`);
-  }
-  const currentState = state.currentStatus.known
-    ? `the ticket is ${state.currentStatus.value}`
-    : "the current status is not recorded";
-  const currentOwner = state.owner.known
-    ? `, owned by ${state.owner.value}`
-    : " and no owner is recorded";
-  const happenedIds = [
-    ...new Set(
-      [statusFinding?.id, communicationFinding?.id, ...state.currentStatus.basis, ...state.owner.basis].filter(
-        (id): id is string => Boolean(id),
-      ),
-    ),
-  ];
-  const firstIds = happenedIds.length > 0 ? happenedIds : findings.slice(0, 2).map((finding) => finding.id);
-
-  if (tooThin) {
-    sentences.push({
-      text: `Only ${input.events.length} records were found; a full account is not possible.`,
-      findingIds: findings.slice(0, 3).map((finding) => finding.id),
-    });
-    sentences.push({
-      text: `The evidence shows that ${happened.join(", then ")}; the record now shows ${currentState}${currentOwner}.`,
-      findingIds: firstIds,
-    });
-  } else {
-    sentences.push({
-      text: `The evidence shows that ${happened.join(", then ")}.`,
-      findingIds: firstIds,
-    });
-    sentences.push({
-      text: `The record now shows ${currentState}${currentOwner}.`,
-      findingIds: firstIds,
-    });
-  }
+  const hasClientIdentity = clientDomains.size > 0 || clientActors.size > 0;
+  const chases =
+    state.lastClientContact.known && hasClientIdentity
+      ? input.events.filter(isClientAuthored).length
+      : null;
 
   const open = openQuestions[0];
-  const unresolvedIds =
-    open?.findingIds.length > 0 ? open.findingIds.slice(0, 2) : findings.slice(-1).map((finding) => finding.id);
-  sentences.push({
-    text: client.clientKnown
-      ? open
-        ? `What remains open: ${open.theme.toLowerCase()}.`
-        : "No open question was recorded; the account is still limited by the available evidence."
-      : "The client and project are unresolved, so customer contact and role-based readings cannot be confirmed.",
-    findingIds: unresolvedIds.length > 0 ? unresolvedIds : findings.slice(0, 1).map((finding) => finding.id),
+  const story = buildStory({
+    cause,
+    promises,
+    currentStatus: { known: state.currentStatus.known, value: state.currentStatus.value, findingIds: state.currentStatus.basis },
+    statusChangedBy: { known: state.statusChangedBy.known, value: state.statusChangedBy.value, findingIds: state.statusChangedBy.basis },
+    lastClientContact: { known: state.lastClientContact.known, chases, findingIds: state.lastClientContact.basis },
+    latestFix: { known: state.latestFix.known, text: state.latestFix.value?.text ?? null, findingIds: state.latestFix.basis },
+    openQuestion: open ? { question: open.question, nextStep: open.nextStep, findingIds: open.findingIds } : null,
+    recordCount: input.events.length,
+    counts,
+    sources: [...new Set(input.events.map((event) => event.source))],
   });
 
-  const nextStep = !client.clientKnown
-    ? "Confirm the client and project."
-    : openQuestions[0]?.theme === "Ownership and handoff"
-      ? "Find the owner after the handoff."
-      : openQuestions[0]?.theme === "Delivery and technical cause"
-        ? "Get the deploy log or a failing reproduction."
-        : openQuestions[0]?.theme === "Client communication"
-          ? "Ask the account manager for the client thread."
-          : openQuestions[0]?.theme === "Coverage and evidence"
-            ? "Connect the missing source."
-            : "No urgent next step.";
-
+  const fallbackIds = findings.slice(0, 2).map((finding) => finding.id);
   return {
-    sentences: sentences.slice(0, 3),
-    statsLine: stats,
-    nextStep,
-    tooThin,
+    sentences: story.sentences.map((sentence) => ({
+      text: sentence.text,
+      findingIds: sentence.findingIds.length > 0 ? sentence.findingIds : fallbackIds,
+    })),
+    statsLine: story.statsLine,
+    nextStep: story.nextStep,
+    tooThin: story.tooThin,
   };
 }
 
@@ -1450,7 +1396,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     throw new Error("Report model count mismatch: open questions");
   }
 
-  const headline = buildHeadline(input, sorted, state, client, openQuestions, counts);
+  const headline = buildHeadline(input, sorted, state, openQuestions, counts);
   const actions = buildActions(sorted, state, actorInfo.actors);
   const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
   const pillSummary = suppressPills

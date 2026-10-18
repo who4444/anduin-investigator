@@ -306,11 +306,16 @@ describe("ReportModel revision brief", () => {
     expect(model.actors.every((actor) => actor.role === "unknown")).toBe(true);
   });
 
-  it("writes a 2-3 sentence story with finding citations and a muted stats line", () => {
+  it("writes an answer-first story with finding citations and a muted stats line", () => {
     const model = buildReportModel(input());
+    const text = model.headline.sentences.map((sentence) => sentence.text).join(" ");
     expect(model.headline.sentences.length).toBeGreaterThanOrEqual(2);
-    expect(model.headline.sentences.length).toBeLessThanOrEqual(3);
+    expect(model.headline.sentences.length).toBeLessThanOrEqual(5);
     expect(model.headline.sentences.every((sentence) => sentence.findingIds.length > 0)).toBe(true);
+    expect(text).toContain("Only 3 records were found; a full account is not possible.");
+    expect(text).toContain("The records do not establish a technical cause.");
+    expect(text).not.toContain("the first record is");
+    expect(text).not.toContain("the latest record is");
     expect(model.headline.statsLine).toContain("3 findings");
     expect(model.headline.statsLine).toContain(`${model.counts.openQuestions} open questions`);
     expect(model.headline.tooThin).toBe(true);
