@@ -1,0 +1,3711 @@
+{
+  "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+  "scenario": "multi",
+  "title": "Review run — Contoso two issues",
+  "declaredClient": "Contoso",
+  "scope": {
+    "client": "Contoso",
+    "project": "Orbit",
+    "ticketPrefixes": [
+      "ORB"
+    ],
+    "channels": [
+      "orbit-support"
+    ],
+    "senderDomains": [],
+    "confidence": "partial",
+    "anchors": [
+      {
+        "kind": "declared-client",
+        "value": "Contoso",
+        "source": "declared"
+      },
+      {
+        "kind": "ticket-prefix",
+        "value": "ORB",
+        "source": "linked"
+      },
+      {
+        "kind": "channel",
+        "value": "orbit-support",
+        "source": "model"
+      }
+    ]
+  },
+  "scopeOverrides": [],
+  "events": [
+    {
+      "id": "e_ebc0d0735f310289",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-02T08:40:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "ORB-101",
+      "text": "Issue created: VAT invoice exports show blank totals after 2.1.0",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_8149e4be343d2d70",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-02T08:45:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "ORB-101",
+      "text": "Since the 2.1.0 upgrade our VAT invoice exports show blank totals. Finance is blocked on reconciliation.",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_067eaca3e9777b0f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-02T09:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "Since the 2.1.0 upgrade our VAT invoice exports show blank totals. Finance is blocked on reconciliation.\n",
+      "threadId": "orbit-m1@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m1@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_dad17ccc7ed85a00",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-02T10:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "orbit-support",
+      "text": "Contoso reports blank VAT invoice totals since 2.1.0; tracking ORB-101.",
+      "refs": [
+        "ORB-101"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_49877edbe18541ac",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-05T09:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "orbit-support",
+      "text": "VAT fix scheduled for the Sep 20 release.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_866c3d0c033e8fc2",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-05T09:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "ORB-101",
+      "text": "Status: Open → In Progress",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_3e67b0bed9fa6fdd",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-05T09:05:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "ORB-101",
+      "text": "We have scheduled the VAT fix for the Sep 20 release.",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_34fc1b6a8046c9d1",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-05T09:30:00.000Z",
+      "actor": "Ravi Menon <ravi.menon@orbit.example>",
+      "channel": "email",
+      "text": "We have scheduled the VAT fix for the Sep 20 release.\n",
+      "threadId": "orbit-m1@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m2@orbit.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_02294f520430607f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-10T11:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "ORB-150",
+      "text": "Issue created: BILLING-V2: VAT rounding regression",
+      "url": "https://orbit.atlassian.net/browse/ORB-150",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_f6d7712eaa97750c",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-10T12:40:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "orbit-eng",
+      "text": "BILLING-V2 moved VAT rounding to integer math in 2.1.0; that is the invoice cause.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_0f106bfd54c950b7",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-18T09:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "Separate issue: finance users cannot sign in since the identity migration. The SSO error is AADSTS50011.\n",
+      "threadId": "orbit-m3@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m3@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_a09a37ca7c46cdd6",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-18T09:20:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "ORB-140",
+      "text": "Issue created: SSO login fails for Contoso finance users",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_d949bcd3976992d9",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-18T09:25:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "ORB-140",
+      "text": "Finance users cannot sign in since the identity migration; the SSO error is AADSTS50011.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_14bb59f4c1d07a6d",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-18T09:30:00.000Z",
+      "actor": "Leo Park",
+      "channel": "orbit-support",
+      "text": "Contoso SSO is broken for finance since the identity migration; tracking ORB-140.",
+      "refs": [
+        "ORB-140"
+      ],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_88633507b8e908e4",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-18T10:00:00.000Z",
+      "actor": "Leo Park",
+      "channel": "ORB-140",
+      "text": "Status: Open → In Progress",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_d4eb3ffcce569753",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-18T10:00:00.000Z",
+      "actor": "Leo Park <leo.park@orbit.example>",
+      "channel": "email",
+      "text": "We will ship the SSO fix in the Sep 26 release.\n",
+      "threadId": "orbit-m3@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m4@orbit.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_a27edabc8eff4a4f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-18T10:05:00.000Z",
+      "actor": "Leo Park",
+      "channel": "ORB-140",
+      "text": "We will ship the SSO fix in the Sep 26 release.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_88ae1b590afc698b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-20T13:00:00.000Z",
+      "actor": "Leo Park",
+      "channel": "orbit-eng",
+      "text": "Identity-service 3.4 dropped the SAML signing certificate; that is the SSO cause.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_9c1b485fd52fb5ac",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-20T13:00:00.000Z",
+      "actor": "Leo Park",
+      "channel": "ORB-160",
+      "text": "Issue created: Identity-service 3.4 dropped the SAML signing certificate",
+      "url": "https://orbit.atlassian.net/browse/ORB-160",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_8c6234dd6dafc427",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-21T10:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "ORB-101",
+      "text": "Status: In Progress → Resolved",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_29b5f45b5a41b9c7",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-21T10:05:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "ORB-101",
+      "text": "Resolved in 2.1.3; totals verified on our side.",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_4f0f0bccc2f695ff",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-21T10:10:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "orbit-support",
+      "text": "Marking ORB-101 resolved; the VAT fix is in 2.1.3.",
+      "refs": [
+        "ORB-101"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_bfadc3c23a70d848",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-22T09:00:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "general",
+      "text": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+      "refs": [],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_a4bc5d2194c3feab",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-22T10:00:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "general",
+      "text": "Separately, finance still cannot sign in. Two problems, no dates.",
+      "refs": [],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_e6da783262af7a16",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-23T08:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance still cannot sign in. We need a date for each issue.\n",
+      "threadId": "orbit-m1@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m5@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_915f99979466812e",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-23T08:30:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "general",
+      "text": "Third chase: VAT totals blank and SSO down. We need answers on both.",
+      "refs": [],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_55f39a25a1a6af43",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-24T16:20:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-150",
+      "text": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export totals. That change is still unreviewed.",
+      "url": "https://orbit.atlassian.net/browse/ORB-150",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_1537f425d460e38e",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-26T11:00:00.000Z",
+      "actor": "Leo Park",
+      "channel": "ORB-140",
+      "text": "Status: In Progress → Resolved",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_aadddbd3762a3e24",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-26T11:05:00.000Z",
+      "actor": "Leo Park",
+      "channel": "ORB-140",
+      "text": "Resolved; the identity migration is complete.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_7e2a7c425bcaa2ed",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-26T14:30:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-101",
+      "text": "Status: Resolved → In Progress",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_e69341df2eb99385",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-26T14:32:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-101",
+      "text": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_37045d7af6d4d126",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-26T14:40:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "orbit-support",
+      "text": "Reopened ORB-101: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "refs": [
+        "ORB-101"
+      ],
+      "meta": {
+        "user": "U4"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_2d2e3f6205029a70",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-26T15:40:00.000Z",
+      "actor": "Leo Park",
+      "channel": "orbit-support",
+      "text": "Marking ORB-140 resolved; the SSO fix is included.",
+      "refs": [
+        "ORB-140"
+      ],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_e2e1c4ce08dc78fd",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-27T08:10:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "ORB-140",
+      "text": "Still failing for finance. This is not fixed.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_378efb8c1ebd1254",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-27T08:15:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "SSO is still failing after your Sep 26 release. Please confirm what went out.\n",
+      "threadId": "orbit-m3@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m6@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_f8be10930b9d3314",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-27T08:20:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "general",
+      "text": "SSO is still failing after your Sep 26 release.",
+      "refs": [],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_0efa6b5176a2c433",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-28T09:40:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-101",
+      "text": "Status: In Progress → Resolved",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_0713b6525819e03a",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-28T09:45:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-101",
+      "text": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+      "url": "https://orbit.atlassian.net/browse/ORB-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_58b4307b8f195cf4",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-28T10:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "VAT totals are still blank. We have had no confirmation on the Sep 20 release.\n",
+      "threadId": "orbit-m1@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m7@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_1ece4b255c3205b3",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-29T09:00:00.000Z",
+      "actor": "Dana Okafor",
+      "channel": "general",
+      "text": "VAT still blank and SSO still down. Escalating this on our side.",
+      "refs": [],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_81847ef8c5ff5126",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-29T15:30:00.000Z",
+      "actor": "Sam Ortiz",
+      "channel": "ORB-140",
+      "text": "The identity-service 3.4 migration dropped the SAML signing certificate; that is why SSO fails. Fixed in 3.4.1.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_e3d40dc0edf3ee19",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-29T15:35:00.000Z",
+      "actor": "Sam Ortiz",
+      "channel": "ORB-160",
+      "text": "The 3.4 migration dropped the SAML signing certificate from the tenant config; that is the SSO root cause.",
+      "url": "https://orbit.atlassian.net/browse/ORB-160",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_cccb8f12d86c7dec",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-29T15:40:00.000Z",
+      "actor": "Sam Ortiz",
+      "channel": "orbit-support",
+      "text": "SSO root cause: identity-service 3.4 dropped the SAML certificate; 3.4.1 fixes it.",
+      "refs": [],
+      "meta": {
+        "user": "U5"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_b4616111224cda5e",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-29T16:40:00.000Z",
+      "actor": "Sam Ortiz",
+      "channel": "orbit-eng",
+      "text": "3.4.1 restores the SAML certificate; SSO verified with finance.",
+      "refs": [],
+      "meta": {
+        "user": "U5"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_074f5e7d4f3c7d86",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-30T08:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "This is a formal escalation. We have two independent issues: blank VAT totals since 2.1.0, and SSO login failing for finance since the identity migration. The VAT fix was promised for Sep 20 and the SSO fix for Sep 26. Both dates passed without a working fix, our chases on 22 and 23 September went unanswered, and we still have no explanation or dates. Please explain what happened on each issue and when each will actually be fixed.\n\nDana Okafor, Finance Lead, Contoso\n",
+      "threadId": "orbit-escalation@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-escalation@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_bba117f3af21cc47",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "email",
+      "ts": "2024-09-30T08:00:00.000Z",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "channel": "email",
+      "text": "This is a formal escalation. We have two independent issues: blank VAT totals since 2.1.0, and SSO login failing for finance since the identity migration. The VAT fix was promised for Sep 20 and the SSO fix for Sep 26. Both dates passed without a working fix, our chases on 22 and 23 September went unanswered, and we still have no explanation or dates. Please explain what happened on each issue and when each will actually be fixed.\n",
+      "threadId": "orbit-m5@contoso.example",
+      "refs": [],
+      "meta": {
+        "messageId": "orbit-m8@contoso.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_1b972cdbcdc1989e",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-30T10:00:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "orbit-support",
+      "text": "VAT fixed in 2.1.4; exports verified with finance.",
+      "refs": [],
+      "meta": {
+        "user": "U4"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_c3a6ca3911af61e4",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-30T10:00:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-140",
+      "text": "Status: Resolved → Resolved",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_96652f35e252e93b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "jira",
+      "ts": "2024-09-30T10:05:00.000Z",
+      "actor": "Maya Rao",
+      "channel": "ORB-140",
+      "text": "Verified SSO with Contoso finance; closing.",
+      "url": "https://orbit.atlassian.net/browse/ORB-140",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_783c4feb1b9b86e1",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "source": "slack",
+      "ts": "2024-09-30T11:00:00.000Z",
+      "actor": "Ravi Menon",
+      "channel": "general",
+      "text": "SSO is fixed in 3.4.1 and VAT is fixed in 2.1.4. Sorry for the run-around.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    }
+  ],
+  "claims": [
+    {
+      "id": "bb514049-0f28-4849-ae2a-f9a1ee15f192",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "The blank VAT totals root cause is the BILLING-V2 refactor, which moved VAT rounding to integer math in 2.1.0, dropping fractional cents and blanking the export totals — a change recorded as still unreviewed (ORB-150, raised 10 Sep).",
+      "actor": "Maya Rao",
+      "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export totals. That change is still unreviewed.",
+      "eventId": "e_55f39a25a1a6af43",
+      "ts": "2024-09-24T16:20:00.000Z",
+      "status": "n/a",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-24T16:20:00.000Z",
+          "eventTs": "2024-09-24T16:20:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "cd7d43b0-4c97-4be3-ae3d-b0f27721ad52",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "A separate VAT rounding regression ticket, ORB-150 'BILLING-V2: VAT rounding regression', was created on 10 Sep, confirming the defect was known on the build line rather than being client-side configuration.",
+      "actor": "Ravi Menon",
+      "quote": "Issue created: BILLING-V2: VAT rounding regression",
+      "eventId": "e_02294f520430607f",
+      "ts": "2024-09-10T11:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T11:00:00.000Z",
+          "eventTs": "2024-09-10T11:00:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "c774ad87-eb62-45a5-8d2a-248d521e4f81",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "ORB-101 was resolved on 21 Sep on the claim that the VAT fix was in 2.1.3 and totals were verified internally, but the fix was not effective: the ticket was reopened on 26 Sep because the finance sandbox still showed blank VAT totals on 2.1.3.",
+      "actor": "Ravi Menon",
+      "quote": "Resolved in 2.1.3; totals verified on our side.",
+      "eventId": "e_29b5f45b5a41b9c7",
+      "ts": "2024-09-21T10:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-21T10:05:00.000Z",
+          "eventTs": "2024-09-21T10:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "f57b3b2c-8ef3-400d-a582-32660545853a",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "Version 2.1.3 did not carry a working VAT fix — the finance sandbox still showed blank VAT totals on 2.1.3, so the Sep 20 release line (2.1.3) did not resolve the issue.",
+      "actor": "Maya Rao",
+      "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "eventId": "e_e69341df2eb99385",
+      "ts": "2024-09-26T14:32:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T14:32:00.000Z",
+          "eventTs": "2024-09-26T14:32:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "f4fdb651-4876-4d2b-8a21-0173bb435d32",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "The VAT issue was only actually fixed in 2.1.4, when the VAT rounding path was corrected and exports verified with finance; ORB-101 was then re-resolved on 28 Sep.",
+      "actor": "Maya Rao",
+      "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+      "eventId": "e_0713b6525819e03a",
+      "ts": "2024-09-28T09:45:00.000Z",
+      "status": "kept",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-28T09:45:00.000Z",
+          "eventTs": "2024-09-28T09:45:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "38a942e7-1204-428e-a41c-aef5806956c5",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Ravi Menon promised Dana Okafor/Contoso that the VAT fix was scheduled for the Sep 20 release.",
+      "actor": "Ravi Menon",
+      "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+      "eventId": "e_3e67b0bed9fa6fdd",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-05T09:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "9736ea7d-8246-4b60-9e09-b76b8ad0a4cc",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Ravi Menon emailed Dana Okafor that the VAT fix was scheduled for the Sep 20 release.",
+      "actor": "Ravi Menon",
+      "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+      "eventId": "e_34fc1b6a8046c9d1",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-05T09:30:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon <ravi.menon@orbit.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "bff3eaa1-0408-49f3-9c19-f35d43d02126",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Leo Park promised on ORB-140 that the SSO fix would ship in the Sep 26 release.",
+      "actor": "Leo Park",
+      "quote": "We will ship the SSO fix in the Sep 26 release.",
+      "eventId": "e_a27edabc8eff4a4f",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-18T10:05:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "52d03f54-b33e-4660-b578-5203afe28ec1",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Leo Park emailed Dana Okafor that the SSO fix would ship in the Sep 26 release.",
+      "actor": "Leo Park",
+      "quote": "We will ship the SSO fix in the Sep 26 release.",
+      "eventId": "e_d4eb3ffcce569753",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-18T10:00:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park <leo.park@orbit.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "4a4cd3d4-873d-4677-a236-313263e46f87",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "root_cause",
+      "text": "The blank VAT totals originated in the 2.1.0 upgrade and were still present on 2.1.3; the actual correction was the VAT rounding path fixed in 2.1.4, verified with finance on Sep 28.",
+      "actor": "Maya Rao",
+      "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+      "eventId": "e_0713b6525819e03a",
+      "ts": "2024-09-28T09:45:00.000Z",
+      "status": "kept",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-28T09:45:00.000Z",
+          "eventTs": "2024-09-28T09:45:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "97dba1f5-2cf2-43ca-93b6-f3c716730333",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Ravi Menon closed ORB-101 as resolved on Sep 21 claiming the VAT fix was in 2.1.3, but that claim was wrong — the finance sandbox still showed blank VAT totals on 2.1.3, which led to a reopen by Maya Rao on Sep 26.",
+      "actor": "Maya Rao",
+      "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "eventId": "e_e69341df2eb99385",
+      "ts": "2024-09-26T14:32:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T14:32:00.000Z",
+          "eventTs": "2024-09-26T14:32:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "0b153af9-c770-4995-9507-534933cf7eb2",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "decision",
+      "text": "Ravi Menon moved ORB-101 to Resolved on Sep 21 and asserted totals were verified on Orbit's side, closing the ticket a day after the promised Sep 20 release date despite no delivery to Contoso.",
+      "actor": "Ravi Menon",
+      "quote": "Resolved in 2.1.3; totals verified on our side.",
+      "eventId": "e_29b5f45b5a41b9c7",
+      "ts": "2024-09-21T10:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-21T10:05:00.000Z",
+          "eventTs": "2024-09-21T10:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "88158d14-b214-41af-8b35-f41277a4bac0",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "Ravi Menon committed that the VAT fix would be delivered in the Sep 20 release.",
+      "actor": "Ravi Menon",
+      "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+      "eventId": "e_3e67b0bed9fa6fdd",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-05T09:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "48359ff3-774b-4e02-a777-9301e9fc6365",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "Ravi Menon told Contoso by email that the VAT fix was scheduled for the Sep 20 release.",
+      "actor": "Ravi Menon",
+      "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+      "eventId": "e_34fc1b6a8046c9d1",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-05T09:30:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon <ravi.menon@orbit.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "5d87315c-7a2f-4a40-82cc-c0a2547c9879",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "root_cause",
+      "text": "The SSO failure for Contoso finance users was caused by the identity-service 3.4 migration dropping the SAML signing certificate, and was only fixed in 3.4.1.",
+      "actor": "Sam Ortiz",
+      "quote": "The identity-service 3.4 migration dropped the SAML signing certificate; that is why SSO fails. Fixed in 3.4.1.",
+      "eventId": "e_81847ef8c5ff5126",
+      "ts": "2024-09-29T15:30:00.000Z",
+      "status": "kept",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-29T15:30:00.000Z",
+          "eventTs": "2024-09-29T15:30:00.000Z",
+          "claimActor": "Sam Ortiz",
+          "eventActor": "Sam Ortiz"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "60dda1ca-13f0-4498-9bc9-00eb2a57a564",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Leo Park resolved ORB-140 on Sep 26 on the sole basis that the identity migration was complete, which did not address the dropped SAML certificate; Dana Okafor reported it still failing the next day.",
+      "actor": "Leo Park",
+      "quote": "Resolved; the identity migration is complete.",
+      "eventId": "e_aadddbd3762a3e24",
+      "ts": "2024-09-26T11:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T11:05:00.000Z",
+          "eventTs": "2024-09-26T11:05:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "0f65ba13-d3fb-44da-a431-9ce84ff7bb8b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "ORB-140 was moved to Resolved again on Sep 30 without a documented transition through In Progress after Dana's Sep 27 'still failing' report, and Maya Rao closed it claiming verification with Contoso finance.",
+      "actor": "Maya Rao",
+      "quote": "Verified SSO with Contoso finance; closing.",
+      "eventId": "e_96652f35e252e93b",
+      "ts": "2024-09-30T10:05:00.000Z",
+      "status": "unclear",
+      "confidence": 0.6,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-30T10:05:00.000Z",
+          "eventTs": "2024-09-30T10:05:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "be379d9b-31af-4830-bf08-62bfc7f9fe78",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "Leo Park committed that the SSO fix would ship in the Sep 26 release.",
+      "actor": "Leo Park",
+      "quote": "We will ship the SSO fix in the Sep 26 release.",
+      "eventId": "e_a27edabc8eff4a4f",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-18T10:05:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "58926b3c-3f37-4ea8-baaa-6c59a2ad559e",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "Leo Park promised Contoso by email to ship the SSO fix in the Sep 26 release.",
+      "actor": "Leo Park",
+      "quote": "We will ship the SSO fix in the Sep 26 release.",
+      "eventId": "e_d4eb3ffcce569753",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-18T10:00:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park <leo.park@orbit.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "99b47ef2-30de-4c7b-8a62-cb9d8af9418c",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "commitment",
+      "text": "Ravi Menon promised the VAT fix would ship in the Sep 20 release, but no 2.1.x release delivered a working VAT fix by that date — 2.1.3 still showed blank totals and the fix only landed in 2.1.4.",
+      "actor": "Ravi Menon",
+      "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+      "eventId": "e_3e67b0bed9fa6fdd",
+      "ts": "2024-09-05T09:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-05T09:05:00.000Z",
+          "eventTs": "2024-09-05T09:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "24db7fa9-be41-449a-aa5b-15f1b64c1a79",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Contoso's 22 Sep chase on the VAT issue ('Invoice totals are still blank. We have had no reply on the Sep 20 promise.') went unanswered in the record — no Orbit reply appears in that period.",
+      "actor": "Dana Okafor",
+      "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+      "eventId": "e_bfadc3c23a70d848",
+      "ts": "2024-09-22T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.75,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-22T09:00:00.000Z",
+          "eventTs": "2024-09-22T09:00:00.000Z",
+          "claimActor": "Dana Okafor",
+          "eventActor": "Dana Okafor"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "a28feec7-1cd7-474a-8a0a-27604614d372",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Contoso's 23 Sep follow-up in email on the VAT issue (fourth follow-up, no confirmation on the Sep 20 release) received no recorded Orbit reply.",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance still cannot sign in. We need a date for each issue.",
+      "eventId": "e_e6da783262af7a16",
+      "ts": "2024-09-23T08:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.7,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "confirmation",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T08:00:00.000Z",
+          "eventTs": "2024-09-23T08:00:00.000Z",
+          "claimActor": "Dana Okafor <dana.okafor@contoso.example>",
+          "eventActor": "Dana Okafor <dana.okafor@contoso.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "3ea37a4a-856e-4233-8334-66ce7f37a7ae",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Contoso re-reported on 28 Sep that VAT totals were still blank with no confirmation about the Sep 20 release, i.e. still no working fix communicated at that date.",
+      "actor": "Dana Okafor <dana.okafor@contoso.example>",
+      "quote": "VAT totals are still blank. We have had no confirmation on the Sep 20 release.",
+      "eventId": "e_58b4307b8f195cf4",
+      "ts": "2024-09-28T10:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.75,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "confirmation",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-28T10:00:00.000Z",
+          "eventTs": "2024-09-28T10:00:00.000Z",
+          "claimActor": "Dana Okafor <dana.okafor@contoso.example>",
+          "eventActor": "Dana Okafor <dana.okafor@contoso.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "220b7a5f-61a0-4b16-912b-07e1244d75d3",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "root_cause",
+      "text": "The blank VAT totals were caused by the BILLING-V2 refactor in 2.1.0 moving VAT rounding to integer math, dropping fractional cents and blanking export totals.",
+      "actor": "Maya Rao",
+      "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export totals. That change is still unreviewed.",
+      "eventId": "e_55f39a25a1a6af43",
+      "status": "n/a",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-24T16:20:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "6cd9ffee-31e5-4722-83da-388410c83c09",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Ravi Menon resolved ORB-101 as fixed in 2.1.3 without the client confirming it, and Maya Rao had to reopen it because the finance sandbox still showed blank VAT totals on 2.1.3.",
+      "actor": "Ravi Menon",
+      "quote": "Resolved in 2.1.3; totals verified on our side.",
+      "eventId": "e_29b5f45b5a41b9c7",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_refutes",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "refutes"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-21T10:05:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "e3ede50c-a084-435c-be15-453779f6f0eb",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "root_cause",
+      "text": "The premature ORB-101 resolution was wrong because the finance sandbox still showed blank VAT totals on 2.1.3.",
+      "actor": "Maya Rao",
+      "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "eventId": "e_e69341df2eb99385",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-26T14:32:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "50873ce3-c169-46ce-90ee-f9f761d63bb8",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "commitments",
+      "type": "decision",
+      "text": "ORB-101 was finally fixed in 2.1.4 by correcting the VAT rounding path, with exports verified with finance.",
+      "actor": "Maya Rao",
+      "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+      "eventId": "e_0713b6525819e03a",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": null,
+          "eventTs": "2024-09-28T09:45:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "15462beb-967c-4dda-b3be-27cd7f53115d",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Dana Okafor's Sep 22 chase on the VAT issue went unanswered: she reported blank invoice totals and that there had been no reply on the Sep 20 promise.",
+      "actor": "Dana Okafor",
+      "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+      "eventId": "e_bfadc3c23a70d848",
+      "ts": "2024-09-22T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-22T09:00:00.000Z",
+          "eventTs": "2024-09-22T09:00:00.000Z",
+          "claimActor": "Dana Okafor",
+          "eventActor": "Dana Okafor"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "9777d8b0-4bcc-41c5-91f6-5d4605cbaef1",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Dana Okafor's Sep 23 email, described as the fourth follow-up, sought a date for the VAT issue and still had no confirmation on the Sep 20 release; no reply from Orbit appears in the email thread.",
+      "actor": "Dana Okafor",
+      "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance still cannot sign in. We need a date for each issue.",
+      "eventId": "e_e6da783262af7a16",
+      "ts": "2024-09-23T08:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T08:00:00.000Z",
+          "eventTs": "2024-09-23T08:00:00.000Z",
+          "claimActor": "Dana Okafor",
+          "eventActor": "Dana Okafor <dana.okafor@contoso.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "40dcc18b-f1dd-4c8a-8312-49acac3b47c8",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Dana Okafor's Sep 23 chase also covered the SSO issue — she stated finance still could not sign in and asked for a date — and no Orbit reply addressing it is recorded.",
+      "actor": "Dana Okafor",
+      "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance still cannot sign in. We need a date for each issue.",
+      "eventId": "e_e6da783262af7a16",
+      "ts": "2024-09-23T08:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.75,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T08:00:00.000Z",
+          "eventTs": "2024-09-23T08:00:00.000Z",
+          "claimActor": "Dana Okafor",
+          "eventActor": "Dana Okafor <dana.okafor@contoso.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "95eccee2-934d-482e-9672-6d596362b0a9",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "ownership",
+      "text": "Leo Park took ownership of the SSO incident for Contoso right after the report, acknowledging that Contoso SSO was broken for finance since the identity migration and that ORB-140 was tracking it.",
+      "actor": "Leo Park",
+      "quote": "Contoso SSO is broken for finance since the identity migration; tracking ORB-140.",
+      "eventId": "e_14bb59f4c1d07a6d",
+      "ts": "2024-09-18T09:30:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-18T09:30:00.000Z",
+          "eventTs": "2024-09-18T09:30:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "29efc28f-cd70-4c54-b8c2-d6847a6e78c6",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "ownership",
+      "text": "Ravi Menon owned the VAT incident from the start, logging the Contoso blank VAT totals as ORB-101, but responsibility for the eventual verified fix passed to Maya Rao on Sep 26-28.",
+      "actor": "Ravi Menon",
+      "quote": "Contoso reports blank VAT invoice totals since 2.1.0; tracking ORB-101.",
+      "eventId": "e_dad17ccc7ed85a00",
+      "ts": "2024-09-02T10:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-02T10:00:00.000Z",
+          "eventTs": "2024-09-02T10:00:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "7cb5e511-7f1d-4585-bd98-e132bb95e9cf",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "decision",
+      "text": "Leo Park announced internally on Sep 26 that ORB-140 was being marked resolved on the basis that the SSO fix was included, before Contoso confirmed it worked.",
+      "actor": "Leo Park",
+      "quote": "Marking ORB-140 resolved; the SSO fix is included.",
+      "eventId": "e_2d2e3f6205029a70",
+      "ts": "2024-09-26T15:40:00.000Z",
+      "status": "broken",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T15:40:00.000Z",
+          "eventTs": "2024-09-26T15:40:00.000Z",
+          "claimActor": "Leo Park",
+          "eventActor": "Leo Park"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "d1c291da-dd6f-4cf2-bd20-28c1b0c884a3",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "decision",
+      "text": "Ravi Menon announced on Sep 21 that ORB-101 was being marked resolved because the VAT fix was in 2.1.3, which Maya Rao later contradicted by reopening it on evidence the 2.1.3 build still showed blank totals.",
+      "actor": "Ravi Menon",
+      "quote": "Marking ORB-101 resolved; the VAT fix is in 2.1.3.",
+      "eventId": "e_4f0f0bccc2f695ff",
+      "ts": "2024-09-21T10:10:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-21T10:10:00.000Z",
+          "eventTs": "2024-09-21T10:10:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "498ed62d-3fd9-45d1-b11a-2a80f13ea9f1",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Maya Rao acknowledged internally on Sep 26 that ORB-101 had to be reopened because 2.1.3 still showed blank VAT totals in the finance sandbox.",
+      "actor": "Maya Rao",
+      "quote": "Reopened ORB-101: the finance sandbox still shows blank VAT totals on 2.1.3.",
+      "eventId": "e_37045d7af6d4d126",
+      "ts": "2024-09-26T14:40:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T14:40:00.000Z",
+          "eventTs": "2024-09-26T14:40:00.000Z",
+          "claimActor": "Maya Rao",
+          "eventActor": "Maya Rao"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b"
+    },
+    {
+      "id": "d09d3dd5-8005-4041-b673-d8bde15d4d9c",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Only on Sep 30, after the formal escalation, did Ravi Menon give Contoso the version-level fix dates, stating SSO was fixed in 3.4.1 and VAT in 2.1.4.",
+      "actor": "Ravi Menon",
+      "quote": "SSO is fixed in 3.4.1 and VAT is fixed in 2.1.4. Sorry for the run-around.",
+      "eventId": "e_783c4feb1b9b86e1",
+      "ts": "2024-09-30T11:00:00.000Z",
+      "status": "unclear",
+      "confidence": 0.7,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-30T11:00:00.000Z",
+          "eventTs": "2024-09-30T11:00:00.000Z",
+          "claimActor": "Ravi Menon",
+          "eventActor": "Ravi Menon"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "655966ab-f81e-4614-aea5-f33afad4f4df",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "38a942e7-1204-428e-a41c-aef5806956c5",
+      "issueId": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+      "promisor": "Ravi Menon",
+      "promisee": "Dana Okafor (Contoso)",
+      "object": "VAT invoice totals fix shipped in a release",
+      "conditions": null,
+      "deadlinePhrase": "Sep 20",
+      "deadlineIso": "2024-09-20T00:00:00.000Z",
+      "rationale": "The only release that followed (2.1.3) still showed blank VAT totals and was reopened, with the fix only landing in 2.1.4.",
+      "status": "broken",
+      "contested": false,
+      "fulfilmentEventIds": [],
+      "sourceEventIds": [
+        "e_3e67b0bed9fa6fdd",
+        "e_34fc1b6a8046c9d1"
+      ],
+      "dedupeKey": "menon ravi|invoice totals vat|2024-09-20",
+      "createdAt": "2026-10-18T13:04:31.858Z"
+    },
+    {
+      "id": "068d1d3d-2254-4468-b9c9-d4846a3c5223",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "bff3eaa1-0408-49f3-9c19-f35d43d02126",
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3",
+      "promisor": "Leo Park",
+      "promisee": "Dana Okafor (Contoso)",
+      "object": "SSO login fix for finance users shipped in a release",
+      "conditions": null,
+      "deadlinePhrase": "Sep 26",
+      "deadlineIso": "2024-09-26T00:00:00.000Z",
+      "rationale": "Dana emailed on Sep 27 that SSO was still failing after the Sep 26 release.",
+      "status": "broken",
+      "contested": false,
+      "fulfilmentEventIds": [],
+      "sourceEventIds": [
+        "e_a27edabc8eff4a4f",
+        "e_d4eb3ffcce569753"
+      ],
+      "dedupeKey": "leo park|finance login sso users|2024-09-26",
+      "createdAt": "2026-10-18T13:04:31.869Z"
+    }
+  ],
+  "gaps": [
+    {
+      "id": "05a9644c-6392-40d8-945c-e57b12fcf229",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Evidence registry contains no ORB-150 or ORB-160 records, so no certificate/identity ticket entanglement could be assessed; the certificate cause is stated only within ORB-140 (Sam Ortiz, Sep 29) and orbit-support slack.",
+      "eventIds": [],
+      "issueId": null
+    },
+    {
+      "id": "b97ffe56-5334-40a4-97a9-9227937c7483",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "No deploy records, release notes, or build manifests exist in the registry; whether 2.1.3/3.4 or 2.1.4/3.4.1 were actually deployed to Contoso, and when, cannot be established beyond the ticket/chat assertions.",
+      "eventIds": [],
+      "issueId": null
+    },
+    {
+      "id": "8bdd10a3-73c9-4a7f-9522-f0e7ba2b58be",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Whether the Sep 20 release shipped at all, and what it contained, is not documented — only that the VAT fix did not reach Contoso's sandbox.",
+      "eventIds": [],
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "78f618b0-a527-4d51-afb9-0d129ca6ccc4",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "No recorded Orbit reply exists to Dana's Sep 22/23 slack chases or the Sep 23 email in any channel; the only later channel activity is internal orbit-support chatter on Sep 26 onward.",
+      "eventIds": [],
+      "issueId": null
+    },
+    {
+      "id": "0ed07ccb-5c47-4f4a-b597-457fc3175d97",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Whether the SSO failure was finance-specific or affected all Contoso users cannot be confirmed — only finance users are described in the records.",
+      "eventIds": [],
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "e3e6455b-33f0-41ee-8cf4-937f5e2d28af",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "ORB-140's Sep 30 'Resolved → Resolved' transition and Maya Rao's 'Verified SSO with Contoso finance' claim have no corroborating Contoso confirmation in the registry.",
+      "eventIds": [],
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "7d5b7a3b-8faa-4e36-bc88-62b3ec881e81",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Date on which Contoso actually received a working 2.1.4 or 3.4.1 build (as opposed to the code being fixed) is not established; Ravi Menon's Sep 30 slack is the only statement to the client.",
+      "eventIds": [],
+      "issueId": "9915ba37-e70b-4039-a154-616feaf42db3"
+    },
+    {
+      "id": "229556a3-aeda-41f1-930a-51b3190ec608",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Claim 35 states Ravi Menon 'gave Contoso' the fix dates on Sep 30, but the cited event e_783c4feb1b9b86e1 is a Slack message in the 'general' channel, not a communication to Contoso. Nothing in the record shows the escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) was ever answered to the client.",
+      "note": "Claim 35 states Ravi Menon 'gave Contoso' the fix dates on Sep 30, but the cited event e_783c4feb1b9b86e1 is a Slack message in the 'general' channel, not a communication to Contoso. Nothing in the record shows the escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) was ever answered to the client.",
+      "eventIds": [
+        "e_783c4feb1b9b86e1",
+        "e_074f5e7d4f3c7d86",
+        "e_bba117f3af21cc47"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "9d5159b3-117c-48bd-93ce-8a5f2448e5cc",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Long gap in the record between Sep 21 ORB-101 resolution and Sep 22-23 client chases with no Orbit reply, and again Sep 26 reopen to Sep 28: the internal Slack (orbit-support) shows no investigation activity on ORB-101 between the Sep 24 root-cause note (e_55f39a25a1a6af43) and the Sep 28 close, leaving the actual fix decision undocumented.",
+      "note": "Long gap in the record between Sep 21 ORB-101 resolution and Sep 22-23 client chases with no Orbit reply, and again Sep 26 reopen to Sep 28: the internal Slack (orbit-support) shows no investigation activity on ORB-101 between the Sep 24 root-cause note (e_55f39a25a1a6af43) and the Sep 28 close, leaving the actual fix decision undocumented.",
+      "eventIds": [
+        "e_e69341df2eb99385",
+        "e_0713b6525819e03a"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "0198d5fe-7266-4705-8060-c7481031ee6f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "Claims 20/21/27/28 assert the Sep 22-23 chases 'went unanswered,' but the searches show email threads were retrieved (e_e6da783262af7a16, e_58b4307b8f195cf4); the finding of 'no reply' should be grounded in the full thread contents, which are not quoted. It is an inference from absence rather than a documented nil-response, and no internal Slack/email record of Orbit discussing the chases is cited.",
+      "note": "Claims 20/21/27/28 assert the Sep 22-23 chases 'went unanswered,' but the searches show email threads were retrieved (e_e6da783262af7a16, e_58b4307b8f195cf4); the finding of 'no reply' should be grounded in the full thread contents, which are not quoted. It is an inference from absence rather than a documented nil-response, and no internal Slack/email record of Orbit discussing the chases is cited.",
+      "eventIds": [
+        "e_bfadc3c23a70d848",
+        "e_e6da783262af7a16"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "05c455ee-f0b4-4d8b-8461-67290f519a94",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "ORB-150 (created Sep 10) is cited as evidence the VAT defect was 'known on the build line,' but no record shows it was ever linked to ORB-101, prioritized, or scheduled. The question of why a known regression in the same module did not inform the Sep 21 resolution is left unanswered.",
+      "note": "ORB-150 (created Sep 10) is cited as evidence the VAT defect was 'known on the build line,' but no record shows it was ever linked to ORB-101, prioritized, or scheduled. The question of why a known regression in the same module did not inform the Sep 21 resolution is left unanswered.",
+      "eventIds": [
+        "e_02294f520430607f",
+        "e_29b5f45b5a41b9c7"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "352f4570-b48b-4d19-ae4d-b6b5cdcd7f0a",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "ORB-160 (SAML certificate dropped) is referenced but never appears as a resolution source for ORB-140 in the draft claims except via Sam Ortiz's Sep 29 comment. Whether ORB-140 was actually closed against 3.4.1 (or prematurely) before 3.4.1 shipped is unanswered; no deployment record for 3.4.1 exists in the registry.",
+      "note": "ORB-160 (SAML certificate dropped) is referenced but never appears as a resolution source for ORB-140 in the draft claims except via Sam Ortiz's Sep 29 comment. Whether ORB-140 was actually closed against 3.4.1 (or prematurely) before 3.4.1 shipped is unanswered; no deployment record for 3.4.1 exists in the registry.",
+      "eventIds": [
+        "e_9c1b485fd52fb5ac",
+        "e_81847ef8c5ff5126",
+        "e_96652f35e252e93b"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "ca3d4aac-9bf1-4963-96d8-e70f40e891cc",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "No deployment/release records (CI, release notes, changelog) were searched or found for 2.1.3, 2.1.4, or 3.4.1, despite search_slack('deploy') being run. Whether 2.1.4 or 3.4.1 actually shipped before being declared fixed is unverified — a never-satisfied angle.",
+      "note": "No deployment/release records (CI, release notes, changelog) were searched or found for 2.1.3, 2.1.4, or 3.4.1, despite search_slack('deploy') being run. Whether 2.1.4 or 3.4.1 actually shipped before being declared fixed is unverified — a never-satisfied angle.",
+      "eventIds": [],
+      "issueId": null
+    },
+    {
+      "id": "68ef3179-d808-4304-b984-d78f03fb7277",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "question": "The Sep 30 formal escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) duplicated under two ids suggests an email thread was fetched; yet no Orbit email reply to it appears in the record. The only response is Ravi's general-channel Slack. Whether Contoso received any written explanation is unaddressed.",
+      "note": "The Sep 30 formal escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) duplicated under two ids suggests an email thread was fetched; yet no Orbit email reply to it appears in the record. The only response is Ravi's general-channel Slack. Whether Contoso received any written explanation is unaddressed.",
+      "eventIds": [
+        "e_074f5e7d4f3c7d86",
+        "e_bba117f3af21cc47",
+        "e_783c4feb1b9b86e1"
+      ],
+      "issueId": null
+    }
+  ],
+  "skepticNotes": [
+    {
+      "id": "ae296c88-7b85-4b60-92d2-2f938efce149",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "d09d3dd5-8005-4041-b673-d8bde15d4d9c",
+      "kind": "unanswered",
+      "text": "Claim 35 states Ravi Menon 'gave Contoso' the fix dates on Sep 30, but the cited event e_783c4feb1b9b86e1 is a Slack message in the 'general' channel, not a communication to Contoso. Nothing in the record shows the escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) was ever answered to the client.",
+      "eventIds": [
+        "e_783c4feb1b9b86e1",
+        "e_074f5e7d4f3c7d86",
+        "e_bba117f3af21cc47"
+      ]
+    },
+    {
+      "id": "0b80392e-6362-4f62-bab8-bcf13f6c5a9b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "f4fdb651-4876-4d2b-8a21-0173bb435d32",
+      "kind": "contradiction",
+      "text": "Claim 4 (and 9, 26) asserts exports were 'verified with finance' in 2.1.4 on Sep 28, but Dana Okafor's Sep 28 email (e_58b4307b8f195cf4) says VAT totals are still blank, and the Sep 29 escalation (e_1ece4b255c3205b3) says 'VAT still blank.' The client-side verification at Sep 28 is contradicted by the client's own reports.",
+      "eventIds": [
+        "e_0713b6525819e03a",
+        "e_58b4307b8f195cf4",
+        "e_1ece4b255c3205b3"
+      ]
+    },
+    {
+      "id": "1002a5f8-6af3-4b17-81cd-e9d415ccc7b0",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "0f65ba13-d3fb-44da-a431-9ce84ff7bb8b",
+      "kind": "contradiction",
+      "text": "Claim 16 (verified with Contoso finance, closing, Sep 30) is contradicted: nothing from Contoso confirms SSO worked, and the last client statement (Sep 29, e_1ece4b255c3205b3) was 'SSO still down.' The jira transition e_c3a6ca3911af61e4 records 'Resolved → Resolved' with no intervening rejection/reopen from Dana's Sep 27 'still failing' report.",
+      "eventIds": [
+        "e_96652f35e252e93b",
+        "e_c3a6ca3911af61e4",
+        "e_1ece4b255c3205b3",
+        "e_e2e1c4ce08dc78fd"
+      ]
+    },
+    {
+      "id": "75be82a8-ddf1-4ff7-b176-663e1c616a37",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "bb514049-0f28-4849-ae2a-f9a1ee15f192",
+      "kind": "unsupported",
+      "text": "Claim 0 says the BILLING-V2 integer-math rounding change 'blanks the export totals,' but the cited item e_55f39a25a1a6af43 also states the change is 'still unreviewed,' i.e. not confirmed as the production cause. The causal leap from an unreviewed code change to the observed blanking is asserted, not evidenced; no deploy/rollback record links 2.1.0's shipping to this change.",
+      "eventIds": [
+        "e_55f39a25a1a6af43"
+      ]
+    },
+    {
+      "id": "77f998e6-0264-4b48-9cb9-68aa72441f08",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "c774ad87-eb62-45a5-8d2a-248d521e4f81",
+      "kind": "unsupported",
+      "text": "Claim 2 says ORB-101 'was resolved on 21 Sep on the claim that the VAT fix was in 2.1.3 and totals verified internally,' but the citation e_29b5f45b5a41b9c7 supports only 'totals verified on our side.' There is no record showing 2.1.3 was actually deployed/built containing the fix; the claim assumes 2.1.3 existed with a fix, which the reopen proves false but the res-outcome is inferred.",
+      "eventIds": [
+        "e_29b5f45b5a41b9c7",
+        "e_e69341df2eb99385"
+      ]
+    },
+    {
+      "id": "b45beab6-106b-4b58-a394-1872f35a1b6b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "kind": "silence",
+      "text": "Long gap in the record between Sep 21 ORB-101 resolution and Sep 22-23 client chases with no Orbit reply, and again Sep 26 reopen to Sep 28: the internal Slack (orbit-support) shows no investigation activity on ORB-101 between the Sep 24 root-cause note (e_55f39a25a1a6af43) and the Sep 28 close, leaving the actual fix decision undocumented.",
+      "eventIds": [
+        "e_e69341df2eb99385",
+        "e_0713b6525819e03a"
+      ]
+    },
+    {
+      "id": "a5193a59-d23f-4c95-9391-01a5adfe5250",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "24db7fa9-be41-449a-aa5b-15f1b64c1a79",
+      "kind": "silence",
+      "text": "Claims 20/21/27/28 assert the Sep 22-23 chases 'went unanswered,' but the searches show email threads were retrieved (e_e6da783262af7a16, e_58b4307b8f195cf4); the finding of 'no reply' should be grounded in the full thread contents, which are not quoted. It is an inference from absence rather than a documented nil-response, and no internal Slack/email record of Orbit discussing the chases is cited.",
+      "eventIds": [
+        "e_bfadc3c23a70d848",
+        "e_e6da783262af7a16"
+      ]
+    },
+    {
+      "id": "c0a377b5-ae22-4b1f-a9fb-f70ba0123f59",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "60dda1ca-13f0-4498-9bc9-00eb2a57a564",
+      "kind": "contradiction",
+      "text": "Claim 15 says Leo Park resolved ORB-140 'on the sole basis that the identity migration was complete'; but the ORB-160 record (e_9c1b485fd52fb5ac, e_e3d40dc0edf3ee19) shows the SAML certificate defect was known internally as of Sep 20/29. The draft treats the SSO root cause as only discovered Sep 29 by Sam Ortiz (claim 14), yet ORB-160 was created Sep 20 — the causation timeline is internally inconsistent.",
+      "eventIds": [
+        "e_aadddbd3762a3e24",
+        "e_9c1b485fd52fb5ac",
+        "e_e3d40dc0edf3ee19",
+        "e_81847ef8c5ff5126"
+      ]
+    },
+    {
+      "id": "99f75628-3956-4475-9e58-9c5ea211c63f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "kind": "unanswered",
+      "text": "ORB-150 (created Sep 10) is cited as evidence the VAT defect was 'known on the build line,' but no record shows it was ever linked to ORB-101, prioritized, or scheduled. The question of why a known regression in the same module did not inform the Sep 21 resolution is left unanswered.",
+      "eventIds": [
+        "e_02294f520430607f",
+        "e_29b5f45b5a41b9c7"
+      ]
+    },
+    {
+      "id": "b8554eae-aec9-4af8-a90c-ced5fe61a80f",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "kind": "unanswered",
+      "text": "ORB-160 (SAML certificate dropped) is referenced but never appears as a resolution source for ORB-140 in the draft claims except via Sam Ortiz's Sep 29 comment. Whether ORB-140 was actually closed against 3.4.1 (or prematurely) before 3.4.1 shipped is unanswered; no deployment record for 3.4.1 exists in the registry.",
+      "eventIds": [
+        "e_9c1b485fd52fb5ac",
+        "e_81847ef8c5ff5126",
+        "e_96652f35e252e93b"
+      ]
+    },
+    {
+      "id": "4e2fe337-a58b-47ba-b19d-c6b89494a9bb",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "claimId": "29efc28f-cd70-4c54-b8c2-d6847a6e78c6",
+      "kind": "unsupported",
+      "text": "Claim 31 asserts responsibility 'passed to Maya Rao on Sep 26-28,' but the records only show Maya reopened and commented; there is no handoff/assignment change event. Ownership transfer is inferred from actions, not documented.",
+      "eventIds": [
+        "e_7e2a7c425bcaa2ed",
+        "e_37045d7af6d4d126",
+        "e_0713b6525819e03a"
+      ]
+    },
+    {
+      "id": "26682220-8737-4659-b705-3f3c7ccdc288",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "kind": "unanswered",
+      "text": "No deployment/release records (CI, release notes, changelog) were searched or found for 2.1.3, 2.1.4, or 3.4.1, despite search_slack('deploy') being run. Whether 2.1.4 or 3.4.1 actually shipped before being declared fixed is unverified — a never-satisfied angle.",
+      "eventIds": []
+    },
+    {
+      "id": "e12544c5-f705-49eb-813a-68a419b68cc5",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "kind": "silence",
+      "text": "The Sep 30 formal escalation (e_074f5e7d4f3c7d86/e_bba117f3af21cc47) duplicated under two ids suggests an email thread was fetched; yet no Orbit email reply to it appears in the record. The only response is Ravi's general-channel Slack. Whether Contoso received any written explanation is unaddressed.",
+      "eventIds": [
+        "e_074f5e7d4f3c7d86",
+        "e_bba117f3af21cc47",
+        "e_783c4feb1b9b86e1"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "stage": "assemble",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "stats": {
+            "total": 36,
+            "flagged": 8,
+            "rejected": 0,
+            "reviewed": 0,
+            "verified": 6,
+            "supported": 30,
+            "unverified": 0
+          },
+          "issues": 2,
+          "missing": [],
+          "needsRetry": false
+        }
+      ],
+      "startedAt": "2026-10-18T13:05:01.298Z",
+      "finishedAt": "2026-10-18T13:05:01.311Z"
+    },
+    {
+      "stage": "commitments",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 0,
+          "issues": 2,
+          "rounds": 36,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "ORB-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "key": "ORB-140"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "query": "ORB"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 24
+            },
+            {
+              "args": {
+                "query": "VAT"
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 6
+            },
+            {
+              "args": {
+                "key": "ORB-150"
+              },
+              "name": "get_issue",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "key": "ORB-160"
+              },
+              "name": "get_issue",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {},
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 14
+            },
+            {
+              "args": {
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 9
+            },
+            {
+              "args": {
+                "id": "e_34fc1b6a8046c9d1"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "id": "e_e6da783262af7a16"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "id": "e_074f5e7d4f3c7d86"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_d4eb3ffcce569753"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "ts": "2024-09-05T09:00:00.000Z",
+                "channel": "orbit-support"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-22T09:00:00.000Z",
+                "channel": "general"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T14:40:00.000Z",
+                "channel": "orbit-support"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-21T10:10:00.000Z",
+                "channel": "orbit-support"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "3.4.1"
+              },
+              "name": "search_slack",
+              "round": 6,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "2.1.4"
+              },
+              "name": "search_slack",
+              "round": 6,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "deploy"
+              },
+              "name": "search_slack",
+              "round": 6,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "release"
+              },
+              "name": "search_jira",
+              "round": 6,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "item_id": "e_3e67b0bed9fa6fdd"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "item_id": "e_34fc1b6a8046c9d1"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "item_id": "e_a27edabc8eff4a4f"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "item_id": "e_d4eb3ffcce569753"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Ravi Menon promised Dana Okafor/Contoso that the VAT fix was scheduled for the Sep 20 release.",
+                "actor": "Ravi Menon",
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "object": "VAT invoice totals fix shipped in a release",
+                "status": "broken",
+                "item_id": "e_3e67b0bed9fa6fdd",
+                "deadline": "Sep 20 release",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "rationale": "Records show the fix shipped in 2.1.3 but the client still saw blank totals on 2.1.3 (reopened Sep 26) and the real fix …",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Ravi Menon emailed Dana Okafor that the VAT fix was scheduled for the Sep 20 release.",
+                "actor": "Ravi Menon",
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "object": "VAT invoice totals fix shipped in a release",
+                "status": "broken",
+                "item_id": "e_34fc1b6a8046c9d1",
+                "deadline": "Sep 20 release",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "rationale": "No working VAT fix was delivered by Sep 20; totals remained blank on 2.1.3 and were only fixed in 2.1.4 on Sep 28.",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Leo Park promised on ORB-140 that the SSO fix would ship in the Sep 26 release.",
+                "actor": "Leo Park",
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "object": "SSO login fix for finance users shipped in a release",
+                "status": "broken",
+                "item_id": "e_a27edabc8eff4a4f",
+                "deadline": "Sep 26 release",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "rationale": "Dana Okafor reported SSO still failing after the Sep 26 release on Sep 27, and the SAML certificate fix was only deliver…",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Leo Park emailed Dana Okafor that the SSO fix would ship in the Sep 26 release.",
+                "actor": "Leo Park",
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "object": "SSO login fix for finance users shipped in a release",
+                "status": "broken",
+                "item_id": "e_d4eb3ffcce569753",
+                "deadline": "Sep 26 release",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "rationale": "Contoso reported SSO still failing after the Sep 26 release, and the fix was actually in 3.4.1.",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export …",
+                "item_id": "e_55f39a25a1a6af43"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "item_id": "e_29b5f45b5a41b9c7"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "item_id": "e_e69341df2eb99385"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "item_id": "e_0713b6525819e03a"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "text": "The blank VAT totals were caused by the BILLING-V2 refactor in 2.1.0 moving VAT rounding to integer math, dropping fract…",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export …",
+                "status": "n/a",
+                "item_id": "e_55f39a25a1a6af43",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "text": "Ravi Menon resolved ORB-101 as fixed in 2.1.3 without the client confirming it, and Maya Rao had to reopen it because th…",
+                "type": "process_failure",
+                "actor": "Ravi Menon",
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "status": "n/a",
+                "item_id": "e_29b5f45b5a41b9c7",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "text": "The premature ORB-101 resolution was wrong because the finance sandbox still showed blank VAT totals on 2.1.3.",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "status": "n/a",
+                "item_id": "e_e69341df2eb99385",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "text": "ORB-101 was finally fixed in 2.1.4 by correcting the VAT rounding path, with exports verified with finance.",
+                "type": "decision",
+                "actor": "Maya Rao",
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "status": "n/a",
+                "item_id": "e_0713b6525819e03a",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 10
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:16.857Z",
+      "finishedAt": "2026-10-18T13:04:37.501Z"
+    },
+    {
+      "stage": "ingest",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [],
+      "startedAt": null,
+      "finishedAt": "2026-10-18T13:04:08.008Z"
+    },
+    {
+      "stage": "ownership",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 7,
+          "issues": 2,
+          "rounds": 54,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "ORB-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "key": "ORB-140"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "query": "ORB-150 ORB-160"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {},
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 14
+            },
+            {
+              "args": {},
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 9
+            },
+            {
+              "args": {
+                "query": "2.1.4"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "3.4.1"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-22T09:00:00.000Z",
+                "channel": "general"
+              },
+              "name": "get_slack_thread",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T08:30:00.000Z",
+                "channel": "general"
+              },
+              "name": "get_slack_thread",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_e6da783262af7a16"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "id": "e_bba117f3af21cc47"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_58b4307b8f195cf4"
+              },
+              "name": "get_email_thread",
+              "round": 4,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "id": "e_378efb8c1ebd1254"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "id": "e_0f106bfd54c950b7"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T15:40:00.000Z",
+                "channel": "orbit-support"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-27T08:20:00.000Z",
+                "channel": "general"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "item_id": "e_3e67b0bed9fa6fdd"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "item_id": "e_29b5f45b5a41b9c7"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "item_id": "e_e69341df2eb99385"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "item_id": "e_0713b6525819e03a"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "item_id": "e_a27edabc8eff4a4f"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Resolved; the identity migration is complete.",
+                "item_id": "e_aadddbd3762a3e24"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Still failing for finance. This is not fixed.",
+                "item_id": "e_e2e1c4ce08dc78fd"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "The identity-service 3.4 migration dropped the SAML signing certificate; that is why SSO fails. Fixed in 3.4.1.",
+                "item_id": "e_81847ef8c5ff5126"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Status: In Progress → Resolved",
+                "item_id": "e_8c6234dd6dafc427"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Status: In Progress → Resolved",
+                "item_id": "e_1537f425d460e38e"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance stil…",
+                "item_id": "e_e6da783262af7a16"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+                "item_id": "e_bfadc3c23a70d848"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Third chase: VAT totals blank and SSO down. We need answers on both.",
+                "item_id": "e_915f99979466812e"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "SSO is fixed in 3.4.1 and VAT is fixed in 2.1.4. Sorry for the run-around.",
+                "item_id": "e_783c4feb1b9b86e1"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Contoso SSO is broken for finance since the identity migration; tracking ORB-140.",
+                "item_id": "e_14bb59f4c1d07a6d"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Reopened ORB-101: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "item_id": "e_37045d7af6d4d126"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Marking ORB-140 resolved; the SSO fix is included.",
+                "item_id": "e_2d2e3f6205029a70"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Marking ORB-101 resolved; the VAT fix is in 2.1.3.",
+                "item_id": "e_4f0f0bccc2f695ff"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "x",
+                "item_id": "e_014"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-28T09:45:00.000Z",
+                "text": "The blank VAT totals originated in the 2.1.0 upgrade and were still present on 2.1.3; the actual correction was the VAT …",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "status": "kept",
+                "item_id": "e_0713b6525819e03a",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T14:32:00.000Z",
+                "text": "Ravi Menon closed ORB-101 as resolved on Sep 21 claiming the VAT fix was in 2.1.3, but that claim was wrong — the financ…",
+                "type": "process_failure",
+                "actor": "Maya Rao",
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "status": "broken",
+                "item_id": "e_e69341df2eb99385",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-21T10:05:00.000Z",
+                "text": "Ravi Menon moved ORB-101 to Resolved on Sep 21 and asserted totals were verified on Orbit's side, closing the ticket a d…",
+                "type": "decision",
+                "actor": "Ravi Menon",
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "status": "broken",
+                "item_id": "e_29b5f45b5a41b9c7",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Contoso (Dana Okafor / ORB-101)",
+                "text": "Ravi Menon committed that the VAT fix would be delivered in the Sep 20 release.",
+                "actor": "Ravi Menon",
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "object": "VAT invoice totals fix in the Sep 20 release",
+                "status": "broken",
+                "item_id": "e_3e67b0bed9fa6fdd",
+                "deadline": "Sep 20",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "rationale": "Totals were still blank and the promised fix did not ship; the correction only came in 2.1.4 on Sep 28 after a reopen.",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Ravi Menon told Contoso by email that the VAT fix was scheduled for the Sep 20 release.",
+                "actor": "Ravi Menon",
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "object": "VAT fix shipped in the Sep 20 release",
+                "status": "broken",
+                "item_id": "e_34fc1b6a8046c9d1",
+                "deadline": "Sep 20",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "rationale": "Dana reported totals still blank with no confirmation on the Sep 20 release on Sep 23 and Sep 28.",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-29T15:30:00.000Z",
+                "text": "The SSO failure for Contoso finance users was caused by the identity-service 3.4 migration dropping the SAML signing cer…",
+                "type": "root_cause",
+                "actor": "Sam Ortiz",
+                "quote": "The identity-service 3.4 migration dropped the SAML signing certificate; that is why SSO fails. Fixed in 3.4.1.",
+                "status": "kept",
+                "item_id": "e_81847ef8c5ff5126",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T11:05:00.000Z",
+                "text": "Leo Park resolved ORB-140 on Sep 26 on the sole basis that the identity migration was complete, which did not address th…",
+                "type": "process_failure",
+                "actor": "Leo Park",
+                "quote": "Resolved; the identity migration is complete.",
+                "status": "broken",
+                "item_id": "e_aadddbd3762a3e24",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-30T10:05:00.000Z",
+                "text": "ORB-140 was moved to Resolved again on Sep 30 without a documented transition through In Progress after Dana's Sep 27 's…",
+                "type": "process_failure",
+                "actor": "Maya Rao",
+                "quote": "Verified SSO with Contoso finance; closing.",
+                "status": "unclear",
+                "item_id": "e_96652f35e252e93b",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.6"
+              },
+              "name": "submit_claim",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Contoso (Dana Okafor / ORB-140)",
+                "text": "Leo Park committed that the SSO fix would ship in the Sep 26 release.",
+                "actor": "Leo Park",
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "object": "SSO login fix for finance users in the Sep 26 release",
+                "status": "broken",
+                "item_id": "e_a27edabc8eff4a4f",
+                "deadline": "Sep 26",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "rationale": "Dana reported SSO still failing on Sep 27 after the Sep 26 release; root cause fix only landed in 3.4.1 per Sam Ortiz on…",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Dana Okafor (Contoso)",
+                "text": "Leo Park promised Contoso by email to ship the SSO fix in the Sep 26 release.",
+                "actor": "Leo Park",
+                "quote": "We will ship the SSO fix in the Sep 26 release.",
+                "object": "SSO fix in the Sep 26 release",
+                "status": "broken",
+                "item_id": "e_d4eb3ffcce569753",
+                "deadline": "Sep 26",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "rationale": "Dana emailed on Sep 27 that SSO was still failing after the Sep 26 release.",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-22T09:00:00.000Z",
+                "text": "Dana Okafor's Sep 22 chase on the VAT issue went unanswered: she reported blank invoice totals and that there had been n…",
+                "type": "process_failure",
+                "actor": "Dana Okafor",
+                "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+                "status": "broken",
+                "item_id": "e_bfadc3c23a70d848",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T08:00:00.000Z",
+                "text": "Dana Okafor's Sep 23 email, described as the fourth follow-up, sought a date for the VAT issue and still had no confirma…",
+                "type": "process_failure",
+                "actor": "Dana Okafor",
+                "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance stil…",
+                "status": "broken",
+                "item_id": "e_e6da783262af7a16",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T08:00:00.000Z",
+                "text": "Dana Okafor's Sep 23 chase also covered the SSO issue — she stated finance still could not sign in and asked for a date …",
+                "type": "process_failure",
+                "actor": "Dana Okafor",
+                "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance stil…",
+                "status": "broken",
+                "item_id": "e_e6da783262af7a16",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.75"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-18T09:30:00.000Z",
+                "text": "Leo Park took ownership of the SSO incident for Contoso right after the report, acknowledging that Contoso SSO was broke…",
+                "type": "ownership",
+                "actor": "Leo Park",
+                "quote": "Contoso SSO is broken for finance since the identity migration; tracking ORB-140.",
+                "status": "n/a",
+                "item_id": "e_14bb59f4c1d07a6d",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-02T10:00:00.000Z",
+                "text": "Ravi Menon owned the VAT incident from the start, logging the Contoso blank VAT totals as ORB-101, but responsibility fo…",
+                "type": "ownership",
+                "actor": "Ravi Menon",
+                "quote": "Contoso reports blank VAT invoice totals since 2.1.0; tracking ORB-101.",
+                "status": "n/a",
+                "item_id": "e_dad17ccc7ed85a00",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T15:40:00.000Z",
+                "text": "Leo Park announced internally on Sep 26 that ORB-140 was being marked resolved on the basis that the SSO fix was include…",
+                "type": "decision",
+                "actor": "Leo Park",
+                "quote": "Marking ORB-140 resolved; the SSO fix is included.",
+                "status": "broken",
+                "item_id": "e_2d2e3f6205029a70",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-21T10:10:00.000Z",
+                "text": "Ravi Menon announced on Sep 21 that ORB-101 was being marked resolved because the VAT fix was in 2.1.3, which Maya Rao l…",
+                "type": "decision",
+                "actor": "Ravi Menon",
+                "quote": "Marking ORB-101 resolved; the VAT fix is in 2.1.3.",
+                "status": "broken",
+                "item_id": "e_4f0f0bccc2f695ff",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T14:40:00.000Z",
+                "text": "Maya Rao acknowledged internally on Sep 26 that ORB-101 had to be reopened because 2.1.3 still showed blank VAT totals i…",
+                "type": "process_failure",
+                "actor": "Maya Rao",
+                "quote": "Reopened ORB-101: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "status": "broken",
+                "item_id": "e_37045d7af6d4d126",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-30T11:00:00.000Z",
+                "text": "Only on Sep 30, after the formal escalation, did Ravi Menon give Contoso the version-level fix dates, stating SSO was fi…",
+                "type": "process_failure",
+                "actor": "Ravi Menon",
+                "quote": "SSO is fixed in 3.4.1 and VAT is fixed in 2.1.4. Sorry for the run-around.",
+                "status": "unclear",
+                "item_id": "e_783c4feb1b9b86e1",
+                "issue_id": "9915ba37-e70b-4039-a154-616feaf42db3",
+                "confidence": "0.7"
+              },
+              "name": "submit_claim",
+              "round": 8
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:16.858Z",
+      "finishedAt": "2026-10-18T13:04:48.871Z"
+    },
+    {
+      "stage": "plan",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 2,
+          "planChars": 5191,
+          "eventCount": 50,
+          "structured": true,
+          "issueOverflow": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:08.048Z",
+      "finishedAt": "2026-10-18T13:04:16.709Z"
+    },
+    {
+      "stage": "root_cause",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 0,
+          "issues": 2,
+          "rounds": 35,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "ORB-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "key": "ORB-140"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 10
+            },
+            {
+              "args": {
+                "query": "ORB-150"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "ORB-160"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "2.1.3"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "3.4.1"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "vat"
+              },
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "query": "sso"
+              },
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 7
+            },
+            {
+              "args": {
+                "query": "VAT"
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 6
+            },
+            {
+              "args": {
+                "query": "SSO"
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 5
+            },
+            {
+              "args": {
+                "to": "2024-09-30",
+                "from": "2024-09-02",
+                "query": ""
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 14
+            },
+            {
+              "args": {
+                "to": "2024-09-30",
+                "from": "2024-09-02",
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 4,
+              "resultCount": 9
+            },
+            {
+              "args": {
+                "id": "e_e6da783262af7a16"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "id": "e_074f5e7d4f3c7d86"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_0f106bfd54c950b7"
+              },
+              "name": "get_email_thread",
+              "round": 6,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "query": "",
+                "channel": "orbit-support"
+              },
+              "name": "search_slack",
+              "round": 6,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export …",
+                "item_id": "e_55f39a25a1a6af43"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Issue created: BILLING-V2: VAT rounding regression",
+                "item_id": "e_02294f520430607f"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "item_id": "e_e69341df2eb99385"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "item_id": "e_29b5f45b5a41b9c7"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "item_id": "e_0713b6525819e03a"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T16:20:00.000Z",
+                "text": "The blank VAT totals root cause is the BILLING-V2 refactor, which moved VAT rounding to integer math in 2.1.0, dropping …",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "The BILLING-V2 refactor moved VAT rounding to integer math in 2.1.0, which drops fractional cents and blanks the export …",
+                "status": "n/a",
+                "item_id": "e_55f39a25a1a6af43",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T11:00:00.000Z",
+                "text": "A separate VAT rounding regression ticket, ORB-150 'BILLING-V2: VAT rounding regression', was created on 10 Sep, confirm…",
+                "type": "root_cause",
+                "actor": "Ravi Menon",
+                "quote": "Issue created: BILLING-V2: VAT rounding regression",
+                "status": "n/a",
+                "item_id": "e_02294f520430607f",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-21T10:05:00.000Z",
+                "text": "ORB-101 was resolved on 21 Sep on the claim that the VAT fix was in 2.1.3 and totals were verified internally, but the f…",
+                "type": "process_failure",
+                "actor": "Ravi Menon",
+                "quote": "Resolved in 2.1.3; totals verified on our side.",
+                "status": "broken",
+                "item_id": "e_29b5f45b5a41b9c7",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T14:32:00.000Z",
+                "text": "Version 2.1.3 did not carry a working VAT fix — the finance sandbox still showed blank VAT totals on 2.1.3, so the Sep 2…",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "Reopened: the finance sandbox still shows blank VAT totals on 2.1.3.",
+                "status": "broken",
+                "item_id": "e_e69341df2eb99385",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-28T09:45:00.000Z",
+                "text": "The VAT issue was only actually fixed in 2.1.4, when the VAT rounding path was corrected and exports verified with finan…",
+                "type": "root_cause",
+                "actor": "Maya Rao",
+                "quote": "Fixed in 2.1.4. The VAT rounding path was corrected; exports verified with finance.",
+                "status": "kept",
+                "item_id": "e_0713b6525819e03a",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 8
+            },
+            {
+              "args": {
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "item_id": "e_3e67b0bed9fa6fdd"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "item_id": "e_34fc1b6a8046c9d1"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+                "item_id": "e_bfadc3c23a70d848"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance stil…",
+                "item_id": "e_e6da783262af7a16"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "quote": "VAT totals are still blank. We have had no confirmation on the Sep 20 release.",
+                "item_id": "e_58b4307b8f195cf4"
+              },
+              "name": "verify_quote",
+              "round": 9
+            },
+            {
+              "args": {
+                "ts": "2024-09-05T09:05:00.000Z",
+                "text": "Ravi Menon promised the VAT fix would ship in the Sep 20 release, but no 2.1.x release delivered a working VAT fix by th…",
+                "actor": "Ravi Menon",
+                "quote": "We have scheduled the VAT fix for the Sep 20 release.",
+                "object": "VAT fix in the Sep 20 release",
+                "status": "broken",
+                "item_id": "e_3e67b0bed9fa6fdd",
+                "deadline": "Sep 20",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "rationale": "The only release that followed (2.1.3) still showed blank VAT totals and was reopened, with the fix only landing in 2.1.…",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-22T09:00:00.000Z",
+                "text": "Contoso's 22 Sep chase on the VAT issue ('Invoice totals are still blank. We have had no reply on the Sep 20 promise.') …",
+                "type": "process_failure",
+                "actor": "Dana Okafor",
+                "quote": "Invoice totals are still blank. We have had no reply on the Sep 20 promise.",
+                "status": "broken",
+                "item_id": "e_bfadc3c23a70d848",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.75"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T08:00:00.000Z",
+                "text": "Contoso's 23 Sep follow-up in email on the VAT issue (fourth follow-up, no confirmation on the Sep 20 release) received …",
+                "type": "process_failure",
+                "actor": "Dana Okafor <dana.okafor@contoso.example>",
+                "quote": "This is our fourth follow-up. We still have blank VAT totals and no confirmation on the Sep 20 release, and finance stil…",
+                "status": "broken",
+                "item_id": "e_e6da783262af7a16",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.7"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-28T10:00:00.000Z",
+                "text": "Contoso re-reported on 28 Sep that VAT totals were still blank with no confirmation about the Sep 20 release, i.e. still…",
+                "type": "process_failure",
+                "actor": "Dana Okafor <dana.okafor@contoso.example>",
+                "quote": "VAT totals are still blank. We have had no confirmation on the Sep 20 release.",
+                "status": "broken",
+                "item_id": "e_58b4307b8f195cf4",
+                "issue_id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+                "confidence": "0.75"
+              },
+              "name": "submit_claim",
+              "round": 10
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:16.857Z",
+      "finishedAt": "2026-10-18T13:04:36.412Z"
+    },
+    {
+      "stage": "skeptic",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 13,
+          "flagged": 8,
+          "degraded": false
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:48.904Z",
+      "finishedAt": "2026-10-18T13:04:57.470Z"
+    },
+    {
+      "stage": "verify",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "total": 36,
+          "rejected": 0,
+          "verified": 6,
+          "supported": 30,
+          "entailment": {
+            "skipped": 0,
+            "reviewed": 36,
+            "unavailable": 0
+          }
+        }
+      ],
+      "startedAt": "2026-10-18T13:04:57.505Z",
+      "finishedAt": "2026-10-18T13:05:01.268Z"
+    }
+  ],
+  "issues": [
+    {
+      "id": "3aaa0495-94ed-4116-aa5c-4c689dbbfb3b",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "seq": 1,
+      "title": "VAT invoice totals blank since 2.1.0 upgrade",
+      "ask": "",
+      "summary": "VAT invoice exports have shown blank totals since 2.1.0; the fix was promised for the Sep 20 release and the ticket was closed while totals were still blank, so the client needs the cause and a real fix date.",
+      "confidence": 0.5,
+      "confirmed": true,
+      "createdAt": "2026-10-18T13:04:16.806Z"
+    },
+    {
+      "id": "9915ba37-e70b-4039-a154-616feaf42db3",
+      "investigationId": "1189f885-4238-428b-8d44-3afcbac38a12",
+      "seq": 2,
+      "title": "SSO login failing for finance users since identity migration",
+      "ask": "",
+      "summary": "Contoso finance users have been unable to sign in via SSO since the identity migration; the SSO fix was promised for the Sep 26 release and still fails, and ORB-140 was resolved prematurely.",
+      "confidence": 0.5,
+      "confirmed": true,
+      "createdAt": "2026-10-18T13:04:16.806Z"
+    }
+  ]
+}

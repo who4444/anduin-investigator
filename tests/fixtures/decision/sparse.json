@@ -1,0 +1,1390 @@
+{
+  "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+  "scenario": "sparse",
+  "title": "Review run — judge-style 3-record export",
+  "declaredClient": "",
+  "scope": {
+    "client": null,
+    "project": null,
+    "ticketPrefixes": [],
+    "channels": [],
+    "senderDomains": [
+      "northwind.example"
+    ],
+    "confidence": "partial",
+    "anchors": [
+      {
+        "kind": "sender-domain",
+        "value": "northwind.example",
+        "source": "model"
+      }
+    ]
+  },
+  "scopeOverrides": [],
+  "events": [
+    {
+      "id": "e_de3a7dcfb4c34378",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "source": "jira",
+      "ts": "2024-09-15T13:20:00.000Z",
+      "actor": "Lin Chen",
+      "channel": "MER-103",
+      "text": "Issue created: Export button does nothing",
+      "url": "https://northwind.atlassian.net/browse/MER-103",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_db5a10668ec01e0b",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "source": "jira",
+      "ts": "2024-09-15T13:25:00.000Z",
+      "actor": "Lin Chen",
+      "channel": "MER-103",
+      "text": "Reproduced on Chrome.",
+      "url": "https://northwind.atlassian.net/browse/MER-103",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_80e906ce4d0635bc",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "source": "email",
+      "ts": "2024-09-26T03:00:00.000Z",
+      "actor": "Lin Chen <lin@northwind.example>",
+      "channel": "email",
+      "text": "Checking the export path for MER-101.\n",
+      "threadId": "single-1@northwind.example",
+      "refs": [
+        "MER-101"
+      ],
+      "meta": {
+        "messageId": "single-1@northwind.example"
+      },
+      "actorResolved": null
+    }
+  ],
+  "claims": [
+    {
+      "id": "26eff538-5e47-47eb-b4de-f987f2c6cae1",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "The only in-scope export defect on record is MER-103, where the export button does nothing — a functional failure of the export path, not a day/date-value defect, so it does not by itself explain the client's wrong-day line items.",
+      "actor": "Lin Chen",
+      "quote": "Issue created: Export button does nothing",
+      "eventId": "e_de3a7dcfb4c34378",
+      "ts": "2024-09-15T13:20:00.000Z",
+      "status": "unclear",
+      "confidence": 0.5,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-15T13:20:00.000Z",
+          "eventTs": "2024-09-15T13:20:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "0f464afe-85ae-4c3b-ac25-02285d428888",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "Lin Chen reproduced the MER-103 export defect in a Chrome browser, indicating the failing export path is client/browser-side rather than a one-off user error.",
+      "actor": "Lin Chen",
+      "quote": "Reproduced on Chrome.",
+      "eventId": "e_db5a10668ec01e0b",
+      "ts": "2024-09-15T13:25:00.000Z",
+      "status": "n/a",
+      "confidence": 0.45,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-15T13:25:00.000Z",
+          "eventTs": "2024-09-15T13:25:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "c34ba333-31bf-4579-8e4e-13d8c8b9ac1c",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "root_cause",
+      "type": "ownership",
+      "text": "Lin Chen (northwind.example) was actively working the export path referenced by MER-101, making them the record's only identified owner of export-path investigation.",
+      "actor": "Lin Chen",
+      "quote": "Checking the export path for MER-101.",
+      "eventId": "e_80e906ce4d0635bc",
+      "ts": "2024-09-26T03:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.6,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T03:00:00.000Z",
+          "eventTs": "2024-09-26T03:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen <lin@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "1ef913fd-2d79-4dba-afce-ab6757db8a50",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "ownership",
+      "type": "ownership",
+      "text": "Lin Chen opened the only ticket in the registry that concerns the export path (MER-103, \"Issue created: Export button does nothing\") and is the actor on the sole email about the export path, making Lin Chen the de facto owner of export investigations in the record — but no assignee, status transition, or fix linkage to the wrong-day/release-4.12 defect exists in the evidence.",
+      "actor": "Lin Chen",
+      "quote": "Issue created: Export button does nothing",
+      "eventId": "e_de3a7dcfb4c34378",
+      "ts": "2024-09-15T13:20:00.000Z",
+      "status": "unclear",
+      "confidence": 0.55,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-15T13:20:00.000Z",
+          "eventTs": "2024-09-15T13:20:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "55dfb8b7-e6a0-4033-a65d-b7d7241ef4e8",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Lin Chen was still \"Checking the export path for MER-101\" in email on 2024-09-26, and the record shows no reply, follow-up, resolution, or handoff for that export-path check — an open, unanswered thread on the export path that no one in the registry is recorded as picking up.",
+      "actor": "Lin Chen <lin@northwind.example>",
+      "quote": "Checking the export path for MER-101.",
+      "eventId": "e_80e906ce4d0635bc",
+      "ts": "2024-09-26T03:00:00.000Z",
+      "status": "unclear",
+      "confidence": 0.6,
+      "verifyStatus": "supported",
+      "verifyError": "evidence_incomplete",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "2/2 sources searched · 1 failed queries",
+          "subject": "reply",
+          "complete": false,
+          "notSearched": [],
+          "failedQueries": 1,
+          "excludedClientRecords": 0
+        },
+        "entailment": null,
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T03:00:00.000Z",
+          "eventTs": "2024-09-26T03:00:00.000Z",
+          "claimActor": "Lin Chen <lin@northwind.example>",
+          "eventActor": "Lin Chen <lin@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "b2096a54-550d-4431-8665-eda8833f665c",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "commitments",
+      "type": "ownership",
+      "text": "Lin Chen opened a Jira issue MER-103 titled \"Export button does nothing\", which is the only export-defect ticket in scope for this investigation; it is a separate symptom (no output at all) from the escalation's wrong-day-in-line-items complaint and does not establish the wrong-day defect.",
+      "actor": "Lin Chen",
+      "quote": "Issue created: Export button does nothing",
+      "eventId": "e_de3a7dcfb4c34378",
+      "ts": "2024-09-15T13:20:00.000Z",
+      "status": "n/a",
+      "confidence": 0.6,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-15T13:20:00.000Z",
+          "eventTs": "2024-09-15T13:20:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "6f6cdf79-9744-46b5-b872-b91bb0e52c96",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "The only reproduction record for the export defect is a single-line note that it reproduced on Chrome; no date/timezone reproduction, sample export, or comparison of emitted line-item dates against source data exists in the registry, so the off-by-one hypothesis cannot be tested.",
+      "actor": "Lin Chen",
+      "quote": "Reproduced on Chrome.",
+      "eventId": "e_db5a10668ec01e0b",
+      "ts": "2024-09-15T13:25:00.000Z",
+      "status": "n/a",
+      "confidence": 0.55,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-15T13:25:00.000Z",
+          "eventTs": "2024-09-15T13:25:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "287a614d-d4d3-4c04-b0d6-676409aa68a6",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "agent": "commitments",
+      "type": "unclear",
+      "text": "Lin Chen's email records that he was still \"checking the export path for MER-101\" as of 2024-09-26, with no follow-up stating what path was found or whether a fix was deployed, leaving the export-path hypothesis unresolved.",
+      "actor": "Lin Chen <lin@northwind.example>",
+      "quote": "Checking the export path for MER-101.",
+      "eventId": "e_80e906ce4d0635bc",
+      "ts": "2024-09-26T03:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.5,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T03:00:00.000Z",
+          "eventTs": "2024-09-26T03:00:00.000Z",
+          "claimActor": "Lin Chen <lin@northwind.example>",
+          "eventActor": "Lin Chen <lin@northwind.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    }
+  ],
+  "commitments": [],
+  "gaps": [
+    {
+      "id": "a9aeeafe-0e64-4f4d-bf52-3ea07d79277e",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "The evidence registry contains only 3 items, all dated 2024-09-15 to 2024-09-26; no records exist from the 2026-10-17 focus window onward, so the escalation's timeline cannot be established.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "c2f6e49e-5b80-4af1-88ef-64105be83da1",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "MER-101 is out of scope for this investigation — get_issue returned an error that it belongs to a different client or project — so its detail, the referenced export path, and any fix in it could not be read.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "208cd859-3276-4f60-b637-23c5058864ea",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "No evidence establishes that release 4.12 exists, what it changed, or that it touched date/timezone handling; the off-by-one hypothesis from 4.12 is untested and unsupported.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "d8e06a0d-0b9e-4c20-bb67-60bac23a9868",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "What 'wrong day' means precisely (previous vs. next day, all line items vs. some) is not documented anywhere in the registry.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "653eac0e-e086-4708-91fa-0430f43413ce",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "No sample incorrect export, no finance manual re-run description, and no mention of a manual workaround exists in the records.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "957636fe-7d82-43d9-b41b-2d602b39e37c",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "No timezone or locale information about the client is available, so whether the defect is timezone-specific cannot be determined.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "fb38b37f-521e-42cf-a7f0-0db9e48b313e",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "No Slack messages are in the registry (all slack searches returned zero items), so internal discussion of the 4.12 release or export date bug could not be reviewed.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "92326c79-604f-478e-b30d-c1782d592026",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "The 4.12 release date and the client's go-live date are not established by any record.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "e5206323-cbe5-4a5e-be75-9d721fd9a363",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "Whether MER-103's 'export button does nothing' was ever fixed, and by what change/release, is not recorded — the only entries are the creation and the Chrome reproduction.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "e50492a1-4dee-47af-aab1-c268a4a4b114",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (root cause)",
+      "note": "Which export code path or bundle serves the client's exports, and whether the client's re-runs use it, cannot be traced from the available evidence.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "543857a9-d1a3-4496-b525-bfed8a83cebc",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Evidence registry contains only 3 items (2024-09-15 to 2024-09-26), all from Lin Chen / northwind.example: MER-103 creation (\"Export button does nothing\"), MER-103 reproduction note (\"Reproduced on Chrome.\"), and one email line \"Checking the export path for MER-101.\"",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "65f67909-3b90-47a3-8804-940003c86dc6",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "MER-101 is out of scope in the Jira tool (\"belongs to a different client or project\"), so its contents, comments, transitions, and any MER-101/MER-103 linkage could not be read.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "4033c017-40e7-4890-9930-97421f3f819c",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "No release notes, Jira fix/version field, or changelog referencing release 4.12 exists in the registry; the 4.12 release date and the client's go-live date are unestablished.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "616e5d1b-5f74-4309-85a4-2ac35b02d7a7",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Slack search returns zero messages for any term (export, 4.12, timezone, day); no internal Slack discussion is available.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "815c6c5d-310e-4260-89a5-9ecb2e76ba3e",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Nothing in the records describes the wrong-day defect itself: no off-by-one, timezone conversion, line-item date sample, or \"wrong day\" definition (previous vs. next day, all vs. some line items) is documented.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "1154cd92-a641-413a-af04-4e002601fde4",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Finance's manual morning re-runs are not described anywhere in the registry; the re-run workflow and which export path it uses are unknown.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "82b810bd-bac0-4106-86a9-d4271fd60ddf",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Whether the defect is timezone/client-locale-specific or affects all tenants cannot be determined.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "7c18f88c-7935-4504-b571-2c8ede10cbae",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "The escalation's focus window (from 2026-10-17) is entirely outside the registry's coverage (2024-09-15 to 2024-09-26); no records from the escalation period were located.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "f981fcd0-0b5b-4798-a6a2-2e1093f6a146",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Whether MER-103 (\"Export button does nothing\") is the same failure mode as the wrong-day defect is not established — the only common element is the export path.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "a8d14a67-a41b-4930-9cf6-175e1a4ce944",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "No commitments recorded: the three in-registry records contain no promise (who/whom/what/by when), so there is nothing to submit via submit_commitment.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "8ac3e1e5-8473-451a-9c37-1cfa273a2478",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "The Evidence Registry contains only 3 items (2 Jira comments on MER-103, 1 email), all dated 2024-09-15 to 2024-09-26 — all records dated 2026-10-17 onward, the focus window of this escalation, are absent, so nothing can be established about the escalation itself.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "0057d578-d39b-4b86-b411-ae02b11c1244",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "MER-101 could not be read: get_issue returned that it belongs to a different client or project than this investigation's scope, so the MER-101 export-path history, its reproduction notes and any fix/release linkage are unavailable.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "abf2b299-54a9-4f02-910b-18f8c06fa238",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "Release 4.12 — its date, the changelog, the export code path diff and the client's go-live date — is not documented anywhere in the registry; no Slack channel contains a single message on the export, off-by-one, timezone or 4.12.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "e98b2e1a-79df-4dd6-aecf-5e4a9db3b8f8",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "No sample incorrect export, no finance manual-rerun description and no northwind.example escalation thread other than Lin Chen's single-line note were found; the manual-rerun hypothesis is untestable.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "88968a20-bf77-43ef-9416-ba065d1badd4",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "What 'wrong day' means precisely (previous day vs next day, all line items vs some, which client timezone) is not stated in any record.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "6968987d-2e80-481e-8050-69ec77ebd3f8",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "Whether the defect is timezone-specific to the client or affects all tenants cannot be determined.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "218b03dd-bd35-46fe-8ff4-96e6d58add1b",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "Which export path the client's exports and finance's manual re-runs actually use is not established: Lin Chen's note only says he was 'checking' the path for MER-101 and no later record states the outcome.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "e7bdc2ce-38a3-4800-86e8-92cdae29a138",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Could not determine (commitments)",
+      "note": "No root cause, fix, owner-for-fix or decision about 4.12 date handling was recorded; therefore no root_cause or decision claim could be substantiated.",
+      "eventIds": [],
+      "issueId": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac"
+    },
+    {
+      "id": "0e945734-4a5f-419b-babe-7163a3d9b3b3",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Large unexplained gap: MER-103 events are 2024-09-15T13:20 and 13:25, and the next and only other event is 2024-09-26T03:00 — eleven days with no status changes, comments, or resolution on the ticket. The record is silent on what happened to MER-103 between creation/repro and the email.",
+      "note": "Large unexplained gap: MER-103 events are 2024-09-15T13:20 and 13:25, and the next and only other event is 2024-09-26T03:00 — eleven days with no status changes, comments, or resolution on the ticket. The record is silent on what happened to MER-103 between creation/repro and the email.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378",
+        "e_db5a10668ec01e0b",
+        "e_80e906ce4d0635bc"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "1977d212-6c00-441f-8929-695395e73155",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Claim asserts MER-103 'does not establish the wrong-day defect,' yet the wrong-day complaint, its ticket, and any sample data are absent from the registry entirely. There is no evidence item describing the client's wrong-day line items, so the relationship (or lack thereof) between MER-103 and the wrong-day defect cannot be assessed from the record.",
+      "note": "Claim asserts MER-103 'does not establish the wrong-day defect,' yet the wrong-day complaint, its ticket, and any sample data are absent from the registry entirely. There is no evidence item describing the client's wrong-day line items, so the relationship (or lack thereof) between MER-103 and the wrong-day defect cannot be assessed from the record.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "c55134e3-e60b-42b1-a0e9-95d6157d41f0",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "The email thread shows no reply, ack, or follow-up to 'Checking the export path for MER-101' — but the draft treats this silence as proof no one picked it up. The absence may simply reflect that thread retrieval returned only one message; the claim over-reads silence as an unanswered open thread.",
+      "note": "The email thread shows no reply, ack, or follow-up to 'Checking the export path for MER-101' — but the draft treats this silence as proof no one picked it up. The absence may simply reflect that thread retrieval returned only one message; the claim over-reads silence as an unanswered open thread.",
+      "eventIds": [
+        "e_80e906ce4d0635bc"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "0e6cfb13-e6d0-4894-b5d0-b5615699715e",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "No event anywhere names the escalating client, the project, the release 4.12, or the wrong-day symptom. Claims repeatedly reference 'the wrong-day/release-4.12 defect' (claim 3) but no in-scope evidence item mentions 4.12 or wrong-day line items — the central escalation subject is entirely unrepresented in the registry.",
+      "note": "No event anywhere names the escalating client, the project, the release 4.12, or the wrong-day symptom. Claims repeatedly reference 'the wrong-day/release-4.12 defect' (claim 3) but no in-scope evidence item mentions 4.12 or wrong-day line items — the central escalation subject is entirely unrepresented in the registry.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378",
+        "e_db5a10668ec01e0b",
+        "e_80e906ce4d0635bc"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "44c4458d-4211-491e-bd65-9b1e7812ca18",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "Failed search get_issue(MER-101) means the key ticket referenced by the sole email was never actually retrieved. The entire 'export-path' narrative hinges on MER-101, yet its content, status, assignee, and relationship to MER-103 are unknown. This must be treated as an unsearched angle, not a resolved one.",
+      "note": "Failed search get_issue(MER-101) means the key ticket referenced by the sole email was never actually retrieved. The entire 'export-path' narrative hinges on MER-101, yet its content, status, assignee, and relationship to MER-103 are unknown. This must be treated as an unsearched angle, not a resolved one.",
+      "eventIds": [
+        "e_80e906ce4d0635bc"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "fe7e4b4a-65e3-4d05-80e5-61c15ec4912a",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "question": "No Slack results are cited anywhere despite slack having been searched (all, off-by-one, export, 4.12, timezone, MER-103). If the searches genuinely returned nothing, the draft should note the absence of any chat discussion of the off-by-one/export issue; the silence on this source is unexplained in the findings.",
+      "note": "No Slack results are cited anywhere despite slack having been searched (all, off-by-one, export, 4.12, timezone, MER-103). If the searches genuinely returned nothing, the draft should note the absence of any chat discussion of the off-by-one/export issue; the silence on this source is unexplained in the findings.",
+      "eventIds": [],
+      "issueId": null
+    }
+  ],
+  "skepticNotes": [
+    {
+      "id": "69ebb6e9-416c-4889-977b-23517436b9de",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "0f464afe-85ae-4c3b-ac25-02285d428888",
+      "kind": "unsupported",
+      "text": "A single-line note 'Reproduced on Chrome.' only establishes that it reproduced in Chrome; it does not establish that the defect is client/browser-side rather than one-off user error. Chrome reproduction is consistent with a server-side or data defect too, and no cross-browser or server-side check is in evidence.",
+      "eventIds": [
+        "e_db5a10668ec01e0b"
+      ]
+    },
+    {
+      "id": "56edd22c-ebf2-4451-afdf-a96ee74e979b",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "c34ba333-31bf-4579-8e4e-13d8c8b9ac1c",
+      "kind": "unsupported",
+      "text": "The email only says 'Checking the export path for MER-101'; it never names MER-103 or ties Lin Chen to the MER-103 export defect. Characterizing Lin Chen as owner of 'the export path referenced by MER-101' conflates two separate artifacts (MER-101 email vs MER-103 ticket) that are never linked in the record.",
+      "eventIds": [
+        "e_80e906ce4d0635bc",
+        "e_de3a7dcfb4c34378"
+      ]
+    },
+    {
+      "id": "c7c8d92d-8baa-455d-8729-2893602f5812",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "1ef913fd-2d79-4dba-afce-ab6757db8a50",
+      "kind": "unsupported",
+      "text": "Claim asserts MER-103 is 'the only ticket in the registry that concerns the export path' and that Lin Chen is the actor on 'the sole email about the export path,' but MER-101 itself is referenced in that email and get_issue(MER-101) failed — so it cannot be confirmed that MER-101 does not also concern the export path. The completeness claim is not supported by the evidence actually retrieved.",
+      "eventIds": [
+        "e_80e906ce4d0635bc",
+        "e_de3a7dcfb4c34378"
+      ]
+    },
+    {
+      "id": "bbeafb4e-d0c3-4837-b36a-1a582dcd1d97",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "55dfb8b7-e6a0-4033-a65d-b7d7241ef4e8",
+      "kind": "contradiction",
+      "text": "Claims identify MER-103 as the only in-scope export defect and as a Jira ticket, yet the email references MER-101 as the item Lin Chen is checking the export path for. The draft never resolves whether MER-101 is the same defect, a parent, or the wrong-day escalation ticket — this inconsistency underlies several claims (0,2,5,7).",
+      "eventIds": [
+        "e_80e906ce4d0635bc",
+        "e_de3a7dcfb4c34378"
+      ]
+    },
+    {
+      "id": "a6c9f383-4e05-4678-ba0b-a0a800400b9b",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "kind": "silence",
+      "text": "Large unexplained gap: MER-103 events are 2024-09-15T13:20 and 13:25, and the next and only other event is 2024-09-26T03:00 — eleven days with no status changes, comments, or resolution on the ticket. The record is silent on what happened to MER-103 between creation/repro and the email.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378",
+        "e_db5a10668ec01e0b",
+        "e_80e906ce4d0635bc"
+      ]
+    },
+    {
+      "id": "081704a6-38f2-49c0-b92c-bfe1b8a81581",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "b2096a54-550d-4431-8665-eda8833f665c",
+      "kind": "unanswered",
+      "text": "Claim asserts MER-103 'does not establish the wrong-day defect,' yet the wrong-day complaint, its ticket, and any sample data are absent from the registry entirely. There is no evidence item describing the client's wrong-day line items, so the relationship (or lack thereof) between MER-103 and the wrong-day defect cannot be assessed from the record.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378"
+      ]
+    },
+    {
+      "id": "19efc60e-24f6-4551-844d-8a2921b799c0",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "claimId": "55dfb8b7-e6a0-4033-a65d-b7d7241ef4e8",
+      "kind": "silence",
+      "text": "The email thread shows no reply, ack, or follow-up to 'Checking the export path for MER-101' — but the draft treats this silence as proof no one picked it up. The absence may simply reflect that thread retrieval returned only one message; the claim over-reads silence as an unanswered open thread.",
+      "eventIds": [
+        "e_80e906ce4d0635bc"
+      ]
+    },
+    {
+      "id": "bab33432-9987-4ebf-88ee-33d4b3f13e68",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "kind": "unanswered",
+      "text": "No event anywhere names the escalating client, the project, the release 4.12, or the wrong-day symptom. Claims repeatedly reference 'the wrong-day/release-4.12 defect' (claim 3) but no in-scope evidence item mentions 4.12 or wrong-day line items — the central escalation subject is entirely unrepresented in the registry.",
+      "eventIds": [
+        "e_de3a7dcfb4c34378",
+        "e_db5a10668ec01e0b",
+        "e_80e906ce4d0635bc"
+      ]
+    },
+    {
+      "id": "ec00542c-3397-42e2-9361-1bff84a2904e",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "kind": "unanswered",
+      "text": "Failed search get_issue(MER-101) means the key ticket referenced by the sole email was never actually retrieved. The entire 'export-path' narrative hinges on MER-101, yet its content, status, assignee, and relationship to MER-103 are unknown. This must be treated as an unsearched angle, not a resolved one.",
+      "eventIds": [
+        "e_80e906ce4d0635bc"
+      ]
+    },
+    {
+      "id": "a2539d60-af69-49f3-b81a-5b313ccfb0c6",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "kind": "silence",
+      "text": "No Slack results are cited anywhere despite slack having been searched (all, off-by-one, export, 4.12, timezone, MER-103). If the searches genuinely returned nothing, the draft should note the absence of any chat discussion of the off-by-one/export issue; the silence on this source is unexplained in the findings.",
+      "eventIds": []
+    }
+  ],
+  "stages": [
+    {
+      "stage": "assemble",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "stats": {
+            "total": 8,
+            "flagged": 5,
+            "rejected": 0,
+            "reviewed": 0,
+            "verified": 0,
+            "supported": 8,
+            "unverified": 0
+          },
+          "issues": 1,
+          "missing": [],
+          "needsRetry": false
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:04.494Z",
+      "finishedAt": "2026-10-18T13:00:04.509Z"
+    },
+    {
+      "stage": "commitments",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 9,
+          "issues": 1,
+          "rounds": 19,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-103"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1
+            },
+            {
+              "args": {
+                "query": ""
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_80e906ce4d0635bc"
+              },
+              "name": "get_email_thread",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "4.12"
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "4.12"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "off-by-one"
+              },
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "Chrome"
+              },
+              "name": "search_jira",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "Lin Chen"
+              },
+              "name": "search_jira",
+              "round": 4,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_email",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "quote": "Issue created: Export button does nothing",
+                "item_id": "e_de3a7dcfb4c34378"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Reproduced on Chrome.",
+                "item_id": "e_db5a10668ec01e0b"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Checking the export path for MER-101.",
+                "item_id": "e_80e906ce4d0635bc"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-15T13:20:00.000Z",
+                "text": "Lin Chen opened a Jira issue MER-103 titled \"Export button does nothing\", which is the only export-defect ticket in scop…",
+                "type": "ownership",
+                "actor": "Lin Chen",
+                "quote": "Issue created: Export button does nothing",
+                "status": "n/a",
+                "item_id": "e_de3a7dcfb4c34378",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.6"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-15T13:25:00.000Z",
+                "text": "The only reproduction record for the export defect is a single-line note that it reproduced on Chrome; no date/timezone …",
+                "type": "process_failure",
+                "actor": "Lin Chen",
+                "quote": "Reproduced on Chrome.",
+                "status": "n/a",
+                "item_id": "e_db5a10668ec01e0b",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.55"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T03:00:00.000Z",
+                "text": "Lin Chen's email records that he was still \"checking the export path for MER-101\" as of 2024-09-26, with no follow-up st…",
+                "type": "unclear",
+                "actor": "Lin Chen <lin@northwind.example>",
+                "quote": "Checking the export path for MER-101.",
+                "status": "n/a",
+                "item_id": "e_80e906ce4d0635bc",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.5"
+              },
+              "name": "submit_claim",
+              "round": 6
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T12:59:47.109Z",
+      "finishedAt": "2026-10-18T12:59:58.192Z"
+    },
+    {
+      "stage": "ingest",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [],
+      "startedAt": null,
+      "finishedAt": "2026-10-18T12:59:41.474Z"
+    },
+    {
+      "stage": "ownership",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 9,
+          "issues": 1,
+          "rounds": 20,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-103"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_slack",
+              "round": 1,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_email",
+              "round": 1,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_80e906ce4d0635bc"
+              },
+              "name": "get_email_thread",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "MER-101"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "4.12"
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "4.12"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "day"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {},
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {},
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "Lin Chen"
+              },
+              "name": "search_jira",
+              "round": 4,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "MER-103"
+              },
+              "name": "search_jira",
+              "round": 4,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "timezone"
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "quote": "Checking the export path for MER-101.",
+                "item_id": "e_80e906ce4d0635bc"
+              },
+              "name": "verify_quote",
+              "round": 4
+            },
+            {
+              "args": {
+                "quote": "Issue created: Export button does nothing",
+                "item_id": "e_de3a7dcfb4c34378"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Reproduced on Chrome.",
+                "item_id": "e_db5a10668ec01e0b"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-15T13:20:00.000Z",
+                "text": "Lin Chen opened the only ticket in the registry that concerns the export path (MER-103, \"Issue created: Export button do…",
+                "type": "ownership",
+                "actor": "Lin Chen",
+                "quote": "Issue created: Export button does nothing",
+                "status": "unclear",
+                "item_id": "e_de3a7dcfb4c34378",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.55"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T03:00:00.000Z",
+                "text": "Lin Chen was still \"Checking the export path for MER-101\" in email on 2024-09-26, and the record shows no reply, follow-…",
+                "type": "process_failure",
+                "actor": "Lin Chen <lin@northwind.example>",
+                "quote": "Checking the export path for MER-101.",
+                "status": "unclear",
+                "item_id": "e_80e906ce4d0635bc",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.6"
+              },
+              "name": "submit_claim",
+              "round": 6
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T12:59:47.118Z",
+      "finishedAt": "2026-10-18T12:59:57.200Z"
+    },
+    {
+      "stage": "plan",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 1,
+          "planChars": 3417,
+          "eventCount": 3,
+          "structured": true,
+          "issueOverflow": 0
+        }
+      ],
+      "startedAt": "2026-10-18T12:59:41.515Z",
+      "finishedAt": "2026-10-18T12:59:47.006Z"
+    },
+    {
+      "stage": "root_cause",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 10,
+          "issues": 1,
+          "rounds": 18,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-103"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1
+            },
+            {
+              "args": {
+                "query": "MER-101"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "export 4.12"
+              },
+              "name": "search_jira",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "MER-101"
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {},
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "id": "e_80e906ce4d0635bc"
+              },
+              "name": "get_email_thread",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "export"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "day"
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "MER-103"
+              },
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "quote": "Issue created: Export button does nothing",
+                "item_id": "e_de3a7dcfb4c34378"
+              },
+              "name": "verify_quote",
+              "round": 4
+            },
+            {
+              "args": {
+                "quote": "Reproduced on Chrome.",
+                "item_id": "e_db5a10668ec01e0b"
+              },
+              "name": "verify_quote",
+              "round": 4
+            },
+            {
+              "args": {
+                "quote": "Checking the export path for MER-101.",
+                "item_id": "e_80e906ce4d0635bc"
+              },
+              "name": "verify_quote",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-15T13:20:00.000Z",
+                "text": "The only in-scope export defect on record is MER-103, where the export button does nothing — a functional failure of the…",
+                "type": "process_failure",
+                "actor": "Lin Chen",
+                "quote": "Issue created: Export button does nothing",
+                "status": "unclear",
+                "item_id": "e_de3a7dcfb4c34378",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.5"
+              },
+              "name": "submit_claim",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-15T13:25:00.000Z",
+                "text": "Lin Chen reproduced the MER-103 export defect in a Chrome browser, indicating the failing export path is client/browser-…",
+                "type": "root_cause",
+                "actor": "Lin Chen",
+                "quote": "Reproduced on Chrome.",
+                "status": "n/a",
+                "item_id": "e_db5a10668ec01e0b",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.45"
+              },
+              "name": "submit_claim",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T03:00:00.000Z",
+                "text": "Lin Chen (northwind.example) was actively working the export path referenced by MER-101, making them the record's only i…",
+                "type": "ownership",
+                "actor": "Lin Chen",
+                "quote": "Checking the export path for MER-101.",
+                "status": "n/a",
+                "item_id": "e_80e906ce4d0635bc",
+                "issue_id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+                "confidence": "0.6"
+              },
+              "name": "submit_claim",
+              "round": 5
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T12:59:47.118Z",
+      "finishedAt": "2026-10-18T12:59:56.837Z"
+    },
+    {
+      "stage": "skeptic",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 10,
+          "flagged": 5,
+          "degraded": false
+        }
+      ],
+      "startedAt": "2026-10-18T12:59:58.227Z",
+      "finishedAt": "2026-10-18T13:00:03.397Z"
+    },
+    {
+      "stage": "verify",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "total": 8,
+          "rejected": 0,
+          "verified": 0,
+          "supported": 8,
+          "entailment": {
+            "skipped": 0,
+            "reviewed": 7,
+            "unavailable": 0
+          }
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:03.431Z",
+      "finishedAt": "2026-10-18T13:00:04.462Z"
+    }
+  ],
+  "issues": [
+    {
+      "id": "15eacec2-53bd-41b3-a7f3-62b55f5ca7ac",
+      "investigationId": "2cca755f-39e7-4ea4-95b6-cbb36f78d313",
+      "seq": 1,
+      "title": "Export totals show the wrong day in every line item since 4.12",
+      "ask": "Correct the day shown for every line item in the export, so reconciliation aligns and finance no longer has to re-run exports by hand each morning.",
+      "summary": "Since release 4.12 the client's exported bill assigns the wrong date to every line item, causing an off-by-one reconciliation and daily manual re-exports by finance.",
+      "confidence": 0.72,
+      "confirmed": true,
+      "createdAt": "2026-10-18T12:59:46.989Z"
+    }
+  ]
+}

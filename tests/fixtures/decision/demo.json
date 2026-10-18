@@ -1,0 +1,3983 @@
+{
+  "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+  "scenario": "demo",
+  "title": "Review run — Northwind demo",
+  "declaredClient": "Northwind Logistics",
+  "scope": {
+    "client": "Northwind Logistics",
+    "project": null,
+    "ticketPrefixes": [],
+    "channels": [],
+    "senderDomains": [
+      "northwind.example"
+    ],
+    "confidence": "partial",
+    "anchors": [
+      {
+        "kind": "declared-client",
+        "value": "Northwind Logistics",
+        "source": "declared"
+      },
+      {
+        "kind": "sender-domain",
+        "value": "northwind.example",
+        "source": "linked"
+      }
+    ]
+  },
+  "scopeOverrides": [],
+  "events": [
+    {
+      "id": "e_a2652cb5dd0e2594",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-05T09:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-87",
+      "text": "Issue created: Switch invoice date handling to UTC",
+      "url": "https://northwind.atlassian.net/browse/MER-87",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_0f28518f4dc70368",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-06T06:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "MER-102",
+      "text": "Issue created: Bump PDF renderer dependency",
+      "url": "https://northwind.atlassian.net/browse/MER-102",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_cccb289a0bf8ab51",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-06T06:30:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "MER-102",
+      "text": "Routine dependency bump, no customer impact.",
+      "url": "https://northwind.atlassian.net/browse/MER-102",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_60b62f06dcd9b04a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-07T07:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "MER-104",
+      "text": "Issue created: Add retry to nightly export",
+      "url": "https://northwind.atlassian.net/browse/MER-104",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_38c2415e0c129f55",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-07T07:20:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "MER-104",
+      "text": "Nightly export retries twice now.",
+      "url": "https://northwind.atlassian.net/browse/MER-104",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_20d79a91a882a9ef",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-09T08:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "general",
+      "text": "Reminder: standup moves to 9:30 this week.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_eb979178fcebfe71",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-10T03:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-87",
+      "text": "Status: Open → In Progress",
+      "url": "https://northwind.atlassian.net/browse/MER-87",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_ef773b8a375d743e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-10T03:00:00.000Z",
+      "actor": "Lin Chen",
+      "channel": "MER-87",
+      "text": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+      "url": "https://northwind.atlassian.net/browse/MER-87",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_3de27219e6d5246f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-10T03:10:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "4.12 is live on production as of this morning.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_1f213c44812c5530",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-10T08:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-87",
+      "text": "Status: In Progress → Resolved",
+      "url": "https://northwind.atlassian.net/browse/MER-87",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_33710584a8d8ae86",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-10T12:00:00.000Z",
+      "actor": "Priya Nair",
+      "channel": "MER-101",
+      "text": "Issue created: Invoice totals wrong for Meridian after 4.12",
+      "url": "https://northwind.atlassian.net/browse/MER-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_9ebd247d5f5b10e5",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-10T12:30:00.000Z",
+      "actor": "Priya Nair",
+      "channel": "MER-101",
+      "text": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+      "url": "https://northwind.atlassian.net/browse/MER-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_bfdf6c270d51027a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-11T12:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "general",
+      "text": "Lunch order closes at noon.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_a292939da099edc4",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-12T05:10:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "Meridian flagged wrong invoice totals; looking at MER-101.",
+      "refs": [
+        "MER-101"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_fa6a9ec10248ad27",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-13T10:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "general",
+      "text": "Who has the release checklist template?",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_5d8526abeb3b3a53",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-14T15:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "meridian-billing",
+      "text": "Coffee machine on floor 3 is fixed.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_fd62e3312507eca2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-16T16:00:00.000Z",
+      "actor": "Dana Okoro <dana.okoro@meridian-software.example>",
+      "channel": "email",
+      "text": "Please submit timesheets by Friday.\n",
+      "threadId": "m8@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m8@meridian-software.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_49143f6f87f6f639",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-17T09:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "general",
+      "text": "New coffee machine is great.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_4b04b05ab1cdbb9c",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-18T01:00:00.000Z",
+      "actor": "news@payments-weekly.example",
+      "channel": "email",
+      "text": "Join our webinar on billing automation.\n",
+      "threadId": "m9@payments-weekly.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m9@payments-weekly.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_11fa0e04f76bf1a1",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-18T06:20:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Separately, can you confirm the SUP-2231 renewal paperwork status?\n",
+      "threadId": "m10@northwind.example",
+      "refs": [
+        "SUP-2231"
+      ],
+      "meta": {
+        "messageId": "m10@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_65d26863e4dfce92",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-19T14:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "general",
+      "text": "Reminder to file expenses for the offsite.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_958bed8b90bb67e2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-20T05:00:00.000Z",
+      "actor": "Lin Chen <l.chen@northwind.example>",
+      "channel": "email",
+      "text": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.\n",
+      "threadId": "m1@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m1@meridian-software.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_446b588245ce29a1",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-20T09:00:00.000Z",
+      "actor": "Lin Chen",
+      "channel": "meridian-billing",
+      "text": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+      "refs": [
+        "MER-101"
+      ],
+      "meta": {
+        "user": "U1"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_cc65422d28d4d70e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-23T04:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-101",
+      "text": "Status: Open → In Progress",
+      "url": "https://northwind.atlassian.net/browse/MER-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_fb36a8025ad0877c",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-23T04:05:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-101",
+      "text": "Root cause looks like the MER-87 timezone change. Fix scheduled for the Sep 24 release.",
+      "url": "https://northwind.atlassian.net/browse/MER-101",
+      "refs": [
+        "MER-87"
+      ],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_4133bb30d78d5964",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-23T04:30:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+      "refs": [
+        "MER-87"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_c430a56b45a8656c",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-24T04:15:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Checking in - is the Sep 24 release out? We still see wrong totals.\n",
+      "threadId": "m1@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m2@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_d86f7ee037c3b151",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-24T16:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "Sep 24 release is cut; invoice fix included.",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_a50e90bc0dbe6b37",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-24T22:40:00.000Z",
+      "actor": "Marcus Webb <marcus.webb@meridian-software.example>",
+      "channel": "email",
+      "text": "Build is going out tonight; the invoice fix is included.\n",
+      "threadId": "m2@northwind.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m3@meridian-software.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_9fc7b2c228d4e4a8",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-25T09:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "meridian-billing",
+      "text": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_23d8387f36162c8f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-25T09:05:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "Let us keep MER-101 open until QA passes.",
+      "threadId": "slack:meridian-billing:1727254800.000000",
+      "refs": [
+        "MER-101"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_838176db0228905f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "jira",
+      "ts": "2024-09-26T02:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "MER-101",
+      "text": "Status: In Progress → Resolved",
+      "url": "https://northwind.atlassian.net/browse/MER-101",
+      "refs": [],
+      "meta": {},
+      "actorResolved": null
+    },
+    {
+      "id": "e_a13abd6673d984e8",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-26T02:10:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+      "refs": [
+        "MER-101"
+      ],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_74e730159ddbde9e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-26T02:20:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "meridian-billing",
+      "text": "It is not in the build I tested, but ok.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_f22fb7257dca9b85",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-27T03:05:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Totals are still wrong this morning. Please confirm what went out.\n",
+      "threadId": "m3@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m4@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_341afca2f584c209",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-28T03:10:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Following up again - our finance team is blocked on this.\n",
+      "threadId": "m3@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m5@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_73e857d2281453cb",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-29T04:00:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Third message with no reply. We need a date for the fix.\n",
+      "threadId": "m3@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m6@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_dfa2b3a68bad7411",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-09-30T02:45:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "Still nothing. Escalating this on our side today.\n",
+      "threadId": "m3@meridian-software.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m7@northwind.example"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_44a0831730570fab",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-30T08:00:00.000Z",
+      "actor": "Marcus Webb",
+      "channel": "meridian-billing",
+      "text": "Has anyone heard back from Northwind about the totals?",
+      "refs": [],
+      "meta": {
+        "user": "U2"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_29e5bc15966bd149",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "slack",
+      "ts": "2024-09-30T16:00:00.000Z",
+      "actor": "Dana Okoro",
+      "channel": "general",
+      "text": "All-hands moved to Thursday.",
+      "refs": [],
+      "meta": {
+        "user": "U3"
+      },
+      "actorResolved": null
+    },
+    {
+      "id": "e_0ddd4cf69d223644",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "source": "email",
+      "ts": "2024-10-01T03:30:00.000Z",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "channel": "email",
+      "text": "As discussed on our call, Meridian carries a contractual SLA on invoice accuracy.\n\nTotals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.\n",
+      "threadId": "m7@northwind.example",
+      "refs": [],
+      "meta": {
+        "messageId": "m11@northwind.example"
+      },
+      "actorResolved": null
+    }
+  ],
+  "claims": [
+    {
+      "id": "e75960bf-f158-4b4a-be67-0e9dc6d81dfc",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Lin Chen promised Northwind that the invoice totals fix would ship in the Sep 24 release.",
+      "actor": "Lin Chen",
+      "quote": "We will ship the fix in the Sep 24 release.",
+      "eventId": "e_958bed8b90bb67e2",
+      "ts": "2024-09-20T05:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T05:00:00.000Z",
+          "eventTs": "2024-09-20T05:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen <l.chen@northwind.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "dda6e785-db11-4ecb-8ab2-8e7875245a80",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "commitment",
+      "text": "Marcus Webb told the meridian-billing channel the fix was targeted at the Sep 24 release.",
+      "actor": "Marcus Webb",
+      "quote": "Fix targeted at the Sep 24 release.",
+      "eventId": "e_4133bb30d78d5964",
+      "ts": "2024-09-23T04:30:00.000Z",
+      "status": "broken",
+      "confidence": 0.75,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T04:30:00.000Z",
+          "eventTs": "2024-09-23T04:30:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "ed43ed50-e2f6-43ee-88ff-96c29a2c9f9a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "root_cause",
+      "text": "The UTC conversion merged to release branch 4.12 under MER-87 is the identified cause of Meridian's day-off invoice totals.",
+      "actor": "Lin Chen",
+      "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+      "eventId": "e_ef773b8a375d743e",
+      "ts": "2024-09-10T03:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T03:00:00.000Z",
+          "eventTs": "2024-09-10T03:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "9138f669-d09c-448b-9971-cbfdd1a446c9",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "root_cause",
+      "text": "Marcus Webb attributed Meridian's wrong invoice totals to the MER-87 timezone change and targeted the fix at the Sep 24 release.",
+      "actor": "Marcus Webb",
+      "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+      "eventId": "e_4133bb30d78d5964",
+      "ts": "2024-09-23T04:30:00.000Z",
+      "status": "n/a",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T04:30:00.000Z",
+          "eventTs": "2024-09-23T04:30:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "5bcc8678-e1c0-4c63-b307-c245c30dcbea",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "ownership",
+      "text": "Marcus Webb owned the delivery call: he declared the Sep 24 release cut with the invoice fix included.",
+      "actor": "Marcus Webb",
+      "quote": "Sep 24 release is cut; invoice fix included.",
+      "eventId": "e_d86f7ee037c3b151",
+      "ts": "2024-09-24T16:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-24T16:00:00.000Z",
+          "eventTs": "2024-09-24T16:00:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "c7f37b68-445c-40a9-bf39-5ca74af130c1",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Dana Okoro reported on Sep 25 that QA was still failing on the Sep 24 build, with totals off by a day — the shipped release did not actually fix the defect.",
+      "actor": "Dana Okoro",
+      "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+      "eventId": "e_9fc7b2c228d4e4a8",
+      "ts": "2024-09-25T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:00:00.000Z",
+          "eventTs": "2024-09-25T09:00:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "cf445e6c-11c7-4451-9056-7bdd9aa721a4",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "decision",
+      "text": "Marcus Webb initially decided on Sep 25 to keep MER-101 open until QA passed.",
+      "actor": "Marcus Webb",
+      "quote": "Let us keep MER-101 open until QA passes.",
+      "eventId": "e_23d8387f36162c8f",
+      "ts": "2024-09-25T09:05:00.000Z",
+      "status": "n/a",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:05:00.000Z",
+          "eventTs": "2024-09-25T09:05:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "2b448a5e-ab0b-49c7-aff0-08f5315dbdb7",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "ownership",
+      "text": "Marcus Webb reversed that decision on Sep 26 and unilaterally marked MER-101 resolved, asserting the fix was in the Sep 24 build despite QA failure.",
+      "actor": "Marcus Webb",
+      "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+      "eventId": "e_a13abd6673d984e8",
+      "ts": "2024-09-26T02:10:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:10:00.000Z",
+          "eventTs": "2024-09-26T02:10:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "d4f9de2d-8df0-4700-b0c1-1b3e1fe52a49",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Dana Okoro pushed back that the fix was not in the build she tested, but MER-101 stayed resolved anyway — a disputed resolution with no follow-up owner.",
+      "actor": "Dana Okoro",
+      "quote": "It is not in the build I tested, but ok.",
+      "eventId": "e_74e730159ddbde9e",
+      "ts": "2024-09-26T02:20:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:20:00.000Z",
+          "eventTs": "2024-09-26T02:20:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "87b70cc9-e464-4a5a-8cbe-20b3f16900f0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Lin Chen went on leave announcing that no handoff had been set up for MER-101, leaving the client ticket without an active owner from Sep 20.",
+      "actor": "Lin Chen",
+      "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+      "eventId": "e_446b588245ce29a1",
+      "ts": "2024-09-20T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "handoff",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T09:00:00.000Z",
+          "eventTs": "2024-09-20T09:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "47114ce2-611f-4f5f-907a-aaf346e3a83b",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Even with Lin Chen on leave, no one picked up the Northwind thread — Marcus Webb was still asking internally on Sep 30 whether anyone had heard back from Northwind about the totals.",
+      "actor": "Marcus Webb",
+      "quote": "Has anyone heard back from Northwind about the totals?",
+      "eventId": "e_44a0831730570fab",
+      "ts": "2024-09-30T08:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-30T08:00:00.000Z",
+          "eventTs": "2024-09-30T08:00:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "73520535-00ee-4dfc-8a40-9d26818e8e07",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "The team declared 4.12 live on production before the client ticket was filed, which is when Meridian says totals broke; Meridian's symptom is a one-day offset since that deploy.",
+      "actor": "Priya Nair",
+      "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+      "eventId": "e_9ebd247d5f5b10e5",
+      "ts": "2024-09-10T12:30:00.000Z",
+      "status": "n/a",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T12:30:00.000Z",
+          "eventTs": "2024-09-10T12:30:00.000Z",
+          "claimActor": "Priya Nair",
+          "eventActor": "Priya Nair"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "3e9c93f9-b052-41ec-b5f0-6d5132436661",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Priya Nair's first post-release follow-up on Sep 24 (asking whether the Sep 24 release was out and reporting wrong totals) went unanswered.",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "quote": "Checking in - is the Sep 24 release out? We still see wrong totals.",
+      "eventId": "e_c430a56b45a8656c",
+      "ts": "2024-09-24T04:15:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-24T04:15:00.000Z",
+          "eventTs": "2024-09-24T04:15:00.000Z",
+          "claimActor": "Priya Nair <priya.nair@northwind.example>",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "b9966aea-c55a-4e7a-a21c-59d74f5382c0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "Priya Nair escalated that four of her messages had received no reply despite continued wrong totals — a sustained intake/response failure on the account.",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+      "eventId": "e_0ddd4cf69d223644",
+      "ts": "2024-10-01T03:30:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-10-01T03:30:00.000Z",
+          "eventTs": "2024-10-01T03:30:00.000Z",
+          "claimActor": "Priya Nair <priya.nair@northwind.example>",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "132bdf0a-e338-4d75-88c7-f48027b1d934",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "process_failure",
+      "text": "By Sep 29 Priya Nair had sent a third unanswered message and still had no committed fix date, leaving Meridian finance blocked.",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "quote": "Third message with no reply. We need a date for the fix.",
+      "eventId": "e_73e857d2281453cb",
+      "ts": "2024-09-29T04:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-29T04:00:00.000Z",
+          "eventTs": "2024-09-29T04:00:00.000Z",
+          "claimActor": "Priya Nair <priya.nair@northwind.example>",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "2d018864-df11-420a-b064-cd8bdbc115de",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "root_cause",
+      "text": "Marcus Webb identified the MER-87 timezone change as the root cause of the wrong invoice totals, with the fix targeted at the Sep 24 release.",
+      "actor": "Marcus Webb",
+      "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+      "eventId": "e_4133bb30d78d5964",
+      "ts": "2024-09-23T04:30:00.000Z",
+      "status": "n/a",
+      "confidence": 0.8,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T04:30:00.000Z",
+          "eventTs": "2024-09-23T04:30:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "e3efaab9-4a31-4630-a993-43b210b2e59c",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "root_cause",
+      "text": "Lin Chen merged the MER-87 UTC conversion into release branch 4.12, which introduced the day-offset in invoice totals Meridian reported since the 4.12 deploy.",
+      "actor": "Lin Chen",
+      "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+      "eventId": "e_ef773b8a375d743e",
+      "ts": "2024-09-10T03:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T03:00:00.000Z",
+          "eventTs": "2024-09-10T03:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "ec6201f9-9273-4b28-803f-ae6c63055e37",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Dana Okoro reported on Sep 25 that QA was still failing on the Sep 24 build, with totals off by a day in test.",
+      "actor": "Dana Okoro",
+      "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+      "eventId": "e_9fc7b2c228d4e4a8",
+      "ts": "2024-09-25T09:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:00:00.000Z",
+          "eventTs": "2024-09-25T09:00:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "1b0eda75-488a-410e-b26a-1de7d622af99",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Marcus Webb had agreed MER-101 should stay open until QA passed, then marked it resolved the next day while QA was still failing.",
+      "actor": "Marcus Webb",
+      "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+      "eventId": "e_a13abd6673d984e8",
+      "ts": "2024-09-26T02:10:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_refutes",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "refutes"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:10:00.000Z",
+          "eventTs": "2024-09-26T02:10:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "3bdb5ab1-13ee-4b9d-a82b-4efd361d8e92",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "ownership",
+      "type": "commitment",
+      "text": "Lin Chen promised that the invoice totals fix would ship in the Sep 24 release.",
+      "actor": "Lin Chen <l.chen@northwind.example>",
+      "quote": "We will ship the fix in the Sep 24 release.",
+      "eventId": "e_958bed8b90bb67e2",
+      "ts": "2024-09-20T05:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T05:00:00.000Z",
+          "eventTs": "2024-09-20T05:00:00.000Z",
+          "claimActor": "Lin Chen <l.chen@northwind.example>",
+          "eventActor": "Lin Chen <l.chen@northwind.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "f8f586a0-bada-4fb7-b6a8-025244208618",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "The 4.12 change merged in MER-87 introduced a UTC conversion into invoice calculations; Marcus Webb identified this timezone change as the cause of Meridian's wrong totals.",
+      "actor": "Lin Chen",
+      "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+      "eventId": "e_ef773b8a375d743e",
+      "ts": "2024-09-10T03:00:00.000Z",
+      "status": "kept",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T03:00:00.000Z",
+          "eventTs": "2024-09-10T03:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "3cec8864-90cb-45dc-b467-925e452f28bd",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "Marcus Webb explicitly attributed the totals error to the MER-87 timezone change, with the fix targeted at the Sep 24 release.",
+      "actor": "Marcus Webb",
+      "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+      "eventId": "e_4133bb30d78d5964",
+      "ts": "2024-09-23T04:30:00.000Z",
+      "status": "kept",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-23T04:30:00.000Z",
+          "eventTs": "2024-09-23T04:30:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "44d680cf-9a07-4947-a89b-6277a56d2df2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "The symptom first appeared right after the 4.12 deploy, with timelines off by a day as reported on MER-101.",
+      "actor": "Priya Nair",
+      "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+      "eventId": "e_9ebd247d5f5b10e5",
+      "ts": "2024-09-10T12:30:00.000Z",
+      "status": "kept",
+      "confidence": 0.85,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-10T12:30:00.000Z",
+          "eventTs": "2024-09-10T12:30:00.000Z",
+          "claimActor": "Priya Nair",
+          "eventActor": "Priya Nair"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "85eb461e-6de8-41ff-96ac-a60256d9323a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "Dana Okoro reported QA still failing on the Sep 24 build, with totals off by a day in test — the defect reproduced after the release intended to fix it.",
+      "actor": "Dana Okoro",
+      "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+      "eventId": "e_9fc7b2c228d4e4a8",
+      "ts": "2024-09-25T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:00:00.000Z",
+          "eventTs": "2024-09-25T09:00:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "0a098a02-cabd-4032-a41e-c3e0965e7c57",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "MER-101 was marked resolved on Sep 26 claiming the fix was in the Sep 24 build even though QA was still failing the day before.",
+      "actor": "Marcus Webb",
+      "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+      "eventId": "e_a13abd6673d984e8",
+      "ts": "2024-09-26T02:10:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:10:00.000Z",
+          "eventTs": "2024-09-26T02:10:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "42d7c6ec-4c1a-4dcd-9337-f206913112f2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Marcus Webb's own stated plan on Sep 25 was to keep MER-101 open until QA passed, but he resolved it the next morning while QA was still red.",
+      "actor": "Marcus Webb",
+      "quote": "Let us keep MER-101 open until QA passes.",
+      "eventId": "e_23d8387f36162c8f",
+      "ts": "2024-09-25T09:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:05:00.000Z",
+          "eventTs": "2024-09-25T09:05:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "17a03326-3c69-4b3e-8e01-8c32834e1b81",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "root_cause",
+      "text": "Dana Okoro directly disputed the resolution, stating the fix was not in the build she tested.",
+      "actor": "Dana Okoro",
+      "quote": "It is not in the build I tested, but ok.",
+      "eventId": "e_74e730159ddbde9e",
+      "ts": "2024-09-26T02:20:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:20:00.000Z",
+          "eventTs": "2024-09-26T02:20:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "c77855cb-bf55-4eb9-a84e-da93be1c3732",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "commitment",
+      "text": "Marcus Webb announced the Sep 24 release was cut with the invoice fix included, but QA showed the fix was not effective.",
+      "actor": "Marcus Webb",
+      "quote": "Sep 24 release is cut; invoice fix included.",
+      "eventId": "e_d86f7ee037c3b151",
+      "ts": "2024-09-24T16:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-24T16:00:00.000Z",
+          "eventTs": "2024-09-24T16:00:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "8c665b21-99cf-4a1b-9415-f20476da139f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Lin Chen went on leave until Oct 2 with no handoff set up for MER-101, leaving the client ticket unowned.",
+      "actor": "Lin Chen",
+      "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+      "eventId": "e_446b588245ce29a1",
+      "ts": "2024-09-20T09:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "handoff",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T09:00:00.000Z",
+          "eventTs": "2024-09-20T09:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "7e235c6a-6520-4ae9-9fb8-3607c7cc6c96",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "Priya Nair escalated that totals were still wrong five days after the promised Sep 24 fix and that four messages had gone unanswered.",
+      "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+      "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+      "eventId": "e_0ddd4cf69d223644",
+      "ts": "2024-10-01T03:30:00.000Z",
+      "status": "broken",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-10-01T03:30:00.000Z",
+          "eventTs": "2024-10-01T03:30:00.000Z",
+          "claimActor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "f7b444c8-5412-4da0-8ae7-60ae7998369e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "commitment",
+      "text": "Lin Chen promised Priya Nair that the fix would ship in the Sep 24 release, and stated he was on leave from that day until Oct 2.",
+      "actor": "Lin Chen &lt;l.chen@northwind.example&gt;",
+      "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+      "eventId": "e_958bed8b90bb67e2",
+      "ts": "2024-09-20T05:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.9,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T05:00:00.000Z",
+          "eventTs": "2024-09-20T05:00:00.000Z",
+          "claimActor": "Lin Chen &lt;l.chen@northwind.example&gt;",
+          "eventActor": "Lin Chen <l.chen@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "0ebd05b2-8768-4c85-ba19-eb6d7bdd2da2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "The client wrote on Sep 24 asking whether the release was out and reporting totals still wrong, with no reply in the records.",
+      "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+      "quote": "Checking in - is the Sep 24 release out? We still see wrong totals.",
+      "eventId": "e_c430a56b45a8656c",
+      "ts": "2024-09-24T04:15:00.000Z",
+      "status": "broken",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-24T04:15:00.000Z",
+          "eventTs": "2024-09-24T04:15:00.000Z",
+          "claimActor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "84dc519f-41af-47de-b46a-c9aee1e80b86",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "The client reported on Sep 27 that totals were still wrong and asked for confirmation of what went out; the records show no reply.",
+      "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+      "quote": "Totals are still wrong this morning. Please confirm what went out.",
+      "eventId": "e_f22fb7257dca9b85",
+      "ts": "2024-09-27T03:05:00.000Z",
+      "status": "broken",
+      "confidence": 0.8,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-27T03:05:00.000Z",
+          "eventTs": "2024-09-27T03:05:00.000Z",
+          "claimActor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "c0890914-88fd-4e15-8151-a2b8248e0bd1",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "root_cause",
+      "type": "process_failure",
+      "text": "By Sep 30 the client had escalated internally over the silence, while internally Marcus Webb was asking whether anyone had heard back from Northwind — showing the reply gap was not tracked by any owner.",
+      "actor": "Marcus Webb",
+      "quote": "Has anyone heard back from Northwind about the totals?",
+      "eventId": "e_44a0831730570fab",
+      "ts": "2024-09-30T08:00:00.000Z",
+      "status": "broken",
+      "confidence": 0.75,
+      "verifyStatus": "supported",
+      "verifyError": "entailment_partial",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "partial"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-30T08:00:00.000Z",
+          "eventTs": "2024-09-30T08:00:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "42a912f0-c765-46df-ae8c-9eef883fa7c0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Marcus Webb stated MER-101 should remain open until QA passed, so its subsequent resolution contradicts the team's own gate.",
+      "actor": "Marcus Webb",
+      "quote": "Let us keep MER-101 open until QA passes.",
+      "eventId": "e_23d8387f36162c8f",
+      "ts": "2024-09-25T09:05:00.000Z",
+      "status": "n/a",
+      "confidence": 0.8,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-25T09:05:00.000Z",
+          "eventTs": "2024-09-25T09:05:00.000Z",
+          "claimActor": "Marcus Webb",
+          "eventActor": "Marcus Webb"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "9d50b475-a996-499a-a60b-91b1c7b2071c",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Dana Okoro disputed Marcus Webb's resolution claim, stating the fix was not in the build she tested.",
+      "actor": "Dana Okoro",
+      "quote": "It is not in the build I tested, but ok.",
+      "eventId": "e_74e730159ddbde9e",
+      "ts": "2024-09-26T02:20:00.000Z",
+      "status": "n/a",
+      "confidence": 0.75,
+      "verifyStatus": "verified",
+      "verifyError": null,
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": null,
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-26T02:20:00.000Z",
+          "eventTs": "2024-09-26T02:20:00.000Z",
+          "claimActor": "Dana Okoro",
+          "eventActor": "Dana Okoro"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "11b14745-9a2d-432b-953b-3c7bd077178e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "ownership",
+      "text": "Owning engineer Lin Chen went on leave until Oct 2 without a handoff set up for MER-101, leaving no assigned owner for the client's messages.",
+      "actor": "Lin Chen",
+      "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+      "eventId": "e_446b588245ce29a1",
+      "ts": "2024-09-20T09:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "handoff",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-20T09:00:00.000Z",
+          "eventTs": "2024-09-20T09:00:00.000Z",
+          "claimActor": "Lin Chen",
+          "eventActor": "Lin Chen"
+        }
+      },
+      "skepticFlag": false,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "d9da8bc8-6865-4527-9d1f-0bd08136130a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "agent": "commitments",
+      "type": "process_failure",
+      "text": "Northwind's third chasing message received no reply, and the client requested a date for the fix that was not provided.",
+      "actor": "Priya Nair <priya.nair@northwind.example>",
+      "quote": "Third message with no reply. We need a date for the fix.",
+      "eventId": "e_73e857d2281453cb",
+      "ts": "2024-09-29T04:00:00.000Z",
+      "status": "n/a",
+      "confidence": 0.85,
+      "verifyStatus": "supported",
+      "verifyError": "negative_inference",
+      "checks": {
+        "quote": {
+          "ok": true
+        },
+        "negative": {
+          "basis": "3/3 sources searched",
+          "subject": "reply",
+          "complete": true,
+          "notSearched": [],
+          "failedQueries": 0,
+          "excludedClientRecords": 0
+        },
+        "entailment": {
+          "verdict": "supports"
+        },
+        "attribution": {
+          "ok": true,
+          "claimTs": "2024-09-29T04:00:00.000Z",
+          "eventTs": "2024-09-29T04:00:00.000Z",
+          "claimActor": "Priya Nair <priya.nair@northwind.example>",
+          "eventActor": "Priya Nair <priya.nair@northwind.example>"
+        }
+      },
+      "skepticFlag": true,
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "abab48f9-92dc-4ad3-8f2a-316a8dafe2bc",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "e75960bf-f158-4b4a-be67-0e9dc6d81dfc",
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+      "promisor": "Lin Chen",
+      "promisee": "Northwind (Priya Nair)",
+      "object": "invoice totals fix shipped in a release",
+      "conditions": null,
+      "deadlinePhrase": "Sep 24",
+      "deadlineIso": "2024-09-24T00:00:00.000Z",
+      "rationale": "Release was cut Sep 24 but QA failed on that build and totals remained wrong for Meridian.",
+      "status": "broken",
+      "contested": false,
+      "fulfilmentEventIds": [],
+      "sourceEventIds": [
+        "e_958bed8b90bb67e2"
+      ],
+      "dedupeKey": "chen lin|invoice totals|2024-09-24",
+      "createdAt": "2026-10-18T13:00:39.228Z"
+    },
+    {
+      "id": "4371a2b2-ad4e-4289-8ac3-aae1c6f727a3",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "f7b444c8-5412-4da0-8ae7-60ae7998369e",
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+      "promisor": "Lin Chen &lt;l.chen@northwind.example&gt;",
+      "promisee": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+      "object": "invoice totals fix shipped in the Sep 24 release",
+      "conditions": null,
+      "deadlinePhrase": "Sep 24",
+      "deadlineIso": "2024-09-24T00:00:00.000Z",
+      "rationale": "The Sep 24 release shipped but QA was still failing on it and totals remained wrong per the client on Sep 24, Sep 27 and Oct 1.",
+      "status": "broken",
+      "contested": false,
+      "fulfilmentEventIds": [],
+      "sourceEventIds": [
+        "e_958bed8b90bb67e2"
+      ],
+      "dedupeKey": "chen chen example gt l lin lt northwind|invoice totals|2024-09-24",
+      "createdAt": "2026-10-18T13:00:46.180Z"
+    }
+  ],
+  "gaps": [
+    {
+      "id": "36c189c4-4863-429a-8953-e740a3f3180f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "What build identifier actually shipped on Sep 24 is not recorded — only that 'Sep 24 release is cut; invoice fix included' (Marcus Webb) and Dana Okoro's statement that the fix was not in the build she tested.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "d52cf14e-3f1d-41da-b366-5f8e0b795e30",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "No build/test records, CI artifacts or Jira transition history exist in the registry beyond MER-87's merge note and MER-101's creation, so the exact contents of the Sep 24 build cannot be diffed against MER-101.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "f8d3519c-6c70-4f4a-aa61-8b62a746092d",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "Why MER-101 was marked resolved while QA was red is not explained in any record; Dana's mild pushback ('but ok') is the only reaction recorded.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "019cdc82-3257-4cd0-9265-33322eb17d8a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "Whether the UTC conversion is the sole cause or a separate day-offset defect persists on Meridian's own data cannot be determined — no Meridian-supplied dataset or reproduction record exists.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "80dcb11f-eab4-4652-940d-2b0ef00c6d9e",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "Whether any reply or handover was assigned during Lin Chen's leave: no email from Northwind staff to Priya Nair appears in the registry, and no handover message exists beyond Lin Chen's 'No handoff set up yet'.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "efc84083-0490-4801-8c71-16c1d9693f4f",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "The scope and terms of Meridian's contractual SLA on invoice accuracy are only asserted by the client ('Meridian carries a contractual SLA on invoice accuracy'); no contract or SLA document is in the records, and no committed fix date after Sep 24 was ever given.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "5d79eab7-6283-4faa-a390-81153dd81b14",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "SUP-2231 appears only as an unrelated renewal-paperwork question from Priya Nair on Sep 18; no Jira issue or thread for it exists in the registry.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "d83bf995-7866-4f31-8e3e-24baffe01ea0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (root cause)",
+      "note": "No resolution or next-fix date is recorded on or after Oct 1; the question 'when will invoice totals be fixed' remains unanswered in the evidence.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "422944ca-4c30-439f-ab72-02ed0eed96db",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "The registry does not show which commit/build artifact was actually deployed on Sep 24; only Marcus Webb's statement that the 'invoice fix' was included and Dana Okoro's statement that the build she tested did not contain it.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "6354e33b-5d39-4e70-927f-3a115f313118",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "MER-101's Jira record contains only creation and the report comment — no status/assignee transition to 'resolved' is recorded in the registry, so the resolution exists only as Marcus Webb's Slack message.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "c5f8b804-59ac-4b18-bb94-87af432ff147",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "SUP-2231 appears only as Priya Nair's renewal-paperwork query (Sep 18); no thread or status could be read, and it is unrelated to the totals defect.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "1173f8d9-8347-473f-9925-382d074e4859",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "No reply or handover from any owner to Northwind is present in the registry across Sep 24–Oct 1 — absence of replies is inferred from Priya Nair's statements and Marcus Webb's Sep 30 question, not from a complete mailbox.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "10d11afe-f7e0-4b63-81b1-4541e211ac96",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "Whether the 4.12 UTC conversion is the sole cause or a second day-offset defect persists on Meridian's own data could not be established: no Meridian test data or reproduction record exists in the registry.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "413d86e3-ef47-4712-a090-ea9ab28f58aa",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "The scope and terms of Meridian's contractual SLA on invoice accuracy are asserted only by Priya Nair (Oct 1); no contract or SLA document is in the registry.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "5db40974-7de8-4db1-8b75-4770bb494e89",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Could not determine (decisions and ownership)",
+      "note": "No fix date or remediation commitment for the client could be found anywhere in the records — the question 'when will totals be fixed' is unanswered by the evidence.",
+      "eventIds": [],
+      "issueId": "20f4f460-7eb5-42d0-b39a-81f0e94030ed"
+    },
+    {
+      "id": "1cb14960-0207-4541-8d89-dc02cf5b820d",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Long gap between Sep 10 Jira intake and Sep 20 leave announcement: no record of engineering work on MER-101 between Sep 10 and Sep 23 (first Marcus causal statement). Also a 3-day gap Sep 27–30 before Marcus asks internally whether Northwind responded — despite the client's continued messages. The records are silent on any actual work performed to fix the defect before Sep 24.",
+      "note": "Long gap between Sep 10 Jira intake and Sep 20 leave announcement: no record of engineering work on MER-101 between Sep 10 and Sep 23 (first Marcus causal statement). Also a 3-day gap Sep 27–30 before Marcus asks internally whether Northwind responded — despite the client's continued messages. The records are silent on any actual work performed to fix the defect before Sep 24.",
+      "eventIds": [
+        "e_33710584a8d8ae86",
+        "e_4133bb30d78d5964",
+        "e_a292939da099edc4"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "fc9e7860-3f1c-41c2-a494-d7a1688d2400",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "No reply from anyone (Lin Chen, Marcus Webb, Dana Okoro) to any of Priya Nair's emails appears in the record. Yet Marcus on Sep 30 asks 'Has anyone heard back from Northwind?' — suggesting the internal team believed Northwind was the silent party. This is a silent/contradictory state: records show no outbound replies, but also no acknowledgement that the client was waiting.",
+      "note": "No reply from anyone (Lin Chen, Marcus Webb, Dana Okoro) to any of Priya Nair's emails appears in the record. Yet Marcus on Sep 30 asks 'Has anyone heard back from Northwind?' — suggesting the internal team believed Northwind was the silent party. This is a silent/contradictory state: records show no outbound replies, but also no acknowledgement that the client was waiting.",
+      "eventIds": [
+        "e_44a0831730570fab",
+        "e_0ddd4cf69d223644"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "66003427-c574-4920-b79a-95f45edd90dc",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Dana's pushback on Sep 26 gets no reply in the record. MER-101 stays resolved with no visible follow-up or re-open. The claim says 'no follow-up owner' but there is also no response to Dana — an unanswered question that the claim does not flag.",
+      "note": "Dana's pushback on Sep 26 gets no reply in the record. MER-101 stays resolved with no visible follow-up or re-open. The claim says 'no follow-up owner' but there is also no response to Dana — an unanswered question that the claim does not flag.",
+      "eventIds": [
+        "e_74e730159ddbde9e",
+        "e_a13abd6673d984e8"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "69b5f353-9dc8-413b-8d14-c4b3c39d5d61",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "'Is the Sep 24 release out?' (Sep 24) is never answered in the record. The release is only announced internally in Slack on Sep 24 at 16:00, after the client asked at 04:15 — suggesting the release was not yet out when the client asked, and no reply told them. The claim does not note the unreleased-at-time-of-ask detail.",
+      "note": "'Is the Sep 24 release out?' (Sep 24) is never answered in the record. The release is only announced internally in Slack on Sep 24 at 16:00, after the client asked at 04:15 — suggesting the release was not yet out when the client asked, and no reply told them. The claim does not note the unreleased-at-time-of-ask detail.",
+      "eventIds": [
+        "e_c430a56b45a8656c",
+        "e_d86f7ee037c3b151"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "54fe3249-0bc1-4dde-9dfa-6dba07cd6285",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Client asked 'Please confirm what went out' on Sep 27; no reply in record. No record shows what actually shipped in the Sep 24 build or whether the invoice fix was in the deployed artifact — the exact question is unanswered.",
+      "note": "Client asked 'Please confirm what went out' on Sep 27; no reply in record. No record shows what actually shipped in the Sep 24 build or whether the invoice fix was in the deployed artifact — the exact question is unanswered.",
+      "eventIds": [
+        "e_f22fb7257dca9b85",
+        "e_d86f7ee037c3b151"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "16cde000-23da-4cc8-b4e8-d28f51dacdb2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Client asked for 'a date for the fix' on Sep 29; record shows no committed date ever provided. Claim notes the request, but records also do not show what fix, if any, was planned after the Sep 24 build failed QA.",
+      "note": "Client asked for 'a date for the fix' on Sep 29; record shows no committed date ever provided. Claim notes the request, but records also do not show what fix, if any, was planned after the Sep 24 build failed QA.",
+      "eventIds": [
+        "e_73e857d2281453cb"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "27bb8f08-66ad-4d33-a04c-25cb5abf20e4",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Contractual SLA reference (e_0ddd4cf69d223644 'Meridian carries a contractual SLA on invoice accuracy') is never investigated: no claim identifies breach terms, notification obligations, or whether anyone internally acknowledged the SLA. This is an unexamined angle directly relevant to escalation severity.",
+      "note": "Contractual SLA reference (e_0ddd4cf69d223644 'Meridian carries a contractual SLA on invoice accuracy') is never investigated: no claim identifies breach terms, notification obligations, or whether anyone internally acknowledged the SLA. This is an unexamined angle directly relevant to escalation severity.",
+      "eventIds": [
+        "e_0ddd4cf69d223644"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "456de309-b743-4447-a128-ca9dac603c10",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Marcus's 'Sep 24 release is cut; invoice fix included' is the basis for the broken commitment chain, but no source shows what was actually deployed (build hash, changelog, deployment record). No deployment/release source was searched — only Jira, Slack, and email. The claim that the invoice fix was included rests solely on Marcus's assertion.",
+      "note": "Marcus's 'Sep 24 release is cut; invoice fix included' is the basis for the broken commitment chain, but no source shows what was actually deployed (build hash, changelog, deployment record). No deployment/release source was searched — only Jira, Slack, and email. The claim that the invoice fix was included rests solely on Marcus's assertion.",
+      "eventIds": [
+        "e_d86f7ee037c3b151"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "828893c0-d235-4133-ba0c-cc4471f8a325",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Lin Chen's email (e_958bed8b90bb67e2) sent the client promise and leave notice, but the record contains no internal handoff of any of Lin Chen's tickets or context. The 'no handoff' statement is only self-reported; no investigation of whether any other engineer had context for MER-87/MER-101 appears.",
+      "note": "Lin Chen's email (e_958bed8b90bb67e2) sent the client promise and leave notice, but the record contains no internal handoff of any of Lin Chen's tickets or context. The 'no handoff' statement is only self-reported; no investigation of whether any other engineer had context for MER-87/MER-101 appears.",
+      "eventIds": [
+        "e_446b588245ce29a1",
+        "e_958bed8b90bb67e2"
+      ],
+      "issueId": null
+    },
+    {
+      "id": "94856439-963b-47a0-b6d7-b069a32d1f9b",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "question": "Claim states Marcus 'attributed' the cause and 'targeted' the fix, but that message was posted in the internal meridian-billing Slack, not to the client. No record shows the root cause was ever communicated to Northwind/Priya Nair. The investigation leaves this client-communication gap unflagged.",
+      "note": "Claim states Marcus 'attributed' the cause and 'targeted' the fix, but that message was posted in the internal meridian-billing Slack, not to the client. No record shows the root cause was ever communicated to Northwind/Priya Nair. The investigation leaves this client-communication gap unflagged.",
+      "eventIds": [
+        "e_4133bb30d78d5964",
+        "e_c430a56b45a8656c"
+      ],
+      "issueId": null
+    }
+  ],
+  "skepticNotes": [
+    {
+      "id": "ecd2862f-36db-4c94-8872-c620e3ec7919",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "f7b444c8-5412-4da0-8ae7-60ae7998369e",
+      "kind": "contradiction",
+      "text": "The quote for e_958bed8b90bb67e2 is 'We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.' but the registry text for that event contains only the first sentence and no leave statement; the claim's quote cannot be verified against the cited item.",
+      "eventIds": [
+        "e_958bed8b90bb67e2"
+      ]
+    },
+    {
+      "id": "6496e327-7752-4c1b-812b-672503138bf5",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "87b70cc9-e464-4a5a-8cbe-20b3f16900f0",
+      "kind": "contradiction",
+      "text": "Claim says Lin Chen announced leave with no handoff and 'leaving the client ticket without an active owner from Sep 20', but the leave announcement (Sep 20) and the failure to hand off are separate facts; nothing in the record establishes ownership status before or during Sep 20, and the Jira thread shows Priya Nair active on MER-101 throughout, so 'from Sep 20' is an inference not supported by the cited item.",
+      "eventIds": [
+        "e_446b588245ce29a1"
+      ]
+    },
+    {
+      "id": "9ee81c92-bda7-4ca9-a5fe-17afa4b73cb4",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "73520535-00ee-4dfc-8a40-9d26818e8e07",
+      "kind": "contradiction",
+      "text": "Claims '4.12 live ... before the client ticket was filed' and 'Meridian's symptom is a one-day offset since that deploy'. The record (e_3de27219e6d5246f, e_33710584a8d8ae86) does place deferred go-live before ticket creation, but the claim is typed 'commitment' and labeled with a status of n/a; also 'declared live before ticket filed' is partly restated from Jira text rather than independently shown. Minor mislabeling plus a causal 'since that deploy' beyond what e_9ebd247d5f5b10e5 asserts (it attributes the report to Meridian, not verified cause).",
+      "eventIds": [
+        "e_9ebd247d5f5b10e5",
+        "e_3de27219e6d5246f"
+      ]
+    },
+    {
+      "id": "14dd416a-c837-4e00-b217-b32fa998d03d",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "3e9c93f9-b052-41ec-b5f0-6d5132436661",
+      "kind": "contradiction",
+      "text": "Claim asserts Priya Nair's Sep 24 follow-up 'went unanswered', but the only evidence of no reply is the absence of a reply record; there is no explicit statement that this message went unanswered (by contrast e_73e857d2281453cb says 'no reply'). Calling it unanswered is an inference from silence, not a sourced fact.",
+      "eventIds": [
+        "e_c430a56b45a8656c"
+      ]
+    },
+    {
+      "id": "4a6976ff-a038-443c-8754-07c41b1ddb68",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "b9966aea-c55a-4e7a-a21c-59d74f5382c0",
+      "kind": "contradiction",
+      "text": "Quote says 'no reply to four messages' as of Oct 1, but the registry lists at least five Northwind client emails (Sep 18, Sep 24, Sep 27, Sep 28, Sep 29, Sep 30). The 'four messages' figure conflicts with the record count and is not reconciled; also the Sep 18 email concerns SUP-2231 and should be excluded.",
+      "eventIds": [
+        "e_0ddd4cf69d223644",
+        "e_11fa0e04f76bf1a1",
+        "e_f22fb7257dca9b85",
+        "e_341afca2f584c209",
+        "e_73e857d2281453cb",
+        "e_dfa2b3a68bad7411"
+      ]
+    },
+    {
+      "id": "20f393f6-ff74-4f7e-95ca-aa0c96ded578",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "132bdf0a-e338-4d75-88c7-f48027b1d934",
+      "kind": "contradiction",
+      "text": "Claim says 'third unanswered message' on Sep 29, but the registry shows at least two prior unanswered client emails (Sep 27, Sep 28) plus the Sep 24 message, making the 'third' count ambiguous/contradicted.",
+      "eventIds": [
+        "e_73e857d2281453cb",
+        "e_f22fb7257dca9b85",
+        "e_341afca2f584c209"
+      ]
+    },
+    {
+      "id": "7ba0050d-94a3-488f-8f46-35ac771d3e90",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "84dc519f-41af-47de-b46a-c9aee1e80b86",
+      "kind": "contradiction",
+      "text": "Claim says client wrote Sep 27 'with no reply in the records', but the prior client message e_c430a56b45a8656c also has no reply record, and the Sep 27 text does not itself contain a 'no reply' assertion; labeling as a confirmed unanswered message is an inference from silence.",
+      "eventIds": [
+        "e_f22fb7257dca9b85",
+        "e_c430a56b45a8656c"
+      ]
+    },
+    {
+      "id": "c25a6c7e-e35c-4b42-9a78-df06c03a3628",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "c0890914-88fd-4e15-8151-a2b8248e0bd1",
+      "kind": "contradiction",
+      "text": "Claim says 'client had escalated internally over the silence' as of Sep 30, but the escalation email (e_dfa2b3a68bad7411) is dated Sep 30; also 'reply gap was not tracked by any owner' is an inference, not stated in e_44a0831730570fab. The Marcus question actually suggests he believed Northwind had been contacted, contradicting the 'no owner tracked replies' framing.",
+      "eventIds": [
+        "e_44a0831730570fab",
+        "e_dfa2b3a68bad7411"
+      ]
+    },
+    {
+      "id": "4038672a-bb29-49fd-9256-5300dbff9457",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "ed43ed50-e2f6-43ee-88ff-96c29a2c9f9a",
+      "kind": "unsupported",
+      "text": "Root cause asserted with confidence 0.85 solely from the Jira merge note 'invoices now use a UTC conversion'. The merge note does not state that it caused the day-offset; that causal link rests only on Marcus Webb's later Slack assertion (e_4133bb30d78d5964), which is itself unverified. Claim presents the causal conclusion as established.",
+      "eventIds": [
+        "e_ef773b8a375d743e",
+        "e_4133bb30d78d5964"
+      ]
+    },
+    {
+      "id": "454b0575-74c8-44cf-8502-3e7135f9512a",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "f8f586a0-bada-4fb7-b6a8-025244208618",
+      "kind": "unsupported",
+      "text": "Same as claim 2: combines the Jira merge note with Marcus's attributed cause and labels the result 'root_cause' kept at 0.9 confidence, though no technical verification (e.g., code review, test reproduction of the off-by-one before/after 4.12) is in the record.",
+      "eventIds": [
+        "e_ef773b8a375d743e",
+        "e_4133bb30d78d5964"
+      ]
+    },
+    {
+      "id": "0a653f78-f2b1-4638-ac6a-5a853c224b99",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "2b448a5e-ab0b-49c7-aff0-08f5315dbdb7",
+      "kind": "unsupported",
+      "text": "Calls Marcus's resolution 'unilateral' and a 'reversal' of his own decision. The record shows he said 'keep MER-101 open until QA passes' then resolved it the next day — a contradiction in his own words — but 'unilateral' implies disagreement he ignored; Dana's pushback (e_74e730159ddbde9e) came after the resolution, so he had not been contradicted at the moment of resolving. Wording overstates.",
+      "eventIds": [
+        "e_a13abd6673d984e8",
+        "e_23d8387f36162c8f",
+        "e_74e730159ddbde9e"
+      ]
+    },
+    {
+      "id": "8c9e0094-132f-4517-849e-92381c8671c8",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "c7f37b68-445c-40a9-bf39-5ca74af130c1",
+      "kind": "unsupported",
+      "text": "Claim says 'the shipped release did not actually fix the defect'. QA text says 'still failing on the Sep 24 build' in test — a test environment, not necessarily production; the record does not confirm production behavior. Claim extrapolates test failure to shipped production state.",
+      "eventIds": [
+        "e_9fc7b2c228d4e4a8"
+      ]
+    },
+    {
+      "id": "6a2600f6-c8a9-4d8a-930c-3036534377b9",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "c77855cb-bf55-4eb9-a84e-da93be1c3732",
+      "kind": "unsupported",
+      "text": "Claims 'QA showed the fix was not effective'. Dana's message says QA failing on the Sep 24 build in test; it does not state the fix was present in that build or that QA tested the fix. Unsupported leap.",
+      "eventIds": [
+        "e_d86f7ee037c3b151",
+        "e_9fc7b2c228d4e4a8"
+      ]
+    },
+    {
+      "id": "3df99c21-fd8d-44ce-8b13-e708ff9366c5",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "c0890914-88fd-4e15-8151-a2b8248e0bd1",
+      "kind": "silence",
+      "text": "Long gap between Sep 10 Jira intake and Sep 20 leave announcement: no record of engineering work on MER-101 between Sep 10 and Sep 23 (first Marcus causal statement). Also a 3-day gap Sep 27–30 before Marcus asks internally whether Northwind responded — despite the client's continued messages. The records are silent on any actual work performed to fix the defect before Sep 24.",
+      "eventIds": [
+        "e_33710584a8d8ae86",
+        "e_4133bb30d78d5964",
+        "e_a292939da099edc4"
+      ]
+    },
+    {
+      "id": "7f6560be-daee-417e-80b3-4ef3752ff1a2",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "b9966aea-c55a-4e7a-a21c-59d74f5382c0",
+      "kind": "silence",
+      "text": "No reply from anyone (Lin Chen, Marcus Webb, Dana Okoro) to any of Priya Nair's emails appears in the record. Yet Marcus on Sep 30 asks 'Has anyone heard back from Northwind?' — suggesting the internal team believed Northwind was the silent party. This is a silent/contradictory state: records show no outbound replies, but also no acknowledgement that the client was waiting.",
+      "eventIds": [
+        "e_44a0831730570fab",
+        "e_0ddd4cf69d223644"
+      ]
+    },
+    {
+      "id": "a5e9745c-181d-462f-ae52-dcacb7cdffe6",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "d4f9de2d-8df0-4700-b0c1-1b3e1fe52a49",
+      "kind": "silence",
+      "text": "Dana's pushback on Sep 26 gets no reply in the record. MER-101 stays resolved with no visible follow-up or re-open. The claim says 'no follow-up owner' but there is also no response to Dana — an unanswered question that the claim does not flag.",
+      "eventIds": [
+        "e_74e730159ddbde9e",
+        "e_a13abd6673d984e8"
+      ]
+    },
+    {
+      "id": "96a294e7-a628-4a6f-bed8-3da13675fa20",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "3e9c93f9-b052-41ec-b5f0-6d5132436661",
+      "kind": "unanswered",
+      "text": "'Is the Sep 24 release out?' (Sep 24) is never answered in the record. The release is only announced internally in Slack on Sep 24 at 16:00, after the client asked at 04:15 — suggesting the release was not yet out when the client asked, and no reply told them. The claim does not note the unreleased-at-time-of-ask detail.",
+      "eventIds": [
+        "e_c430a56b45a8656c",
+        "e_d86f7ee037c3b151"
+      ]
+    },
+    {
+      "id": "53ce8c62-6f5f-45cc-9a4b-a455d69482cc",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "84dc519f-41af-47de-b46a-c9aee1e80b86",
+      "kind": "unanswered",
+      "text": "Client asked 'Please confirm what went out' on Sep 27; no reply in record. No record shows what actually shipped in the Sep 24 build or whether the invoice fix was in the deployed artifact — the exact question is unanswered.",
+      "eventIds": [
+        "e_f22fb7257dca9b85",
+        "e_d86f7ee037c3b151"
+      ]
+    },
+    {
+      "id": "a23b6cb8-3559-4e64-aa07-a5f7e165f561",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "d9da8bc8-6865-4527-9d1f-0bd08136130a",
+      "kind": "unanswered",
+      "text": "Client asked for 'a date for the fix' on Sep 29; record shows no committed date ever provided. Claim notes the request, but records also do not show what fix, if any, was planned after the Sep 24 build failed QA.",
+      "eventIds": [
+        "e_73e857d2281453cb"
+      ]
+    },
+    {
+      "id": "300adaa1-f52a-4c8f-ba09-05a55e3effac",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "73520535-00ee-4dfc-8a40-9d26818e8e07",
+      "kind": "unanswered",
+      "text": "Contractual SLA reference (e_0ddd4cf69d223644 'Meridian carries a contractual SLA on invoice accuracy') is never investigated: no claim identifies breach terms, notification obligations, or whether anyone internally acknowledged the SLA. This is an unexamined angle directly relevant to escalation severity.",
+      "eventIds": [
+        "e_0ddd4cf69d223644"
+      ]
+    },
+    {
+      "id": "5128dc44-8a0f-49a4-aa2e-5a9111486808",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "5bcc8678-e1c0-4c63-b307-c245c30dcbea",
+      "kind": "unanswered",
+      "text": "Marcus's 'Sep 24 release is cut; invoice fix included' is the basis for the broken commitment chain, but no source shows what was actually deployed (build hash, changelog, deployment record). No deployment/release source was searched — only Jira, Slack, and email. The claim that the invoice fix was included rests solely on Marcus's assertion.",
+      "eventIds": [
+        "e_d86f7ee037c3b151"
+      ]
+    },
+    {
+      "id": "b364462f-4b6a-4ed4-acf9-6a55c87058ae",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "87b70cc9-e464-4a5a-8cbe-20b3f16900f0",
+      "kind": "unanswered",
+      "text": "Lin Chen's email (e_958bed8b90bb67e2) sent the client promise and leave notice, but the record contains no internal handoff of any of Lin Chen's tickets or context. The 'no handoff' statement is only self-reported; no investigation of whether any other engineer had context for MER-87/MER-101 appears.",
+      "eventIds": [
+        "e_446b588245ce29a1",
+        "e_958bed8b90bb67e2"
+      ]
+    },
+    {
+      "id": "7113fa32-0fb7-4904-b0fb-fe12717034a0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "dda6e785-db11-4ecb-8ab2-8e7875245a80",
+      "kind": "unsupported",
+      "text": "Claim 1 and 3 both cite the same event (e_4133bb30d78d5964) with different types (commitment vs root_cause) and modestly different confidences — internally consistent as to content but duplicated; the 'commitment' label for Marcus's causal statement is a misclassification, and no separate commitment record shows Marcus told the client (channel was internal Slack, not client email).",
+      "eventIds": [
+        "e_4133bb30d78d5964"
+      ]
+    },
+    {
+      "id": "e72c2e94-1109-4f97-9c6f-d815da4122f9",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "9138f669-d09c-448b-9971-cbfdd1a446c9",
+      "kind": "silence",
+      "text": "Claim states Marcus 'attributed' the cause and 'targeted' the fix, but that message was posted in the internal meridian-billing Slack, not to the client. No record shows the root cause was ever communicated to Northwind/Priya Nair. The investigation leaves this client-communication gap unflagged.",
+      "eventIds": [
+        "e_4133bb30d78d5964",
+        "e_c430a56b45a8656c"
+      ]
+    },
+    {
+      "id": "a2d9ca3f-5a53-40d8-9ba6-aa5cc00a78d0",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "claimId": "cf445e6c-11c7-4451-9056-7bdd9aa721a4",
+      "kind": "unsupported",
+      "text": "Claims Marcus 'decided on Sep 25' to keep MER-101 open. The record shows him saying 'Let us keep MER-101 open until QA passes' — a proposal ('let us'), not necessarily a formal decision, five minutes after Dana's QA failure. Styling it as a 'decision' overstates a casual Slack remark.",
+      "eventIds": [
+        "e_23d8387f36162c8f",
+        "e_9fc7b2c228d4e4a8"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "stage": "assemble",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "stats": {
+            "total": 38,
+            "flagged": 19,
+            "rejected": 0,
+            "reviewed": 0,
+            "verified": 9,
+            "supported": 29,
+            "unverified": 0
+          },
+          "issues": 1,
+          "missing": [],
+          "needsRetry": false
+        }
+      ],
+      "startedAt": "2026-10-18T13:01:09.206Z",
+      "finishedAt": "2026-10-18T13:01:09.217Z"
+    },
+    {
+      "stage": "commitments",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 0,
+          "issues": 1,
+          "rounds": 39,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-87"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "SUP-2231"
+              },
+              "name": "search_jira",
+              "round": 1,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "",
+                "channel": "meridian-billing"
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 11
+            },
+            {
+              "args": {
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "id": "e_958bed8b90bb67e2"
+              },
+              "name": "get_email_thread",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:10:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 4,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T09:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T16:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T04:30:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-30T08:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "ts": "2024-09-12T05:10:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_11fa0e04f76bf1a1"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_0ddd4cf69d223644"
+              },
+              "name": "get_email_thread",
+              "round": 5,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "quote": "We will ship the fix in the Sep 24 release.",
+                "item_id": "e_958bed8b90bb67e2"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Fix targeted at the Sep 24 release.",
+                "item_id": "e_4133bb30d78d5964"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "item_id": "e_ef773b8a375d743e"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "item_id": "e_9fc7b2c228d4e4a8"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "item_id": "e_a13abd6673d984e8"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "It is not in the build I tested, but ok.",
+                "item_id": "e_74e730159ddbde9e"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "item_id": "e_446b588245ce29a1"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Meridian carries a contractual SLA on invoice accuracy.",
+                "item_id": "e_0ddd4cf69d223644"
+              },
+              "name": "verify_quote",
+              "round": 6
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+                "item_id": "e_0ddd4cf69d223644"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Third message with no reply. We need a date for the fix.",
+                "item_id": "e_73e857d2281453cb"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "item_id": "e_23d8387f36162c8f"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+                "item_id": "e_9ebd247d5f5b10e5"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Sep 24 release is cut; invoice fix included.",
+                "item_id": "e_d86f7ee037c3b151"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong this morning. Please confirm what went out.",
+                "item_id": "e_f22fb7257dca9b85"
+              },
+              "name": "verify_quote",
+              "round": 7
+            },
+            {
+              "args": {
+                "to": "Northwind (Priya Nair)",
+                "ts": "2024-09-20T05:00:00.000Z",
+                "text": "Lin Chen promised Northwind that the invoice totals fix would ship in the Sep 24 release.",
+                "actor": "Lin Chen",
+                "quote": "We will ship the fix in the Sep 24 release.",
+                "object": "invoice totals fix shipped in a release",
+                "status": "broken",
+                "item_id": "e_958bed8b90bb67e2",
+                "deadline": "Sep 24",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "QA reported totals still off by a day on the Sep 24 build and Northwind still saw wrong totals after the release, so the…",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "to": "meridian-billing channel",
+                "ts": "2024-09-23T04:30:00.000Z",
+                "text": "Marcus Webb told the meridian-billing channel the fix was targeted at the Sep 24 release.",
+                "actor": "Marcus Webb",
+                "quote": "Fix targeted at the Sep 24 release.",
+                "object": "MER-87 timezone fix delivered in the Sep 24 release",
+                "status": "broken",
+                "item_id": "e_4133bb30d78d5964",
+                "deadline": "the Sep 24 release",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "The Sep 24 build still failed QA with totals off by a day and Meridian's totals remained wrong afterwards.",
+                "confidence": "0.75"
+              },
+              "name": "submit_commitment",
+              "round": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T04:30:00.000Z",
+                "text": "Marcus Webb identified the MER-87 timezone change as the root cause of the wrong invoice totals, with the fix targeted a…",
+                "type": "root_cause",
+                "actor": "Marcus Webb",
+                "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+                "status": "n/a",
+                "item_id": "e_4133bb30d78d5964",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 9
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T03:00:00.000Z",
+                "text": "Lin Chen merged the MER-87 UTC conversion into release branch 4.12, which introduced the day-offset in invoice totals Me…",
+                "type": "root_cause",
+                "actor": "Lin Chen",
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "status": "n/a",
+                "item_id": "e_ef773b8a375d743e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 9
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:00:00.000Z",
+                "text": "Dana Okoro reported on Sep 25 that QA was still failing on the Sep 24 build, with totals off by a day in test.",
+                "type": "process_failure",
+                "actor": "Dana Okoro",
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "status": "n/a",
+                "item_id": "e_9fc7b2c228d4e4a8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 9
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:10:00.000Z",
+                "text": "Marcus Webb had agreed MER-101 should stay open until QA passed, then marked it resolved the next day while QA was still…",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "status": "n/a",
+                "item_id": "e_a13abd6673d984e8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 9
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:05:00.000Z",
+                "text": "Marcus Webb stated MER-101 should remain open until QA passed, so its subsequent resolution contradicts the team's own g…",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "status": "n/a",
+                "item_id": "e_23d8387f36162c8f",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:20:00.000Z",
+                "text": "Dana Okoro disputed Marcus Webb's resolution claim, stating the fix was not in the build she tested.",
+                "type": "process_failure",
+                "actor": "Dana Okoro",
+                "quote": "It is not in the build I tested, but ok.",
+                "status": "n/a",
+                "item_id": "e_74e730159ddbde9e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.75"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T09:00:00.000Z",
+                "text": "Owning engineer Lin Chen went on leave until Oct 2 without a handoff set up for MER-101, leaving no assigned owner for t…",
+                "type": "ownership",
+                "actor": "Lin Chen",
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "status": "n/a",
+                "item_id": "e_446b588245ce29a1",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 10
+            },
+            {
+              "args": {
+                "ts": "2024-09-29T04:00:00.000Z",
+                "text": "Northwind's third chasing message received no reply, and the client requested a date for the fix that was not provided.",
+                "type": "process_failure",
+                "actor": "Priya Nair <priya.nair@northwind.example>",
+                "quote": "Third message with no reply. We need a date for the fix.",
+                "status": "n/a",
+                "item_id": "e_73e857d2281453cb",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 10
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:26.184Z",
+      "finishedAt": "2026-10-18T13:00:46.265Z"
+    },
+    {
+      "stage": "ingest",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [],
+      "startedAt": null,
+      "finishedAt": "2026-10-18T13:00:19.829Z"
+    },
+    {
+      "stage": "ownership",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 7,
+          "issues": 1,
+          "rounds": 36,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "key": "MER-87"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "SUP-2231"
+              },
+              "name": "search_jira",
+              "round": 1,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "query": "",
+                "channel": "meridian-billing"
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 11
+            },
+            {
+              "args": {
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "item_id": "e_ef773b8a375d743e"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+                "item_id": "e_4133bb30d78d5964"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Sep 24 release is cut; invoice fix included.",
+                "item_id": "e_d86f7ee037c3b151"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "item_id": "e_9fc7b2c228d4e4a8"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "item_id": "e_23d8387f36162c8f"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "item_id": "e_a13abd6673d984e8"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "It is not in the build I tested, but ok.",
+                "item_id": "e_74e730159ddbde9e"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "item_id": "e_446b588245ce29a1"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+                "item_id": "e_958bed8b90bb67e2"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Has anyone heard back from Northwind about the totals?",
+                "item_id": "e_44a0831730570fab"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+                "item_id": "e_9ebd247d5f5b10e5"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+                "item_id": "e_0ddd4cf69d223644"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "4.12 is live on production as of this morning.",
+                "item_id": "e_3de27219e6d5246f"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong this morning. Please confirm what went out.",
+                "item_id": "e_f22fb7257dca9b85"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "quote": "Third message with no reply. We need a date for the fix.",
+                "item_id": "e_73e857d2281453cb"
+              },
+              "name": "verify_quote",
+              "round": 3
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T03:00:00.000Z",
+                "text": "The UTC conversion merged to release branch 4.12 under MER-87 is the identified cause of Meridian's day-off invoice tota…",
+                "type": "root_cause",
+                "actor": "Lin Chen",
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "status": "n/a",
+                "item_id": "e_ef773b8a375d743e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T04:30:00.000Z",
+                "text": "Marcus Webb attributed Meridian's wrong invoice totals to the MER-87 timezone change and targeted the fix at the Sep 24 …",
+                "type": "root_cause",
+                "actor": "Marcus Webb",
+                "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+                "status": "n/a",
+                "item_id": "e_4133bb30d78d5964",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T16:00:00.000Z",
+                "text": "Marcus Webb owned the delivery call: he declared the Sep 24 release cut with the invoice fix included.",
+                "type": "ownership",
+                "actor": "Marcus Webb",
+                "quote": "Sep 24 release is cut; invoice fix included.",
+                "status": "n/a",
+                "item_id": "e_d86f7ee037c3b151",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:00:00.000Z",
+                "text": "Dana Okoro reported on Sep 25 that QA was still failing on the Sep 24 build, with totals off by a day — the shipped rele…",
+                "type": "process_failure",
+                "actor": "Dana Okoro",
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "status": "broken",
+                "item_id": "e_9fc7b2c228d4e4a8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:05:00.000Z",
+                "text": "Marcus Webb initially decided on Sep 25 to keep MER-101 open until QA passed.",
+                "type": "decision",
+                "actor": "Marcus Webb",
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "status": "n/a",
+                "item_id": "e_23d8387f36162c8f",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:10:00.000Z",
+                "text": "Marcus Webb reversed that decision on Sep 26 and unilaterally marked MER-101 resolved, asserting the fix was in the Sep …",
+                "type": "ownership",
+                "actor": "Marcus Webb",
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "status": "broken",
+                "item_id": "e_a13abd6673d984e8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:20:00.000Z",
+                "text": "Dana Okoro pushed back that the fix was not in the build she tested, but MER-101 stayed resolved anyway — a disputed res…",
+                "type": "process_failure",
+                "actor": "Dana Okoro",
+                "quote": "It is not in the build I tested, but ok.",
+                "status": "broken",
+                "item_id": "e_74e730159ddbde9e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T09:00:00.000Z",
+                "text": "Lin Chen went on leave announcing that no handoff had been set up for MER-101, leaving the client ticket without an acti…",
+                "type": "process_failure",
+                "actor": "Lin Chen",
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "status": "broken",
+                "item_id": "e_446b588245ce29a1",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-30T08:00:00.000Z",
+                "text": "Even with Lin Chen on leave, no one picked up the Northwind thread — Marcus Webb was still asking internally on Sep 30 w…",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Has anyone heard back from Northwind about the totals?",
+                "status": "broken",
+                "item_id": "e_44a0831730570fab",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "to": "Priya Nair <priya.nair@northwind.example>",
+                "ts": "2024-09-20T05:00:00.000Z",
+                "text": "Lin Chen promised Northwind that the invoice totals fix would ship in the Sep 24 release.",
+                "actor": "Lin Chen <l.chen@northwind.example>",
+                "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+                "object": "invoice totals fix shipped",
+                "status": "broken",
+                "item_id": "e_958bed8b90bb67e2",
+                "deadline": "Sep 24",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "The release was cut on Sep 24 but QA still failed and Meridian reported totals still wrong on Sep 27 and Oct 1.",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T12:30:00.000Z",
+                "text": "The team declared 4.12 live on production before the client ticket was filed, which is when Meridian says totals broke; …",
+                "type": "commitment",
+                "actor": "Priya Nair",
+                "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+                "status": "n/a",
+                "item_id": "e_9ebd247d5f5b10e5",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T04:15:00.000Z",
+                "text": "Priya Nair's first post-release follow-up on Sep 24 (asking whether the Sep 24 release was out and reporting wrong total…",
+                "type": "process_failure",
+                "actor": "Priya Nair <priya.nair@northwind.example>",
+                "quote": "Checking in - is the Sep 24 release out? We still see wrong totals.",
+                "status": "broken",
+                "item_id": "e_c430a56b45a8656c",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-10-01T03:30:00.000Z",
+                "text": "Priya Nair escalated that four of her messages had received no reply despite continued wrong totals — a sustained intake…",
+                "type": "process_failure",
+                "actor": "Priya Nair <priya.nair@northwind.example>",
+                "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+                "status": "broken",
+                "item_id": "e_0ddd4cf69d223644",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "ts": "2024-09-29T04:00:00.000Z",
+                "text": "By Sep 29 Priya Nair had sent a third unanswered message and still had no committed fix date, leaving Meridian finance b…",
+                "type": "process_failure",
+                "actor": "Priya Nair <priya.nair@northwind.example>",
+                "quote": "Third message with no reply. We need a date for the fix.",
+                "status": "broken",
+                "item_id": "e_73e857d2281453cb",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 4
+            },
+            {
+              "args": {
+                "to": "Priya Nair <priya.nair@northwind.example>",
+                "ts": "2024-09-20T05:00:00.000Z",
+                "text": "Lin Chen promised Northwind that the invoice totals fix would ship in the Sep 24 release.",
+                "actor": "Lin Chen <l.chen@northwind.example>",
+                "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+                "object": "invoice totals fix shipped",
+                "status": "broken",
+                "item_id": "e_958bed8b90bb67e2",
+                "deadline": "Sep 24",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "The release was cut on Sep 24 but QA still failed on that build and Meridian reported totals still wrong on Sep 27 and O…",
+                "conditions": "Delivered via the Sep 24 release",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T05:00:00.000Z",
+                "text": "Lin Chen promised that the invoice totals fix would ship in the Sep 24 release.",
+                "actor": "Lin Chen <l.chen@northwind.example>",
+                "quote": "We will ship the fix in the Sep 24 release.",
+                "object": "invoice totals fix shipped",
+                "status": "broken",
+                "item_id": "e_958bed8b90bb67e2",
+                "deadline": "Sep 24",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "Release was cut Sep 24 but QA failed on that build and totals remained wrong for Meridian.",
+                "confidence": "0.85"
+              },
+              "name": "submit_commitment",
+              "round": 6
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:26.184Z",
+      "finishedAt": "2026-10-18T13:00:51.862Z"
+    },
+    {
+      "stage": "plan",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 1,
+          "planChars": 3789,
+          "eventCount": 41,
+          "structured": true,
+          "issueOverflow": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:19.870Z",
+      "finishedAt": "2026-10-18T13:00:26.043Z"
+    },
+    {
+      "stage": "root_cause",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "notes": 8,
+          "issues": 1,
+          "rounds": 52,
+          "toolCalls": [
+            {
+              "args": {
+                "key": "MER-87"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "key": "MER-101"
+              },
+              "name": "get_issue",
+              "round": 1,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "SUP-2231"
+              },
+              "name": "search_jira",
+              "round": 1,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "to": "2024-10-02",
+                "from": "2024-09-20",
+                "channel": "meridian-billing"
+              },
+              "name": "search_slack",
+              "round": 1,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 2,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:10:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 2,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T09:00:00.000Z",
+                "channel": "meridian-billing"
+              },
+              "name": "get_slack_thread",
+              "round": 2,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "to": "2024-09-20",
+                "from": "2024-09-10",
+                "channel": "meridian-billing"
+              },
+              "name": "search_slack",
+              "round": 2,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "to": "2024-10-02",
+                "from": "2024-09-10",
+                "query": ""
+              },
+              "name": "search_email",
+              "round": 2,
+              "resultCount": 8
+            },
+            {
+              "args": {
+                "query": "SUP-2231"
+              },
+              "name": "search_email",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_0ddd4cf69d223644"
+              },
+              "name": "get_email_thread",
+              "round": 3,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "id": "e_958bed8b90bb67e2"
+              },
+              "name": "get_email_thread",
+              "round": 3,
+              "resultCount": 2
+            },
+            {
+              "args": {
+                "query": "MER-101"
+              },
+              "name": "search_slack",
+              "round": 3,
+              "resultCount": 4
+            },
+            {
+              "args": {
+                "query": "timezone UTC conversion invoice"
+              },
+              "name": "search_jira",
+              "round": 3,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "to": "2024-10-02",
+                "from": "2024-09-26",
+                "query": ""
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "query": "build"
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 3
+            },
+            {
+              "args": {
+                "query": "handoff"
+              },
+              "name": "search_slack",
+              "round": 4,
+              "resultCount": 1
+            },
+            {
+              "args": {
+                "query": "MER-101"
+              },
+              "name": "search_email",
+              "round": 4,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "sender": "Marcus Webb"
+              },
+              "name": "search_email",
+              "round": 4,
+              "resultCount": 0
+            },
+            {
+              "args": {
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "item_id": "e_ef773b8a375d743e"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+                "item_id": "e_4133bb30d78d5964"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+                "item_id": "e_9ebd247d5f5b10e5"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "item_id": "e_9fc7b2c228d4e4a8"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "item_id": "e_a13abd6673d984e8"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "It is not in the build I tested, but ok.",
+                "item_id": "e_74e730159ddbde9e"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "item_id": "e_23d8387f36162c8f"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Sep 24 release is cut; invoice fix included.",
+                "item_id": "e_d86f7ee037c3b151"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "item_id": "e_446b588245ce29a1"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+                "item_id": "e_958bed8b90bb67e2"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong this morning. Please confirm what went out.",
+                "item_id": "e_f22fb7257dca9b85"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+                "item_id": "e_0ddd4cf69d223644"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Checking in - is the Sep 24 release out? We still see wrong totals.",
+                "item_id": "e_c430a56b45a8656c"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Has anyone heard back from Northwind about the totals?",
+                "item_id": "e_44a0831730570fab"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "4.12 is live on production as of this morning.",
+                "item_id": "e_3de27219e6d5246f"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Third message with no reply. We need a date for the fix.",
+                "item_id": "e_73e857d2281453cb"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Following up again - our finance team is blocked on this.",
+                "item_id": "e_341afca2f584c209"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Still nothing. Escalating this on our side today.",
+                "item_id": "e_dfa2b3a68bad7411"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "quote": "Meridian flagged wrong invoice totals; looking at MER-101.",
+                "item_id": "e_a292939da099edc4"
+              },
+              "name": "verify_quote",
+              "round": 5
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T03:00:00.000Z",
+                "text": "The 4.12 change merged in MER-87 introduced a UTC conversion into invoice calculations; Marcus Webb identified this time…",
+                "type": "root_cause",
+                "actor": "Lin Chen",
+                "quote": "Merged to release branch 4.12; invoices now use a UTC conversion.",
+                "status": "kept",
+                "item_id": "e_ef773b8a375d743e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-23T04:30:00.000Z",
+                "text": "Marcus Webb explicitly attributed the totals error to the MER-87 timezone change, with the fix targeted at the Sep 24 re…",
+                "type": "root_cause",
+                "actor": "Marcus Webb",
+                "quote": "MER-87 timezone change is the cause. Fix targeted at the Sep 24 release.",
+                "status": "kept",
+                "item_id": "e_4133bb30d78d5964",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-10T12:30:00.000Z",
+                "text": "The symptom first appeared right after the 4.12 deploy, with timelines off by a day as reported on MER-101.",
+                "type": "root_cause",
+                "actor": "Priya Nair",
+                "quote": "Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.",
+                "status": "kept",
+                "item_id": "e_9ebd247d5f5b10e5",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:00:00.000Z",
+                "text": "Dana Okoro reported QA still failing on the Sep 24 build, with totals off by a day in test — the defect reproduced after…",
+                "type": "root_cause",
+                "actor": "Dana Okoro",
+                "quote": "QA is still failing on the Sep 24 build; totals are off by a day in test.",
+                "status": "broken",
+                "item_id": "e_9fc7b2c228d4e4a8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:10:00.000Z",
+                "text": "MER-101 was marked resolved on Sep 26 claiming the fix was in the Sep 24 build even though QA was still failing the day …",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Marking MER-101 resolved; the fix is in the Sep 24 build.",
+                "status": "broken",
+                "item_id": "e_a13abd6673d984e8",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-25T09:05:00.000Z",
+                "text": "Marcus Webb's own stated plan on Sep 25 was to keep MER-101 open until QA passed, but he resolved it the next morning wh…",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Let us keep MER-101 open until QA passes.",
+                "status": "broken",
+                "item_id": "e_23d8387f36162c8f",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.9"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-26T02:20:00.000Z",
+                "text": "Dana Okoro directly disputed the resolution, stating the fix was not in the build she tested.",
+                "type": "root_cause",
+                "actor": "Dana Okoro",
+                "quote": "It is not in the build I tested, but ok.",
+                "status": "broken",
+                "item_id": "e_74e730159ddbde9e",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T16:00:00.000Z",
+                "text": "Marcus Webb announced the Sep 24 release was cut with the invoice fix included, but QA showed the fix was not effective.",
+                "type": "commitment",
+                "actor": "Marcus Webb",
+                "quote": "Sep 24 release is cut; invoice fix included.",
+                "status": "broken",
+                "item_id": "e_d86f7ee037c3b151",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-20T09:00:00.000Z",
+                "text": "Lin Chen went on leave until Oct 2 with no handoff set up for MER-101, leaving the client ticket unowned.",
+                "type": "process_failure",
+                "actor": "Lin Chen",
+                "quote": "I am on leave until Oct 2. No handoff set up yet for MER-101.",
+                "status": "broken",
+                "item_id": "e_446b588245ce29a1",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-10-01T03:30:00.000Z",
+                "text": "Priya Nair escalated that totals were still wrong five days after the promised Sep 24 fix and that four messages had gon…",
+                "type": "process_failure",
+                "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+                "quote": "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
+                "status": "broken",
+                "item_id": "e_0ddd4cf69d223644",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.85"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "to": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+                "ts": "2024-09-20T05:00:00.000Z",
+                "text": "Lin Chen promised Priya Nair that the fix would ship in the Sep 24 release, and stated he was on leave from that day unt…",
+                "actor": "Lin Chen &lt;l.chen@northwind.example&gt;",
+                "quote": "We will ship the fix in the Sep 24 release. I am on leave from today until Oct 2.",
+                "object": "invoice totals fix shipped in the Sep 24 release",
+                "status": "broken",
+                "item_id": "e_958bed8b90bb67e2",
+                "deadline": "Sep 24",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "rationale": "The Sep 24 release shipped but QA was still failing on it and totals remained wrong per the client on Sep 24, Sep 27 and…",
+                "confidence": "0.9"
+              },
+              "name": "submit_commitment",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-24T04:15:00.000Z",
+                "text": "The client wrote on Sep 24 asking whether the release was out and reporting totals still wrong, with no reply in the rec…",
+                "type": "process_failure",
+                "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+                "quote": "Checking in - is the Sep 24 release out? We still see wrong totals.",
+                "status": "broken",
+                "item_id": "e_c430a56b45a8656c",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-27T03:05:00.000Z",
+                "text": "The client reported on Sep 27 that totals were still wrong and asked for confirmation of what went out; the records show…",
+                "type": "process_failure",
+                "actor": "Priya Nair &lt;priya.nair@northwind.example&gt;",
+                "quote": "Totals are still wrong this morning. Please confirm what went out.",
+                "status": "broken",
+                "item_id": "e_f22fb7257dca9b85",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.8"
+              },
+              "name": "submit_claim",
+              "round": 6
+            },
+            {
+              "args": {
+                "ts": "2024-09-30T08:00:00.000Z",
+                "text": "By Sep 30 the client had escalated internally over the silence, while internally Marcus Webb was asking whether anyone h…",
+                "type": "process_failure",
+                "actor": "Marcus Webb",
+                "quote": "Has anyone heard back from Northwind about the totals?",
+                "status": "broken",
+                "item_id": "e_44a0831730570fab",
+                "issue_id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+                "confidence": "0.75"
+              },
+              "name": "submit_claim",
+              "round": 6
+            }
+          ],
+          "unassigned": 0
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:26.183Z",
+      "finishedAt": "2026-10-18T13:00:49.985Z"
+    },
+    {
+      "stage": "skeptic",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "issues": 25,
+          "flagged": 19,
+          "degraded": false
+        }
+      ],
+      "startedAt": "2026-10-18T13:00:51.899Z",
+      "finishedAt": "2026-10-18T13:01:05.550Z"
+    },
+    {
+      "stage": "verify",
+      "pass": 1,
+      "status": "done",
+      "error": null,
+      "log": [
+        {
+          "total": 38,
+          "rejected": 0,
+          "verified": 9,
+          "supported": 29,
+          "entailment": {
+            "skipped": 0,
+            "reviewed": 38,
+            "unavailable": 0
+          }
+        }
+      ],
+      "startedAt": "2026-10-18T13:01:05.581Z",
+      "finishedAt": "2026-10-18T13:01:09.171Z"
+    }
+  ],
+  "issues": [
+    {
+      "id": "20f4f460-7eb5-42d0-b39a-81f0e94030ed",
+      "investigationId": "ad944ff6-e567-4846-81b7-9f266ae114fa",
+      "seq": 1,
+      "title": "Invoice totals still wrong after release 4.12",
+      "ask": "Explain what happened and when invoice totals will be fixed.",
+      "summary": "Meridian reports invoice totals have been wrong since release 4.12, with a UTC conversion in MER-87 suspected, a Sep 24 fix that QA reports still failing, and MER-101 closed prematurely.",
+      "confidence": 0.9,
+      "confirmed": true,
+      "createdAt": "2026-10-18T13:00:26.027Z"
+    }
+  ]
+}
