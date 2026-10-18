@@ -1,5 +1,6 @@
 import {
   appendStageLog,
+  getClaimReviews,
   getClaims,
   getCommitments,
   getEvents,
@@ -40,6 +41,8 @@ export interface AssembledStats {
       they are the reason total can exceed verified+supported+rejected. */
   unverified: number;
   flagged: number;
+  /** Manager-reviewed claims excluded from findings and the client pack (G-14). */
+  reviewed: number;
 }
 
 export interface AssembledResult {
@@ -99,17 +102,19 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     throw new Error(`No investigation with id ${investigationId}.`);
   }
 
-  const [events, allClaims, commitments, gaps, skepticNotes, identities, stages, issues] =
+  const [events, allClaims, commitments, reviews, gaps, skepticNotes, identities, stages, issues] =
     await Promise.all([
       getEvents(investigationId),
       getClaims(investigationId),
       getCommitments(investigationId),
+      getClaimReviews(investigationId),
       getGaps(investigationId),
       getSkepticNotes(investigationId),
       getIdentities(investigationId),
       getStages(investigationId),
       getIssues(investigationId),
     ]);
+  const reviewByClaim = new Map(reviews.map((review) => [review.claimId, review]));
 
   // The registry may hold records for several clients and projects; when a
   // scope was identified for this escalation, the report covers only the
@@ -147,6 +152,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     rejected: claims.filter((claim) => claim.verifyStatus === "rejected").length,
     unverified: claims.filter((claim) => claim.verifyStatus === "unverified").length,
     flagged: claims.filter((claim) => claim.skepticFlag).length,
+    reviewed: claims.filter((claim) => reviewByClaim.has(claim.id)).length,
   };
 
   const missing = INVESTIGATOR_KINDS.filter((kind) => {
@@ -174,6 +180,11 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
       })()
     : null;
 
+  const claimsWithReviews = claims.map((claim) => ({
+    ...claim,
+    review: reviewByClaim.get(claim.id) ?? null,
+  }));
+
   return {
     investigation,
     issues,
@@ -182,8 +193,8 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     // Commitments whose backing claim was filtered out are dropped by the
     // report builders (they resolve the claim from the filtered set).
     commitments,
-    ledger,
-    claims,
+    ledger: ledger.map((claim) => claimsWithReviews.find((entry) => entry.id === claim.id) ?? claim),
+    claims: claimsWithReviews,
     gaps,
     skepticNotes,
     coverage,

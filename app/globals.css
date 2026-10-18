@@ -924,9 +924,52 @@ button.finding:hover {
   color: var(--muted);
 }
 
-/* ---------- case state ("now" strip, G-06) ---------- */
+/* ---------- what you can say (G-09) ---------- */
 
-.now-block {
+.say-block {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0 20px;
+}
+
+.say-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.say-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.say-list .btn-claim {
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+
+.quiet-metric {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.quiet-metric:not(:disabled) {
+  cursor: pointer;
+}
+
+.quiet-metric:not(:disabled):hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* ---------- case state ("now" strip, G-06) ---------- */.now-block {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 0 20px;

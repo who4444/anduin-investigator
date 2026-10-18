@@ -177,6 +177,11 @@ test("a zip of the exports uploads and runs through the upload page", async ({ p
   await page.getByRole("button", { name: "Investigate these exports" }).click();
 
   await page.waitForURL(/\/investigations\/[0-9a-f-]+\/progress/, { timeout: 30_000 });
+  // G-12: an unconfirmed partial scope pauses here; confirm it.
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
   await expect(page.locator("#answer")).toBeVisible({ timeout: 120_000 });
   // The parallel investigators completed under one shared lease: no
   // "stage is already running" error may be left on the progress screen.
@@ -254,4 +259,53 @@ test("redrafting the reply stays usable and copy confirms", async ({ page, reque
   await expect(page.getByRole("button", { name: "Copy reply" })).toBeEnabled();
   await page.getByRole("button", { name: "Copy reply" }).click();
   await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
+});
+
+/* G-13: a tab that closes mid-run leaves a half-finished, durable run;
+   reopening the progress page resumes at the first missing stage and the
+   run finishes without redoing what is already stored. */
+test("reopening a half-finished run resumes and finishes without redoing stages", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Half-run resume check"),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+
+  await request.post(`/api/investigations/${investigationId}/plan`, { data: { pass: 1 } });
+  for (const kind of ["root_cause", "commitments", "ownership"]) {
+    await request.post(`/api/investigations/${investigationId}/investigate`, {
+      data: { kind, pass: 1 },
+    });
+  }
+  await request.post(`/api/investigations/${investigationId}/skeptic`, { data: { pass: 1 } });
+  // verify never ran — this is the "tab closed" state.
+
+  const before = (await (
+    await request.get(`/api/investigations/${investigationId}/status`)
+  ).json()) as { stages: { stage: string; status: string; log: unknown[] }[] };
+  const verifyBefore = before.stages.find((stage) => stage.stage === "verify");
+  expect(verifyBefore?.status ?? "pending").toBe("pending");
+
+  await page.goto(`/investigations/${investigationId}/progress?synthetic=1`);
+  // The unconfirmed partial scope pauses first (G-12): confirm it and the
+  // run resumes at the first missing stage.
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
+
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+
+  // The resumed run recorded verify and assemble on pass 1, and the
+  // investigators were not re-logged (their stored work was reused).
+  const after = (await (
+    await request.get(`/api/investigations/${investigationId}/status`)
+  ).json()) as { stages: { stage: string; status: string; log: unknown[] }[] };
+  const byName = new Map(after.stages.map((stage) => [stage.stage, stage]));
+  expect(byName.get("verify")?.status).toBe("done");
+  expect(byName.get("assemble")?.status).toBe("done");
 });

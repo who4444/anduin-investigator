@@ -287,4 +287,102 @@ describe("runPipeline notifications", () => {
     expect(calls.some((call) => call.stage === "plan")).toBe(false);
     expect(calls.filter((call) => call.stage === "investigate")).toHaveLength(3);
   });
+
+  /* G-13: a half-finished run resumes at the first unfinished stage and
+     retries only what is missing. */
+  it("resumes at verify without re-running the investigators or the skeptic", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") return jsonResponse({ needsRetry: false, missing: [] });
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl, startAt: "verify" });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.map((call) => call.stage)).toEqual(["verify", "assemble"]);
+  });
+
+  it("resumes at assemble and runs only the last stage", async () => {
+    const { fetchImpl, calls } = fakeFetch(() => jsonResponse({ needsRetry: false, missing: [] }));
+
+    const outcome = await runPipeline("inv-1", { fetchImpl, startAt: "assemble" });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.map((call) => call.stage)).toEqual(["assemble"]);
+  });
+
+  /* G-12: a partially-confirmed scope pauses for the manager's review before
+     any investigator runs; a scoped or unscoped run proceeds. */
+  it("pauses after plan when the scope is only partial", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "plan") {
+        return jsonResponse({ plan: "p", scope: { confidence: "partial" }, issues: [] });
+      }
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl, stopForScopeReview: true });
+
+    expect(outcome).toEqual({ ok: true, paused: true, scopeReview: true, retries: 0 });
+    expect(calls.map((call) => call.stage)).toEqual(["plan"]);
+  });
+
+  it("does not pause for a scoped run", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "plan") {
+        return jsonResponse({ plan: "p", scope: { confidence: "scoped" }, issues: [] });
+      }
+      if (call.stage === "assemble") return jsonResponse({ needsRetry: false, missing: [] });
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl, stopForScopeReview: true });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.some((call) => call.stage === "investigate")).toBe(true);
+  });
+});
+
+describe("resumePointFromStages (G-13)", () => {
+  const stage = (name: string, status = "done") => ({
+    stage: name as never,
+    pass: 1,
+    status: status as never,
+    log: [],
+  });
+
+  it("walks forward to the first unfinished stage", async () => {
+    const { resumePointFromStages } = await import("../lib/orchestrator");
+    expect(resumePointFromStages([])).toBe("plan");
+    expect(resumePointFromStages([stage("plan", "error")])).toBe("plan");
+    expect(resumePointFromStages([stage("plan"), stage("root_cause")])).toBe("investigate");
+    expect(
+      resumePointFromStages([
+        stage("plan"),
+        stage("root_cause"),
+        stage("commitments"),
+        stage("ownership"),
+      ]),
+    ).toBe("skeptic");
+    expect(
+      resumePointFromStages([
+        stage("plan"),
+        stage("root_cause"),
+        stage("commitments"),
+        stage("ownership"),
+        stage("skeptic"),
+        stage("verify", "error"),
+      ]),
+    ).toBe("verify");
+    expect(
+      resumePointFromStages([
+        stage("plan"),
+        stage("root_cause"),
+        stage("commitments"),
+        stage("ownership"),
+        stage("skeptic"),
+        stage("verify"),
+      ]),
+    ).toBe("assemble");
+  });
 });

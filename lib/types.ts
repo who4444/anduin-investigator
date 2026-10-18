@@ -95,6 +95,17 @@ export interface Claim extends ClaimInput {
   verifyError?: string | null;
   checks?: ClaimChecks;
   skepticFlag: boolean;
+  /** G-14: the manager's correction, when they reviewed this claim. */
+  review?: ClaimReview | null;
+}
+
+export type ClaimReviewVerdict = "wrong" | "unsupported" | "out_of_scope";
+
+export interface ClaimReview {
+  claimId: string;
+  verdict: ClaimReviewVerdict;
+  reason: string | null;
+  createdAt: string;
 }
 
 export interface Investigation {
@@ -109,6 +120,8 @@ export interface Investigation {
   declaredClient: string | null;
   /** Registry record ids the manager added back from the excluded list (G-01). */
   scopeOverrides: string[];
+  /** When the pre-run scope review was confirmed (G-12). */
+  scopeReviewedAt: string | null;
   planData: PlanData | null;
   ingestWarnings: string[];
   origin: string;

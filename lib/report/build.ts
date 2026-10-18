@@ -232,8 +232,12 @@ export function effectiveTs(claim: Claim, event: Event | undefined): string {
 }
 
 function visibleClaims(claims: Claim[]): Claim[] {
+  // A manager-reviewed claim (G-14) is no longer a finding: it leaves the
+  // metrics, ledger, causes and story, and joins the rejected list instead.
   return claims.filter(
-    (claim) => claim.verifyStatus === "verified" || claim.verifyStatus === "supported",
+    (claim) =>
+      (claim.verifyStatus === "verified" || claim.verifyStatus === "supported") &&
+      !claim.review,
   );
 }
 
@@ -1071,6 +1075,8 @@ export function buildTrust(input: ReportInput): {
     verifyError: claim.verifyError ?? null,
   });
 
+  const reviewed = claims.filter((claim) => claim.review);
+
   // Negatives are never "safe to repeat": the client pack must not assert an
   // absence, however well-supported (G-03 / new invariant in GAPS §9).
   const safeToRepeat = claims
@@ -1078,14 +1084,16 @@ export function buildTrust(input: ReportInput): {
       (claim) =>
         claim.verifyStatus === "verified" &&
         !claim.skepticFlag &&
+        !claim.review &&
         !NEGATIVE_VERIFY_ERRORS.has(claim.verifyError ?? ""),
     )
     .map(signature);
   const checkWithHuman = claims
     .filter(
       (claim) =>
-        claim.verifyStatus === "supported" ||
-        (claim.verifyStatus === "verified" && claim.skepticFlag),
+        !claim.review &&
+        (claim.verifyStatus === "supported" ||
+          (claim.verifyStatus === "verified" && claim.skepticFlag)),
     )
     .map(signature);
   const rejected = claims
@@ -1097,6 +1105,18 @@ export function buildTrust(input: ReportInput): {
       reason: claim.verifyError ?? "quote_not_found",
       source: eventsById.get(claim.eventId)?.source ?? null,
     }));
+
+  // Manager-reviewed claims join the audit list with their reason (G-14).
+  for (const claim of reviewed) {
+    const verdict = claim.review!.verdict.replace(/_/g, " ");
+    rejected.push({
+      claimId: claim.id,
+      text: claim.text,
+      quote: claim.quote,
+      reason: `reviewed: ${verdict}${claim.review!.reason ? ` — ${claim.review!.reason}` : ""}`,
+      source: eventsById.get(claim.eventId)?.source ?? null,
+    });
+  }
 
   return { safeToRepeat, checkWithHuman, rejected };
 }

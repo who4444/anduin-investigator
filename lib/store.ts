@@ -9,6 +9,8 @@ import type {
   Claim,
   ClaimChecks,
   ClaimInput,
+  ClaimReview,
+  ClaimReviewVerdict,
   ClaimStatus,
   Commitment,
   CommitmentInput,
@@ -61,6 +63,7 @@ interface InvestigationRow {
   ingest_warnings: unknown;
   origin: string | null;
   scope_overrides: unknown;
+  scope_reviewed_at: Date | string | null;
 }
 
 function mapScope(value: unknown): InvestigationScope | null {
@@ -117,6 +120,7 @@ function mapInvestigation(row: InvestigationRow): Investigation {
     scopeOverrides: Array.isArray(row.scope_overrides)
       ? (row.scope_overrides as unknown[]).filter((entry): entry is string => typeof entry === "string")
       : [],
+    scopeReviewedAt: row.scope_reviewed_at ? (toIso(row.scope_reviewed_at) as string) : null,
   };
 }
 
@@ -369,7 +373,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at
     from investigations
     where id = ${id}
     limit 1
@@ -386,7 +390,7 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
    route validates ids against the registry before this is called. */
 export async function setScopeOverrides(id: string, eventIds: string[]): Promise<void> {
   const sql = getPool();
-  await sql`update investigations set scope_overrides = ${sql.json(eventIds as unknown as JSONValue)} where id = ${id}`;
+  await sql`update investigations set scope_overrides = ${sql.json(eventIds as unknown as JSONValue)}, scope_reviewed_at = now() where id = ${id}`;
 }
 
 /* G-05: commitments keyed by promisor+promisee+object+deadline. A restatement
@@ -438,6 +442,59 @@ function mapCommitment(row: CommitmentRow): Commitment {
     dedupeKey: row.dedupe_key,
     createdAt: toIso(row.created_at) as string,
   };
+}
+
+/* G-14: manager reviews — one verdict per claim, latest wins. Reviewed
+   claims leave the findings, the client pack and the draft. */
+interface ClaimReviewRow {
+  claim_id: string;
+  verdict: string;
+  reason: string | null;
+  created_at: Date | string;
+}
+
+function mapClaimReview(row: ClaimReviewRow): ClaimReview {
+  return {
+    claimId: row.claim_id,
+    verdict: row.verdict as ClaimReviewVerdict,
+    reason: row.reason ?? null,
+    createdAt: toIso(row.created_at) as string,
+  };
+}
+
+export async function getClaimReviews(investigationId: string): Promise<ClaimReview[]> {
+  const sql = getPool();
+  const rows = await sql<ClaimReviewRow[]>`
+    select claim_id, verdict, reason, created_at
+    from claim_reviews where investigation_id = ${investigationId}
+  `;
+  return rows.map(mapClaimReview);
+}
+
+export async function upsertClaimReview(
+  investigationId: string,
+  claimId: string,
+  verdict: ClaimReviewVerdict,
+  reason: string | null,
+): Promise<ClaimReview> {
+  const sql = getPool();
+  const [claim] = await sql<{ id: string }[]>`
+    select id from claims where id = ${claimId} and investigation_id = ${investigationId} limit 1
+  `;
+  if (!claim) throw new Error("No claim with that id belongs to this investigation.");
+  const [row] = await sql<ClaimReviewRow[]>`
+    insert into claim_reviews (investigation_id, claim_id, verdict, reason)
+    values (${investigationId}, ${claimId}, ${verdict}, ${reason})
+    on conflict (claim_id) do update set
+      verdict = excluded.verdict, reason = excluded.reason, created_at = now()
+    returning claim_id, verdict, reason, created_at
+  `;
+  return mapClaimReview(row);
+}
+
+export async function clearClaimReview(investigationId: string, claimId: string): Promise<void> {
+  const sql = getPool();
+  await sql`delete from claim_reviews where investigation_id = ${investigationId} and claim_id = ${claimId}`;
 }
 
 export async function getCommitments(investigationId: string): Promise<Commitment[]> {
@@ -673,7 +730,7 @@ export async function listInvestigations(limit = 20): Promise<InvestigationSumma
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at
     from investigations
     where content_hash = ${hash}
     order by created_at desc

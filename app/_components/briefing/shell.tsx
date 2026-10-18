@@ -243,6 +243,12 @@ export function BriefingShell({
 
         <section className="briefing-section" id="story" aria-labelledby="story-title">
           <h2 id="story-title">What happened</h2>
+          {report.caseState.asOf && (
+            <p className="small muted">
+              Current as of {report.caseState.asOf.slice(0, 10)} — the newest record in this
+              investigation.
+            </p>
+          )}
           <div className="stack">
             {report.briefing.keyMoments.length > 0 && (
               <MomentsStrip

@@ -117,7 +117,7 @@ export function pruneStaleReply(
   const sentences = reply.sentences.filter((sentence) =>
     sentence.claimIds.every((id) => {
       const claim = state.get(id);
-      return claim?.verifyStatus === "verified" && !claim.skepticFlag;
+      return claim?.verifyStatus === "verified" && !claim.skepticFlag && !claim.review;
     }),
   );
   return sentences.length > 0 ? { ...reply, sentences } : null;
@@ -181,7 +181,7 @@ export async function generateReply(
     ? allClaims.filter((claim) => claim.issueId === issueId)
     : allClaims;
   const verified = claims.filter(
-    (claim) => claim.verifyStatus === "verified" && !claim.skepticFlag,
+    (claim) => claim.verifyStatus === "verified" && !claim.skepticFlag && !claim.review,
   );
   if (verified.length === 0) {
     throw new Error(

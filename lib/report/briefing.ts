@@ -29,6 +29,10 @@ export interface BriefingEvent {
   flagged: boolean;
   judged: boolean;
   verification: "verified" | "supported";
+  /** G-10: how many source records state this event (1 unless merged). */
+  sourceCount: number;
+  /** G-10: the merged sources disagree on the outcome. */
+  contested: boolean;
 }
 
 export interface BriefingChapter {
@@ -132,12 +136,33 @@ export function buildBriefing(input: {
   const { events, claims } = input;
   const eventsById = new Map(events.map((event) => [event.id, event]));
   const isVisible = (claim: Claim) =>
-    claim.verifyStatus === "verified" || claim.verifyStatus === "supported";
+    (claim.verifyStatus === "verified" || claim.verifyStatus === "supported") && !claim.review;
   const kept = claims.filter(isVisible);
+
+  // G-10: one canonical step per event. When a promise was stated in several
+  // sources, its commitment already merged them: the story shows the
+  // representative step with its source count, not near-identical rows.
+  const mergedSourceByEvent = new Map<
+    string,
+    { claimId: string; sourceCount: number; contested: boolean }
+  >();
+  for (const commitment of input.commitments ?? []) {
+    for (const eventId of commitment.sourceEventIds) {
+      mergedSourceByEvent.set(eventId, {
+        claimId: commitment.claimId,
+        sourceCount: commitment.sourceEventIds.length,
+        contested: commitment.contested,
+      });
+    }
+  }
 
   const ordered = kept
     .map((claim) => ({ claim, event: eventsById.get(claim.eventId) }))
     .filter((entry): entry is { claim: Claim; event: Event } => entry.event !== undefined)
+    .filter((entry) => {
+      const merged = mergedSourceByEvent.get(entry.claim.eventId);
+      return !merged || merged.claimId === entry.claim.id;
+    })
     .sort((a, b) => {
       const left = effectiveTs(a.claim, a.event);
       const right = effectiveTs(b.claim, b.event);
@@ -166,6 +191,7 @@ export function buildBriefing(input: {
   const rawTsByClaim = new Map<string, string>();
   const eventsOut: BriefingEvent[] = ordered.map(({ claim, event }) => {
     const ts = effectiveTs(claim, event);
+    const merged = mergedSourceByEvent.get(event.id);
     rawTsByClaim.set(claim.id, event.ts);
     const actor = event.actorResolved ?? event.actor;
     const role = roleFor(actor, kept, eventsById);
@@ -191,6 +217,8 @@ export function buildBriefing(input: {
       flagged: claim.skepticFlag,
       judged: claim.type !== "root_cause" || claim.skepticFlag,
       verification: claim.verifyStatus === "verified" ? "verified" : "supported",
+      sourceCount: merged?.sourceCount ?? 1,
+      contested: merged?.contested ?? false,
     };
   });
 

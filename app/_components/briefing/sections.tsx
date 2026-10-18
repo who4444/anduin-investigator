@@ -4,7 +4,15 @@ import { useState } from "react";
 
 import { Avatar, colorFor } from "@/app/_components/briefing/people";
 import { VerificationChip } from "@/app/_components/evidence";
+import { GAP_TAG_LABEL, rankGaps, type GapTag } from "@/lib/report/gaps";
 import type { ReportPayload } from "@/lib/report/build";
+
+const GAP_TAG_CLASS: Record<GapTag, string> = {
+  "not-searched": "chip chip-check",
+  conflicting: "chip chip-flag",
+  "searched-absent": "chip chip-unclear",
+  open: "chip",
+};
 import type { ReplyPayload } from "@/lib/types";
 
 const STAMP_CLASS: Record<string, string> = {
@@ -414,8 +422,11 @@ export function GapsSection({
           <p className="empty">The retrieved sources left no obvious gaps.</p>
         ) : (
           <ul className="finding-list">
-            {report.gaps.map((gap) => (
+            {rankGaps(report.gaps, report.coverage).map((gap) => (
               <li key={gap.id} className="finding">
+                <span className="finding-head">
+                  <span className={GAP_TAG_CLASS[gap.tag]}>{GAP_TAG_LABEL[gap.tag]}</span>
+                </span>
                 <span className="finding-text">{gap.question}</span>
                 <span className="small muted">{displayGapNote(gap.note)}</span>
                 {gap.eventIds.length > 0 && (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { runPipeline, type StageUpdate } from "@/lib/orchestrator";
+import { resumePointFromStages, runPipeline, type StageUpdate } from "@/lib/orchestrator";
 import type { CoverageReport } from "@/lib/pipeline/coverage";
 import { coverageLabel, coverageState } from "@/lib/pipeline/coverage";
 import type { ReportScope } from "@/lib/pipeline/scope";
@@ -22,6 +22,26 @@ interface ToolCallEntry {
   name?: string;
   args?: Record<string, string>;
   resultCount?: number;
+}
+
+/* G-12: the pre-run scope preview shown when only a partial scope resolved. */
+interface ScopePreview {
+  client: string | null;
+  project: string | null;
+  confidence: string | null;
+  confirmed: boolean;
+  inScopeRecords: number;
+  excludedRecords: number;
+  estimatedMinutes: number;
+  sources: { source: string; included: number; excluded: number }[];
+  excludedEvents: {
+    id: string;
+    source: string;
+    ts: string;
+    channel: string;
+    actor: string;
+    text: string;
+  }[];
 }
 
 interface ReviewIssue {
@@ -113,6 +133,10 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
   const [overflow, setOverflow] = useState(0);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [scopeReview, setScopeReview] = useState<ScopePreview | null>(null);
+  const [scopeSelection, setScopeSelection] = useState<Set<string>>(new Set());
+  const [scopeSaving, setScopeSaving] = useState(false);
+  const [scopeError, setScopeError] = useState<string | null>(null);
   const started = useRef(false);
   const done = useRef(false);
 
@@ -154,6 +178,16 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       return { issues, overflow: payload.overflow ?? 0 };
     } catch {
       return { issues: [], overflow: 0 };
+    }
+  }, [investigationId]);
+
+  const loadScopePreview = useCallback(async (): Promise<ScopePreview | null> => {
+    try {
+      const response = await fetch(`/api/investigations/${investigationId}/scope`);
+      if (!response.ok) return null;
+      return (await response.json()) as ScopePreview;
+    } catch {
+      return null;
     }
   }, [investigationId]);
 
@@ -221,9 +255,19 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
           return;
         }
         if ("paused" in outcome && outcome.paused) {
+          if (outcome.scopeReview) {
+            const preview = await loadScopePreview();
+            if (preview) {
+              setScopeSelection(new Set());
+              setScopeReview(preview);
+            } else {
+              setError("The scope preview could not be loaded. Reload this page to try again.");
+            }
+            return;
+          }
           const info = await loadIssues();
           setReviewIssues(
-            asReviewIssues(info.issues.length > 0 ? info.issues : outcome.issues),
+            asReviewIssues(info.issues.length > 0 ? info.issues : outcome.issues ?? []),
           );
           return;
         }
@@ -232,6 +276,14 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       };
 
       if (planDone) {
+        // A reload while the scope review is open must show the review again
+        // (G-12): an unconfirmed partial scope never silently proceeds.
+        const preview = await loadScopePreview();
+        if (preview && preview.confidence === "partial" && !preview.confirmed) {
+          setScopeSelection(new Set());
+          setScopeReview(preview);
+          return;
+        }
         // A reload while the issue review is open must show the review again,
         // not run the plan a second time or skip the manager's confirmation.
         const info = await loadIssues();
@@ -240,8 +292,11 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
           return;
         }
         started.current = true;
+        // G-13: resume at the first unfinished stage — a half-finished run
+        // redoes only what is missing, never the stages already stored.
+        const resumeAt = resumePointFromStages(current);
         const outcome = await runPipeline(investigationId, {
-          startAt: "investigate",
+          startAt: resumeAt === "plan" ? "investigate" : resumeAt,
           onStage,
         });
         await handleOutcome(outcome);
@@ -251,6 +306,7 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       started.current = true;
       const outcome = await runPipeline(investigationId, {
         stopForIssueReview: true,
+        stopForScopeReview: true,
         onStage,
       });
       await handleOutcome(outcome);
@@ -261,7 +317,7 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       cancelled = true;
       source?.close();
     };
-  }, [finish, investigationId, loadIssues, loadStages, reviewOnly, rerun]);
+  }, [finish, investigationId, loadIssues, loadScopePreview, loadStages, reviewOnly, rerun]);
 
   const updateReviewIssue = (index: number, patch: Partial<ReviewIssue>) => {
     setReviewIssues((current) =>
@@ -350,6 +406,60 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
     }
   };
 
+  const confirmScopeReview = async () => {
+    setScopeSaving(true);
+    setScopeError(null);
+    try {
+      const response = await fetch(`/api/investigations/${investigationId}/scope`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ includeEventIds: [...scopeSelection] }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Could not save the scope review.");
+      setScopeReview(null);
+      started.current = true;
+      // Resuming at "plan" reuses the stored plan and keeps the issue review
+      // in the flow (G-23) before any investigator runs.
+      const outcome = await runPipeline(investigationId, {
+        startAt: "plan",
+        stopForIssueReview: true,
+        onStage: (update) => {
+          if (update.status === "error" && update.error) {
+            setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
+          }
+        },
+      });
+      if (!outcome.ok) {
+        setError(`${outcome.stage.replace(/_/g, " ")} failed: ${outcome.error}`);
+      } else if ("paused" in outcome && outcome.paused) {
+        if (outcome.scopeReview) {
+          const preview = await loadScopePreview();
+          if (preview) setScopeReview(preview);
+        } else {
+          const info = await loadIssues();
+          setReviewIssues(asReviewIssues(info.issues.length > 0 ? info.issues : outcome.issues ?? []));
+        }
+      } else {
+        setError(null);
+        finish();
+      }
+    } catch (error) {
+      setScopeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setScopeSaving(false);
+    }
+  };
+
+  const toggleScopeSelection = (eventId: string) => {
+    setScopeSelection((current) => {
+      const next = new Set(current);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      return next;
+    });
+  };
+
   const activity = useMemo(() => {    const entries: { agent: string; name: string; detail: string; count?: number }[] = [];
     for (const stage of stages) {
       if (!["root_cause", "commitments", "ownership"].includes(stage.stage)) continue;
@@ -391,6 +501,10 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
           Open the report
         </a>
       </div>
+      <p className="small muted">
+        Stages are stored server-side: closing this tab pauses the run, and reopening this page
+        resumes it at the first unfinished stage — finished work is never redone.
+      </p>
 
       <section className="panel">
         <ol className="stage-list">
@@ -429,6 +543,81 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         <p className="alert alert-error">
           {error} — fix the cause (for example an API key or a source connection) and reload this page to try again.
         </p>
+      )}
+
+      {scopeReview && (
+        <section className="panel stack" aria-labelledby="scope-review-title">
+          <div className="spread">
+            <div>
+              <h2 id="scope-review-title">Confirm the scope before I investigate</h2>
+              <p className="small muted">
+                {scopeReview.confidence === "partial" ? "Unconfirmed scope: " : ""}
+                {[scopeReview.client, scopeReview.project].filter(Boolean).join(" · ") ||
+                  "no client identified"}{" "}
+                · {scopeReview.inScopeRecords} records will be searched
+                {scopeReview.excludedRecords > 0
+                  ? ` · ${scopeReview.excludedRecords} excluded`
+                  : ""}
+              </p>
+            </div>
+            <span className="chip">~{scopeReview.estimatedMinutes} min</span>
+          </div>
+
+          <p className="row small">
+            {scopeReview.sources.map((entry) => (
+              <span key={entry.source} className="small muted">
+                <span className={`source-label source-${entry.source}`}>{entry.source}</span>{" "}
+                <span className="tabular">{entry.included} in</span>
+                {entry.excluded > 0 ? <span className="tabular">· {entry.excluded} out</span> : null}
+              </span>
+            ))}
+          </p>
+
+          {scopeReview.excludedEvents.length > 0 && (
+            <>
+              <p className="small muted">
+                These records stay out. Add back any that belong to this engagement, then confirm —
+                the investigators will search them.
+              </p>
+              <ul className="excluded-list">
+                {scopeReview.excludedEvents.map((event) => (
+                  <li key={event.id}>
+                    <label className="excluded-row">
+                      <input
+                        type="checkbox"
+                        checked={scopeSelection.has(event.id)}
+                        onChange={() => toggleScopeSelection(event.id)}
+                      />
+                      <span className="stack stack-xs">
+                        <span className="row small muted">
+                          <span className={`source-label source-${event.source}`}>
+                            {event.source}
+                          </span>
+                          <span className="tabular">{event.ts.slice(0, 10)}</span>
+                          <span>{event.channel}</span>
+                          <span>{event.actor}</span>
+                        </span>
+                        <span className="excluded-text">{event.text}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {scopeError && <p className="alert alert-error">{scopeError}</p>}
+          <div className="row">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={scopeSaving}
+              onClick={confirmScopeReview}
+            >
+              {scopeSaving ? "Saving…" : "Confirm scope & investigate"}
+            </button>
+          </div>
+        </section>
       )}
 
       {reviewIssues && (

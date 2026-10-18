@@ -229,11 +229,15 @@ Each is mapped to a gap below.
 
 ### G-09 — Answer-first decision brief
 
+**Status:** **implemented (core) — 2026-10-18.** The first viewport now answers the decisions in order: verdict, verification counts, a "you can say / not yet — check first" block with the top evidence-linked findings, the case-state strip (status/owner/latest fix/next commitment/last client contact), then the five answer cells — every quiet metric is drill-downable into its records. Remaining: role-specific views (G-15) and PDF export (G-22).
+
 **Problem:** five equal metric cards dominate; the answer, current state, owner and next action are not first.
 **Required:** replace the cards with: 3–5 verified facts; current status; named owner; next commitment/date; top unknown; "what you can say / what you cannot"; confidence. Metrics move to a secondary evidence strip, each with provenance.
 **Acceptance:** a manager can answer the four decisions from the first viewport; no metric without a source/drill-down.
 
 ### G-10 — Timeline as the spine
+
+**Status:** **implemented (core) — 2026-10-18.** A promise stated in several sources renders ONE canonical story step with a "N sources" chip and a contested badge when the sources disagree (acceptance test: three-source promise → one step, count 3); the story shows "current as of" the newest record; chapters collapse/expand. Remaining: cross-source merging for non-promise duplicate events (only commitment-backed restatements dedupe today).
 
 **Problem:** "What happened" is a claim dump with duplicates and chapter labels; the actual sequence is not the primary artifact.
 **Required:** one canonical event per step (date, actor, one sentence, source count, conflict/verification badge), expandable to evidence; no duplicate claims; collapse/expand; a "current as of" marker.
@@ -241,11 +245,15 @@ Each is mapped to a gap below.
 
 ### G-11 — Promise table and ranked gaps
 
+**Status:** **implemented (core) — 2026-10-18.** Gaps are deduped, tagged `not searched / records conflict / searched, nothing found / open question`, ranked client-facing and not-searched first (a coverage-backed "never searched" outranks a same-tagged guess), and cleaned of agent voice and raw record ids. Promise rows are one-per-distinct-promise with reconciled counts (G-05). Remaining: promise rows render as cards, not a table — restyle only; a privacy/consequence weighting for gap ranking beyond the current heuristics.
+
 **Problem:** promise cards are inconsistent and duplicated; gaps are a 30–50 item wall with agent voice.
 **Required:** one row per distinct promise (G-05); gaps ranked by decision impact, deduped, tagged `not searched / searched-absent / conflicting`, with no ids/agent voice.
 **Acceptance:** promise table count/status reconcile with the top; gaps have priority and no duplicate.
 
 ### G-12 — Scope review before the run
+
+**Status:** **implemented (core) — 2026-10-18.** A partial scope pauses after plan with a preview: client/project, per-source in/out counts, the excluded records with add-back checkboxes, and a time estimate; confirmation is persisted once per investigation (`scope_reviewed_at`), so reloads never re-open or skip it; confirming resumes at the plan's cheap reuse branch so the issue review still runs first. Start/upload parity holds (client field on both; same preview). Remaining: add/remove/split/merge of source scopes (add-back only today) and a true duration estimate.
 
 **Problem:** the manager cannot see or correct what will be searched; the upload path cannot declare a client.
 **Required:** pre-run preview of sources, client identity, included/excluded counts, estimated time; allow add/remove/split/merge; require confirmation for low-confidence scope; parity across start/upload/live.
@@ -253,11 +261,15 @@ Each is mapped to a gap below.
 
 ### G-13 — Resumable, background, partial results
 
+**Status:** **implemented (core) — 2026-10-18.** `resumePointFromStages` + phased `startAt` (skeptic/verify/assemble): reopening a half-finished run retries only the missing or errored stages and never redoes stored work — proven by an e2e that closes the tab after skeptic, reopens, and finishes verify+assemble only. The progress page states the truth: closing the tab pauses the run; reopening resumes it. Partial reports keep their label. Remaining: a true server-side background job with notifications (a client still has to drive the run) and per-failed-stage retry buttons.
+
 **Problem:** the pipeline is client-driven; closing the tab can stop it; no resume/retry/partial.
 **Required:** server-side job with resumable stages, notification, partial report with "partial" label, retry only failed stage, no "keep this tab open".
 **Acceptance:** kill the tab mid-run, reopen, the run completes or resumes; stages durable; e2e test.
 
 ### G-14 — Human-in-the-loop review and feedback
+
+**Status:** **implemented (core) — 2026-10-18.** The evidence drawer carries the review controls: mark a claim `wrong / unsupported / out of scope` with a reason (one verdict per claim, latest wins; clearable). Reviewed claims leave the findings, causes, timeline and client pack, join the rejected-claims audit list with their reason, and the frozen report version's stats record the reviewed count — proven at the route level. Remaining: corrections feeding the NEXT run (learning per client/claimer), identity-merge corrections, and a browsable review history beyond the per-claim record.
 
 **Problem:** the manager cannot correct a claim, merge identities, add a source, mark a claim wrong, or approve a sentence.
 **Required:** review checkpoints (scope/identity → claims → reply approval); `mark wrong / unsupported / out of scope` with a reason; corrections feed a feedback store and the next run; audit trail.

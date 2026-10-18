@@ -11,6 +11,13 @@ test("the built-in scenario runs end to end and lands on the answer-first report
 
   await page.waitForURL(/\/investigations\//, { timeout: 60_000 });
 
+  // G-12: the partially-confirmed scope pauses for a quick confirmation
+  // before investigators spend any tokens.
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
+
   // The pipeline runs on the progress screen; its finish redirect lands on the
   // report where the answer layer is the first section.
   await expect(page.locator("#answer")).toBeVisible({ timeout: 180_000 });

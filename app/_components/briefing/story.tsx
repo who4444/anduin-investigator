@@ -86,6 +86,16 @@ export function EventRow({
             <span className="person-role">{event.actorRole}</span>
           </span>
           <span className={`source-label source-${event.source}`}>{event.source}</span>
+          {event.sourceCount > 1 && (
+            <span className="chip" title={`Stated in ${event.sourceCount} source records`}>
+              {event.sourceCount} sources
+            </span>
+          )}
+          {event.contested && (
+            <span className="chip chip-flag" title="The merged sources disagree on the outcome">
+              contested
+            </span>
+          )}
           {event.status !== "n/a" && (
             <span className={`chip ${event.status === "broken" ? "chip-broken" : event.status === "kept" ? "chip-verified" : "chip-unclear"}`}>
               {event.status}

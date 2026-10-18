@@ -212,4 +212,71 @@ describe("buildBriefing", () => {
     expect(empty.keyMoments).toEqual([]);
     expect(empty.people).toEqual([]);
   });
+
+  /* G-10 acceptance: the same promise stated in three sources renders ONE
+     canonical story step carrying the source count, not three rows. */
+  it("merges a three-source promise into one timeline step with a source count", () => {
+    const promiseEvents: Event[] = [
+      event({
+        id: "t-jira",
+        ts: "2024-09-20T10:00:00.000Z",
+        actor: "Marcus Webb",
+        text: "The fix will ship in the Sep 24 release.",
+      }),
+      event({
+        id: "t-slack",
+        ts: "2024-09-21T11:00:00.000Z",
+        actor: "Marcus Webb",
+        source: "slack",
+        channel: "meridian-billing",
+        text: "Invoice totals will be corrected by September 24.",
+      }),
+      event({
+        id: "t-email",
+        ts: "2024-09-22T12:00:00.000Z",
+        actor: "Marcus Webb <marcus.webb@meridian.example>",
+        source: "email",
+        channel: "email",
+        text: "Corrected totals promised for September 24.",
+      }),
+    ];
+    const promiseClaims: Claim[] = [
+      claim({ id: "pc-jira", eventId: "t-jira", type: "commitment", status: "broken", text: "The fix will ship in the Sep 24 release." }),
+      claim({ id: "pc-slack", eventId: "t-slack", type: "commitment", status: "kept", text: "Invoice totals will be corrected by September 24." }),
+      claim({ id: "pc-email", eventId: "t-email", type: "commitment", status: "unclear", text: "Corrected totals promised for September 24." }),
+    ];
+    const commitments = [
+      {
+        id: "cm-1",
+        investigationId: "inv",
+        claimId: "pc-jira",
+        issueId: null,
+        promisor: "Marcus Webb",
+        promisee: "Northwind",
+        object: "invoice totals corrected",
+        conditions: null,
+        deadlinePhrase: "Sep 24",
+        deadlineIso: "2024-09-24T00:00:00.000Z",
+        rationale: "sources disagree on the outcome (broken vs kept vs unclear)",
+        status: "broken" as const,
+        contested: true,
+        fulfilmentEventIds: [],
+        sourceEventIds: ["t-jira", "t-slack", "t-email"],
+        dedupeKey: "key",
+        createdAt: "2024-09-20T10:00:00.000Z",
+      },
+    ];
+
+    const briefing = buildBriefing({
+      events: promiseEvents,
+      claims: promiseClaims,
+      commitments,
+    });
+
+    const promiseSteps = briefing.events.filter((entry) => entry.claimId.startsWith("pc-"));
+    expect(promiseSteps).toHaveLength(1);
+    expect(promiseSteps[0].claimId).toBe("pc-jira");
+    expect(promiseSteps[0].sourceCount).toBe(3);
+    expect(promiseSteps[0].contested).toBe(true);
+  });
 });

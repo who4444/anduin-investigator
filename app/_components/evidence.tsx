@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { highlightSegments } from "@/lib/highlight";
 import type { Claim, Event } from "@/lib/types";
@@ -98,6 +99,113 @@ function ClaimChecks({ claim }: { claim: Claim }) {
         )}
         {claim.verifyError && <li>Recorded reason: {claim.verifyError}.</li>}
       </ul>
+    </div>
+  );
+}
+
+/* G-14: the manager's correction controls for one claim. A review excludes
+   the claim from the findings, the client pack and the draft, and is kept as
+   the audit trail; the report refreshes with the reviewed state. */
+function ReviewControls({ claim }: { claim: Claim }) {
+  const router = useRouter();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (verdict: "wrong" | "unsupported" | "out_of_scope") => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/investigations/${claim.investigationId}/claims/${claim.id}/review`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ verdict, reason: reason.trim() || null }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? "Could not save the review.");
+      }
+      setReason("");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clear = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/investigations/${claim.investigationId}/claims/${claim.id}/review`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) throw new Error("Could not clear the review.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="drawer-checks">
+      <span className="now-label">Manager review</span>
+      {claim.review ? (
+        <>
+          <span className="chip chip-broken">
+            reviewed: {claim.review.verdict.replace(/_/g, " ")}
+          </span>
+          {claim.review.reason && <span className="small muted">{claim.review.reason}</span>}
+          <span className="small muted">
+            Recorded {claim.review.createdAt.slice(0, 10)} — this finding is excluded from the
+            report findings and the client pack.
+          </span>
+          <div className="row">
+            <button type="button" className="btn btn-quiet" disabled={busy} onClick={clear}>
+              Clear review
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <input
+            className="input"
+            placeholder="Reason (optional)"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            disabled={busy}
+          />
+          <div className="row">
+            <button type="button" className="btn" disabled={busy} onClick={() => submit("wrong")}>
+              Mark wrong
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              onClick={() => submit("unsupported")}
+            >
+              Unsupported
+            </button>
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              onClick={() => submit("out_of_scope")}
+            >
+              Out of scope
+            </button>
+          </div>
+        </>
+      )}
+      {error && <span className="alert alert-error">{error}</span>}
     </div>
   );
 }
@@ -217,6 +325,7 @@ export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: Dr
         )}
 
         {focusClaim && <ClaimChecks claim={focusClaim} />}
+        {focusClaim && <ReviewControls claim={focusClaim} />}
 
         {event.refs && event.refs.length > 0 && (
           <p className="small muted">Related tickets: {event.refs.join(", ")}</p>

@@ -33,6 +33,16 @@ test("multi-issue escalation pauses for an editable issue review, then reports p
   await page.getByRole("button", { name: "Investigate these exports" }).click();
   await page.waitForURL(/\/investigations\/[0-9a-f-]+\/progress/, { timeout: 60_000 });
 
+  // G-12: a partial scope pauses first; confirm it, then the issue review
+  // (or the issue review directly, when the scope came back scoped).
+  const scopeContinue = page.getByRole("button", { name: "Confirm scope & investigate" });
+  await Promise.race([
+    page.locator(".issue-review").waitFor({ state: "visible", timeout: 120_000 }),
+    scopeContinue
+      .waitFor({ state: "visible", timeout: 120_000 })
+      .then(() => scopeContinue.click()),
+  ]);
+
   // The plan runs, then the pipeline pauses before any investigator call.
   await expect(page.locator(".issue-review")).toBeVisible({ timeout: 120_000 });
   await expect(page.locator(".issue-edit-card")).toHaveCount(2);

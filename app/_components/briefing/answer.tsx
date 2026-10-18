@@ -220,6 +220,56 @@ export function AnswerSection({
         {report.stats.flagged > 0 ? ` · ${report.stats.flagged} flagged` : ""}.
       </p>
 
+      {/* G-09: the manager's four decisions, answer-first. */}
+      <div className="say-block">
+        <div className="say-col">
+          <span className="now-label">You can say · {report.safeToRepeat.length}</span>
+          {report.safeToRepeat.length === 0 ? (
+            <span className="now-unknown">Nothing is fully verified yet — check before repeating anything.</span>
+          ) : (
+            <ul className="say-list">
+              {report.safeToRepeat.slice(0, 3).map((item) => (
+                <li key={item.claimId}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-claim"
+                    onClick={() => onClaim(item.claimId)}
+                  >
+                    {item.text}
+                  </button>
+                </li>
+              ))}
+              {report.safeToRepeat.length > 3 && (
+                <li className="small muted">+{report.safeToRepeat.length - 3} more in the sections below</li>
+              )}
+            </ul>
+          )}
+        </div>
+        <div className="say-col">
+          <span className="now-label">Not yet — check first · {report.checkWithHuman.length}</span>
+          {report.checkWithHuman.length === 0 ? (
+            <span className="now-unknown">Nothing is waiting on a human check.</span>
+          ) : (
+            <ul className="say-list">
+              {report.checkWithHuman.slice(0, 3).map((item) => (
+                <li key={item.claimId}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-claim"
+                    onClick={() => onClaim(item.claimId)}
+                  >
+                    {item.text}
+                  </button>
+                </li>
+              ))}
+              {report.checkWithHuman.length > 3 && (
+                <li className="small muted">+{report.checkWithHuman.length - 3} more in the sections below</li>
+              )}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <CaseStateBlock state={report.caseState} onEvent={onEvent} />
 
       <div className="scoreboard" role="list" aria-label="The five answers">
@@ -249,11 +299,26 @@ export function AnswerSection({
 
       {quietMetrics.length > 0 && (
         <p className="quiet-metrics small muted">
-          {quietMetrics.map((metric) => (
-            <span key={metric.id}>
-              <span className="quiet-metric-value">{metric.value}</span> {metric.label.toLowerCase()}
-            </span>
-          ))}
+          {quietMetrics.map((metric) => {
+            // G-09: no metric without a drill-down into its evidence.
+            const evidence = firstEvidenceId(metric.claimIds, metric.eventIds);
+            const open = () => {
+              if (evidence.claimId) onClaim(evidence.claimId);
+              else if (evidence.eventId) onEvent(evidence.eventId);
+            };
+            return (
+              <button
+                key={metric.id}
+                type="button"
+                className="quiet-metric"
+                onClick={open}
+                disabled={!evidence.claimId && !evidence.eventId}
+                title={evidence.claimId || evidence.eventId ? "Open the supporting evidence" : undefined}
+              >
+                <span className="quiet-metric-value">{metric.value}</span> {metric.label.toLowerCase()}
+              </button>
+            );
+          })}
         </p>
       )}
 

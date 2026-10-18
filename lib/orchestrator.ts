@@ -1,4 +1,4 @@
-import type { Issue, StageName, StageStatus } from "./types";
+import type { Issue, Stage, StageName, StageStatus } from "./types";
 
 export const INVESTIGATOR_KINDS = ["root_cause", "commitments", "ownership"] as const;
 export type InvestigatorKindName = (typeof INVESTIGATOR_KINDS)[number];
@@ -10,6 +10,20 @@ export interface StageUpdate {
   error?: string | null;
 }
 
+/** G-13: where a half-finished run resumes. Every stage that is already
+    stored as done is never redone; only what is missing (or errored) runs. */
+export type ResumePoint = "plan" | "investigate" | "skeptic" | "verify" | "assemble";
+
+export function resumePointFromStages(stages: Stage[]): ResumePoint {
+  const done = (stage: string) => stages.some((entry) => entry.stage === stage && entry.status === "done");
+  if (!done("plan")) return "plan";
+  const investigatorsDone = (INVESTIGATOR_KINDS as readonly string[]).every((kind) => done(kind));
+  if (!investigatorsDone) return "investigate";
+  if (!done("skeptic")) return "skeptic";
+  if (!done("verify")) return "verify";
+  return "assemble";
+}
+
 export interface RunPipelineOptions {
   onStage?: (update: StageUpdate) => void;
   fetchImpl?: typeof fetch;
@@ -17,15 +31,18 @@ export interface RunPipelineOptions {
   onMissingRetry?: (missing: string[], pass: number) => void;
   /** G-23: pause after plan when more than one issue needs a manager review. */
   stopForIssueReview?: boolean;
-  /** Resume a run whose plan and issue review are already done. */
-  startAt?: "plan" | "investigate";
+  /** G-12: pause after plan when the scope is only partially confirmed, so
+      the manager sees what will be searched before tokens are spent. */
+  stopForScopeReview?: boolean;
+  /** Resume a run whose earlier stages are already stored (G-13). */
+  startAt?: ResumePoint;
   /** Stable worker id; the issue review pauses and resumes on the same lease. */
   workerId?: string;
 }
 
 export type PipelineOutcome =
   | { ok: true; retries: number }
-  | { ok: true; paused: true; issues: Issue[]; retries: number }
+  | { ok: true; paused: true; issues?: Issue[]; scopeReview?: boolean; retries: number }
   | { ok: false; error: string; stage: string; pass: number };
 
 class StageError extends Error {
@@ -136,6 +153,13 @@ export async function runPipeline(
       const issues = Array.isArray(planPayload.issues)
         ? (planPayload.issues as Issue[])
         : [];
+      const scope = planPayload.scope as { confidence?: string } | null | undefined;
+      // G-12: a partially-confirmed scope is shown for confirmation before
+      // any investigator spends tokens on it. Confirming resumes at "plan",
+      // whose reuse branch is cheap, so the issue review still runs after.
+      if (options.stopForScopeReview && scope && scope.confidence === "partial") {
+        return { ok: true, paused: true, scopeReview: true, retries: 0 };
+      }
       if (
         options.stopForIssueReview &&
         issues.length > 1 &&
@@ -147,19 +171,29 @@ export async function runPipeline(
 
     for (;;) {
       const pass = 1 + retries;
+      const initialPass = retries === 0;
+      const skipInvestigators =
+        initialPass && startAt !== "plan" && startAt !== "investigate";
+      const skipSkeptic =
+        initialPass && (startAt === "verify" || startAt === "assemble");
+      const skipVerify = initialPass && startAt === "assemble";
 
-      if (retries === 0) {
+      if (initialPass && !skipInvestigators) {
         await runInvestigators(INVESTIGATOR_KINDS, pass);
       }
 
-      try {
-        await callStage("skeptic", pass);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        notify("skeptic", pass, "error", message);
+      if (!skipSkeptic) {
+        try {
+          await callStage("skeptic", pass);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          notify("skeptic", pass, "error", message);
+        }
       }
 
-      await callStage("verify", pass);
+      if (!skipVerify) {
+        await callStage("verify", pass);
+      }
 
       const assembled = (await callStage("assemble", pass)) as {
         needsRetry?: boolean;

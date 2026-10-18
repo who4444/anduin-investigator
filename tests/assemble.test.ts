@@ -116,7 +116,15 @@ describeDb("verify + assemble", () => {
 
     expect(result.timeline.map((event) => event.id)).toEqual([jiraId, slackId]);
     expect(result.ledger.map((claim) => claim.type)).toEqual(["commitment"]);
-    expect(result.stats).toEqual({ total: 3, verified: 2, supported: 0, rejected: 1, flagged: 0, unverified: 0 });
+    expect(result.stats).toEqual({
+      reviewed: 0,
+      total: 3,
+      verified: 2,
+      supported: 0,
+      rejected: 1,
+      flagged: 0,
+      unverified: 0,
+    });
     expect(result.missing).toEqual(["ownership"]);
     expect(result.pass).toBe(1);
     expect(result.needsRetry).toBe(true);
