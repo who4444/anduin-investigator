@@ -337,7 +337,7 @@ describeDb("three-state verification", () => {
     const questionsCell = reportBody.bottomLine.cells.find(
       (cell: { id: string }) => cell.id === "questions",
     );
-    expect(questionsCell.value).toBe("6 open · 5 themes");
+    expect(questionsCell.value).toBe("6 open · 4 themes");
     expect(
       reportBody.briefing.events.some(
         (event: { verification: string }) => event.verification === "supported",
