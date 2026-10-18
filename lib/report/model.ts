@@ -37,6 +37,8 @@ export interface ReportActorModel {
   role: ActorRole;
   roleSource: RoleSource;
   confidence: number;
+  /** B4: why this role — the evidence the scorer weighed. */
+  roleEvidence: string[];
 }
 
 export interface ReportFindingModel {
@@ -476,7 +478,7 @@ function buildActors(input: ReportModelInput): {
   resolved: boolean;
 } {
   const scope = input.scope;
-  const resolved = Boolean(scope?.client && scope?.project && scope.confidence !== "none");
+  const resolved = Boolean(scope?.client && scope.confidence !== "none");
   const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
   const clientActorNames = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
   const rawActors = new Map<string, { display: string; aliases: Set<string> }>();
@@ -515,6 +517,33 @@ function buildActors(input: ReportModelInput): {
 
   const actors: ReportActorModel[] = [];
   const byName = new Map<string, ReportActorModel>();
+  // B4: recipient-direction evidence. A client-domain sender whose emails
+  // address the vendor's domain is the client talking to their vendor (strong
+  // client evidence); one whose recorded emails never leave the client's own
+  // domains while doing vendor-side work (Jira/Slack) is the identity trap.
+  const recipientDomains = new Map<string, Set<string>>();
+  for (const event of input.events) {
+    if (event.source !== "email") continue;
+    const key = actorKey(event.actorResolved ?? event.actor);
+    if (!recipientDomains.has(key)) recipientDomains.set(key, new Set());
+    const meta = event.meta as { to?: unknown; cc?: unknown } | undefined;
+    for (const list of [meta?.to, meta?.cc]) {
+      if (!Array.isArray(list)) continue;
+      for (const entry of list) {
+        if (typeof entry !== "string") continue;
+        const domain = entry.match(EMAIL)?.[1]?.toLowerCase() ?? (entry.includes("@") ? entry.split("@")[1]?.toLowerCase() : null);
+        if (domain) recipientDomains.get(key)!.add(domain);
+      }
+    }
+  }
+  const vendorDomains = new Set<string>();
+  for (const [key, targets] of recipientDomains) {
+    const senderDomains = [...(rawActors.get(key)?.aliases ?? [])]
+      .map(emailDomain)
+      .filter((domain): domain is string => Boolean(domain));
+    if (!senderDomains.some((domain) => clientDomains.has(domain))) continue;
+    for (const domain of targets) if (!clientDomains.has(domain)) vendorDomains.add(domain);
+  }
   for (const [key, actor] of rawActors) {
     const aliases = [...actor.aliases];
     const domains = aliases.map(emailDomain).filter((domain): domain is string => Boolean(domain));
@@ -522,21 +551,61 @@ function buildActors(input: ReportModelInput): {
     const domainIsClient = domains.some((domain) => clientDomains.has(domain));
     const domainIsInternal = domains.some((domain) => !clientDomains.has(domain));
     const channels = activity.get(key) ?? { jira: false, slack: false, email: false };
+    const targets = recipientDomains.get(key) ?? new Set<string>();
+    const emailsToVendor = [...targets].some((domain) => vendorDomains.has(domain) && !clientDomains.has(domain));
+    const vendorSideActivity = channels.jira || channels.slack;
+    const evidence: string[] = [];
+    if (domainIsClient) evidence.push("writes from the client's domain");
+    if (emailsToVendor) evidence.push("their emails address the vendor");
+    if (channels.slack) evidence.push("posts in the project channels");
+    if (channels.jira) evidence.push("works the Jira records");
+    if (channels.email && !domainIsClient) evidence.push("writes from a vendor or other domain");
+    if (nameAsClient && !domains.length) evidence.push("listed as a client contact");
     let role: ActorRole = "unknown";
     let roleSource: RoleSource = "inferred";
     let confidence = 0.25;
     if (resolved) {
-      // A client-domain address on a Jira/Slack actor is a conflicting signal
-      // (the demo's engineer uses a client-domain mailbox). Do not guess.
-      const conflictingDomain = domainIsClient && channels.slack;
-      if (domainIsClient && !conflictingDomain) {
+      if (domainIsClient && emailsToVendor) {
         role = "client";
         roleSource = "email_domain";
         confidence = 0.95;
-      } else if (nameAsClient && domains.length === 0) {
+      } else if (domainIsClient && !vendorSideActivity && !emailsToVendor) {
+        // A client-domain writer with no vendor-side activity at all: the
+        // address is the strongest signal available.
+        role = "client";
+        roleSource = "email_domain";
+        confidence = 0.8;
+      } else if (nameAsClient && domains.length === 0 && !vendorSideActivity) {
         role = "client";
         roleSource = "channel";
         confidence = 0.85;
+      } else if (
+        domainIsClient &&
+        vendorSideActivity &&
+        targets.size > 0 &&
+        !emailsToVendor
+      ) {
+        // B4 trap: a client-domain address whose recorded emails never
+        // addressed the vendor while they work the vendor's channels/records.
+        // That is vendor work under a client-domain alias.
+        role = "internal";
+        roleSource = "inferred";
+        confidence = 0.6;
+        evidence.push("their recorded emails never address the vendor — vendor work under a client-domain alias");
+      } else if (domainIsClient && targets.size === 0) {
+        // No envelope data at all: fall back to the domain plus channel
+        // conflict check — a client-domain writer who never posts in the
+        // project channels is the client; one who does stays unlabelled.
+        if (channels.slack) {
+          role = "unknown";
+          roleSource = "inferred";
+          confidence = 0.3;
+          evidence.push("no envelope data and the client-domain address also posts in the project channels");
+        } else {
+          role = "client";
+          roleSource = "email_domain";
+          confidence = 0.8;
+        }
       } else if (domainIsInternal && !domainIsClient) {
         role = "internal";
         roleSource = "email_domain";
@@ -555,6 +624,7 @@ function buildActors(input: ReportModelInput): {
       role,
       roleSource,
       confidence,
+      roleEvidence: evidence,
     };
     actors.push(model);
     byName.set(key, model);

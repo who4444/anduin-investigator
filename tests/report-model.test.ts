@@ -129,6 +129,85 @@ describe("client and project resolve independently (B2)", () => {
   });
 });
 
+describe("role evidence (B4)", () => {
+  const trapEvents: Event[] = [
+    event({
+      id: "e-r1",
+      source: "email",
+      channel: "email",
+      ts: "2024-09-20T09:00:00.000Z",
+      actor: "Pat Lee <pat@client.example>",
+      text: "Chasing: is the fix out? Our finance team is blocked.",
+      meta: { messageId: "m1", from: "pat@client.example", to: ["vendor@meridian.example"] },
+    }),
+    event({
+      id: "e-r2",
+      source: "email",
+      channel: "email",
+      ts: "2024-09-21T09:00:00.000Z",
+      actor: "Alex Chen <alex@client.example>",
+      text: "We will ship the fix in the Sep 24 release. I am on leave from tomorrow.",
+      meta: { messageId: "m2", from: "alex@client.example", to: ["pat@client.example"] },
+    }),
+    event({
+      id: "e-r3",
+      source: "slack",
+      ts: "2024-09-23T09:00:00.000Z",
+      channel: "vendor-billing",
+      actor: "Alex Chen",
+      text: "Marking MER-101 resolved; the fix is in the build.",
+    }),
+    event({
+      id: "e-r4",
+      source: "email",
+      channel: "email",
+      ts: "2024-09-22T09:00:00.000Z",
+      actor: "Sam Ray <sam@meridian.example>",
+      text: "Build is going out tonight; the invoice fix is included.",
+      meta: { messageId: "m3", from: "sam@meridian.example", to: ["pat@client.example"] },
+    }),
+    event({
+      id: "e-r5",
+      source: "slack",
+      ts: "2024-09-24T09:00:00.000Z",
+      channel: "support-room",
+      actor: "Robin Wu",
+      text: "Chasing the status again.",
+    }),
+  ];
+  const scopeB4: InvestigationScope = {
+    client: "Client Corp",
+    project: "Meridian",
+    ticketPrefixes: ["MER"],
+    channels: [],
+    senderDomains: ["client.example"],
+    confidence: "partial",
+    anchors: [{ kind: "declared-client", value: "Client Corp", source: "declared" }],
+  };
+
+  it("scores roles from domain, direction and channel evidence with the evidence listed", () => {
+    const model = buildReportModel(
+      input({ events: trapEvents, scope: scopeB4, clientDomains: ["client.example"], clientActors: [] }),
+    );
+    const byName = (name: string) => model.actors.find((actor) => actor.name === name);
+
+    expect(byName("Pat Lee")?.role).toBe("client");
+    expect(byName("Pat Lee")?.roleEvidence.join(" ")).toMatch(/client/i);
+
+    // The trap: a client-domain address whose only email stayed inside the
+    // client's own domain while doing vendor-side work in the project channel.
+    expect(byName("Alex Chen")?.role).toBe("internal");
+    expect(byName("Alex Chen")?.roleEvidence.join(" ")).toMatch(/internal|vendor|never/i);
+
+    expect(byName("Sam Ray")?.role).toBe("internal");
+
+    // A slack-only participant with no evidence either way stays unknown,
+    // with the ambiguity disclosed rather than guessed.
+    expect(byName("Robin Wu")?.role).toBe("unknown");
+    expect(byName("Robin Wu")?.roleEvidence.length).toBeGreaterThan(0);
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());

@@ -95,6 +95,13 @@ function normalizeMessageId(raw: unknown): string | undefined {
   return extractMessageIds(raw)[0];
 }
 
+function addressList(entries: Email["to"]): string[] {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .map((entry) => (entry && typeof entry.address === "string" ? entry.address.trim() : ""))
+    .filter(Boolean);
+}
+
 function buildEvent(email: Email): EventInput | null {
   const actor = fromDisplay(email.from);
   const messageId = normalizeMessageId(email.messageId);
@@ -118,7 +125,18 @@ function buildEvent(email: Email): EventInput | null {
   if (threadId) event.threadId = threadId;
   const refs = extractTicketRefs(`${subject}\n${text}`);
   if (refs.length > 0) event.refs = refs;
-  if (messageId) event.meta = { messageId };
+  // B4: keep the envelope so the report can read message direction — who a
+  // client-domain sender actually addressed decides how strong their client
+  // evidence is. Raw addresses only; the display layer strips them.
+  const to = addressList(email.to);
+  const cc = addressList(email.cc);
+  const fromAddress = addressList(email.from ? [email.from] : [])[0];
+  const meta: Record<string, unknown> = {};
+  if (messageId) meta.messageId = messageId;
+  if (fromAddress) meta.from = fromAddress;
+  if (to.length > 0) meta.to = to;
+  if (cc.length > 0) meta.cc = cc;
+  if (Object.keys(meta).length > 0) event.meta = meta;
   return event;
 }
 
