@@ -66,22 +66,32 @@ export function commitmentDedupeKey(input: {
   ].join("|");
 }
 
-/* G-05: a QA report, a "resolved" assertion or a client confirmation is not a
-   promise. The object must carry a forward-looking cue; a completed-fix
-   statement without one is a finding, not a commitment. */
+/* G-05/C2: a QA report, a "resolved" assertion, a completed-fix report, a
+   client confirmation and a decision ("keep it open") are not promises. The
+   promise needs an explicit forward-looking statement (will/commit/schedule/
+   promise/intend/due) — shipping or merely naming a release is a status
+   report, and "keep .* open" is a decision about the process. */
 const PROMISE_CUE =
-  /\b(will|shall|commit(?:ted|s|ment)?|promis(?:e|ed|es)|schedul(?:ed|e|ing)?|target(?:ed|s|ing)?|keep .* open|ship|deliver|due|by (?:the )?[\w.-]+ release|tomorrow|next release|plan(?:ned|s)?|intend(?:ed|s)?|should)\b/i;
+  /\b(will|shall|commit(?:ted|s|ment)?|promis(?:e|ed|es)|schedul(?:ed|e|ing)?|target(?:ed|s|ing)?|ship|deliver|due|by (?:the )?[\w.-]+ release|tomorrow|next release|plan(?:ned|s)?|intend(?:ed|s)?|should)\b/i;
 const COMPLETED_CUE =
   /\b(?:was|were|is|are|has been|have been)\s+(?:fixed|resolved|completed|verified|corrected|closed|delivered)\b|\b(?:fixed|resolved|completed|verified|corrected|closed|delivered)\s+(?:by|in|with)\b/i;
-const FUTURE_CUE =
-  /\b(will|shall|commit|promis|schedul|target|keep .* open|tomorrow|next release|plan|intend)\b/i;
+const FORWARD_STEM = /\b(?:will|shall|commit|promis|schedul|target|tomorrow|next release|plan|intend)/i;
+const DUE_WORD = /\bdue\b/i;
+
+function hasForwardCue(combined: string): boolean {
+  return FORWARD_STEM.test(combined) || DUE_WORD.test(combined);
+}
 
 export function isPromiseLike(object: string, claimText = ""): boolean {
   const combined = `${object} ${claimText}`;
   if (!PROMISE_CUE.test(combined)) return false;
   // A past-tense completion statement is not a promise unless it also says
   // when the still-pending work will happen.
-  if (COMPLETED_CUE.test(object) && !FUTURE_CUE.test(object)) return false;
+  if (COMPLETED_CUE.test(object) && !hasForwardCue(object)) return false;
+  // C2: a decision or a status assertion carries no forward-looking cue.
+  // "Keep it open until QA passes" and "the release is cut; fix included"
+  // name no pending work and are not promises.
+  if (!hasForwardCue(combined)) return false;
   return true;
 }
 

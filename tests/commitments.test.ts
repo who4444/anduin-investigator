@@ -82,11 +82,15 @@ describe("commitment rules (G-05)", () => {
     });
   });
 
-  it("does not turn a completed fix or a QA status into a promise", () => {
+  it("does not turn a decision or a release status into a promise (C2)", async () => {
     expect(isPromiseLike("VAT export totals fixed by the 5.3.3 rollout")).toBe(false);
     expect(isPromiseLike("VAT rounding path corrected and exports verified with finance")).toBe(false);
+    // C2: "keep it open" is a decision; a release status is not a promise.
+    expect(isPromiseLike("keep MER-101 open until QA passes", "Marcus Webb decided to keep MER-101 open until QA passes.")).toBe(false);
+    expect(isPromiseLike("invoice fix included in the Sep 24 release", "The Sep 24 release is cut; the invoice fix is included.")).toBe(false);
     expect(isPromiseLike("fix scheduled for the Sep 20 release")).toBe(true);
-    expect(isPromiseLike("ship the VAT export fix in the Sep 20 release")).toBe(true);
+    expect(isPromiseLike("ship the VAT export fix in the Sep 20 release", "We will ship the VAT export fix in the Sep 20 release.")).toBe(true);
+    expect(isPromiseLike("invoice totals corrected", "Lin Chen promised the invoice fix for the Sep 24 release.")).toBe(true);
   });
 
   it("kept requires evidence of delivery", () => {
