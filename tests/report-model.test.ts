@@ -86,6 +86,49 @@ const input = (over: Partial<ReportModelInput> = {}): ReportModelInput => ({
   ...over,
 });
 
+describe("client and project resolve independently (B2)", () => {
+  const declaredOnly: InvestigationScope = {
+    client: "Northwind Logistics",
+    project: null,
+    ticketPrefixes: ["MER"],
+    channels: ["meridian-billing"],
+    senderDomains: ["northwind.example"],
+    confidence: "partial",
+    anchors: [{ kind: "declared-client", value: "Northwind Logistics", source: "declared" }],
+  };
+
+  it("a declared client is known even when no project string exists", () => {
+    const model = buildReportModel(
+      input({ scope: { ...declaredOnly, channels: [] }, clientDomains: ["northwind.example"] }),
+    );
+    expect(model.client.clientKnown).toBe(true);
+    expect(model.client.client).toBe("Northwind Logistics");
+    // The project is not named by a string, but the selected ticket prefix is.
+    expect(model.client.projectKnown).toBe(true);
+    expect(model.client.projectLabel).toContain("MER");
+    expect(model.client.resolved).toBe(true);
+  });
+
+  it("a channel-only scope still names the project", () => {
+    const model = buildReportModel(
+      input({
+        scope: { ...declaredOnly, ticketPrefixes: [], channels: ["meridian-billing"] },
+      }),
+    );
+    expect(model.client.projectKnown).toBe(true);
+    expect(model.client.projectLabel).toContain("meridian-billing");
+  });
+
+  it("the confirm action appears only when no client can be established", () => {
+    const model = buildReportModel(
+      input({ scope: { ...declaredOnly, client: null, confidence: "none" } }),
+    );
+    expect(model.client.clientKnown).toBe(false);
+    expect(model.client.resolved).toBe(false);
+    expect(model.headline.nextStep).toContain("Confirm the client");
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());
@@ -179,8 +222,7 @@ describe("ReportModel revision brief", () => {
     expect(new Set(sentences).size).toBe(sentences.length);
   });
 
-  it("resolves roles and last contact once the client is confirmed", () => {
-    const scope: InvestigationScope = {
+  it("resolves roles and last contact once the client is confirmed", () => {    const scope: InvestigationScope = {
       client: "Northwind Logistics",
       project: "Meridian",
       ticketPrefixes: ["MER"],

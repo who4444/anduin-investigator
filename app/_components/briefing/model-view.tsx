@@ -93,7 +93,7 @@ export function ClientResolutionNotice({ report }: { report: ReportPayload }) {
       : identifiers.join(" · ");
 
   return (
-    <div className={model.client.resolved ? "scope-wrap" : "client-resolution alert-block"}>
+    <div className={model.client.clientKnown ? "scope-wrap" : "client-resolution alert-block"}>
       <p className={`scope-line tone-${scoped ? "scoped" : partial ? "partial" : "none"}`}>
         {partial && (
           <span className={`scope-flag${reviewed ? " scope-confirmed" : ""}`}>
@@ -115,7 +115,7 @@ export function ClientResolutionNotice({ report }: { report: ReportPayload }) {
         {partial && !reviewed && <span className="small muted"> — verify before relying on it.</span>}
         {partial && reviewed && <span className="small muted"> — confirmed by you before the run.</span>}
       </p>
-      {!model.client.resolved && (
+      {!model.client.clientKnown && (
         <div className="client-resolution-body">
           <h2>Client and project not confirmed</h2>
           <p>
@@ -551,7 +551,7 @@ export function ModelStory({ report, onFinding }: { report: ReportPayload; onFin
                           <span className={sourceClass(finding.source)}>{finding.source}</span>
                           <span className="person">
                             <span className="person-role">{actor?.name ?? "Unknown actor"}</span>
-                            <span className="role-label">{actorRoleLabel(actor, model.client.resolved)}</span>
+                            <span className="role-label">{actorRoleLabel(actor, model.client.clientKnown)}</span>
                           </span>
                           {finding.failureTag && <span className={`chip failure-${finding.failureTag}`}>{finding.failureTag}</span>}
                           {!suppressed && <Pill finding={finding} />}
@@ -602,7 +602,7 @@ function ModelAudit({ report, onFinding }: { report: ReportPayload; onFinding: (
   return (
     <div className="stack stack-xs audit">
       <h3 className="section-title">What we told the client vs what the records show</h3>
-      {!model.client.resolved ? (
+      {!model.client.clientKnown ? (
         <p className="empty">Needs client confirmation — actor roles are unresolved.</p>
       ) : model.audit.length === 0 ? (
         <p className="empty">No communicated update was contradicted by another record.</p>

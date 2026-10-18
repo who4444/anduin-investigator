@@ -135,6 +135,11 @@ export interface ReportSilence {
 
 export interface ReportClientModel {
   resolved: boolean;
+  /** B2: the client and the project resolve independently. */
+  clientKnown: boolean;
+  projectKnown: boolean;
+  /** Readable project label: the explicit name or the selected scope units. */
+  projectLabel: string | null;
   client: string | null;
   project: string | null;
   confidence: "scoped" | "partial" | "none" | null;
@@ -571,12 +576,27 @@ function chooseRepresentative(claims: Claim[], event: Event): Claim | undefined 
 
 function buildClientModel(input: ReportModelInput): ReportClientModel {
   const scope = input.scope;
+  // B2: client and project resolve independently. A declared client (manager
+  // ground truth) or a verified client-domain anchor makes the client known
+  // even when no project string exists; a selected ticket prefix or channel
+  // names the project when the model never returned one.
+  const clientKnown = Boolean(scope?.client) && scope?.confidence !== "none";
+  const scopeUnits = [
+    scope?.project ?? null,
+    ...(scope?.ticketPrefixes ?? []),
+    ...(scope?.channels ?? []),
+  ].filter(Boolean) as string[];
+  const projectLabel = scopeUnits.length > 0 ? scopeUnits.join(" / ") : null;
+  const projectKnown = Boolean(projectLabel);
   const reasons: string[] = [];
-  if (!scope?.client) reasons.push("The client is not identified from the escalation or the records.");
-  if (!scope?.project) reasons.push("The project is not identified.");
+  if (!clientKnown) reasons.push("The client is not identified from the escalation or the records.");
+  if (!scope?.project && !projectLabel) reasons.push("The project is not identified.");
   if (scope?.confidence === "none") reasons.push("The scope resolved no verified client or project identifiers.");
   return {
-    resolved: Boolean(scope?.client && scope?.project && scope.confidence !== "none"),
+    resolved: clientKnown && projectKnown,
+    clientKnown,
+    projectKnown,
+    projectLabel,
     client: scope?.client ?? null,
     project: scope?.project ?? null,
     confidence: scope?.confidence ?? null,
@@ -591,7 +611,7 @@ function buildAudit(
   findingByEvent: Map<string, ReportFindingModel>,
   client: ReportClientModel,
 ): ReportAuditRow[] {
-  if (!client.resolved) return [];
+  if (!client.clientKnown) return [];
   const rows: ReportAuditRow[] = [];
   for (const note of notes) {
     if (note.kind !== "contradiction" && note.kind !== "unsupported") continue;
@@ -681,7 +701,7 @@ function buildOpenQuestions(
     questions.push({ question, note: "", gapIds: [], findingIds: related, impact });
   };
 
-  if (!client.resolved) {
+  if (!client.clientKnown) {
     addUnknown("Which client and project does this escalation concern?", 5, allFindings.slice(0, 1).map((f) => f.id));
   }
   if (!state.owner.known) {
@@ -700,7 +720,7 @@ function buildOpenQuestions(
   for (const source of never) {
     addUnknown(`Was the answer in ${source}?`, 3, allFindings.slice(0, 1).map((f) => f.id));
   }
-  if (never.length === 0 && !client.resolved) {
+  if (never.length === 0 && !client.clientKnown) {
     addUnknown("Were Slack or other channels searched for the missing context?", 3, allFindings.slice(0, 1).map((f) => f.id));
   }
 
@@ -847,7 +867,7 @@ function buildState(
     }
   }
 
-  if (!client.resolved) {
+  if (!client.clientKnown) {
     lastClientContact = {
       known: false,
       value: null,
@@ -1088,7 +1108,7 @@ function buildHeadline(
   const unresolvedIds =
     open?.findingIds.length > 0 ? open.findingIds.slice(0, 2) : findings.slice(-1).map((finding) => finding.id);
   sentences.push({
-    text: client.resolved
+    text: client.clientKnown
       ? open
         ? `What remains open: ${open.theme.toLowerCase()}.`
         : "No open question was recorded; the account is still limited by the available evidence."
@@ -1096,7 +1116,7 @@ function buildHeadline(
     findingIds: unresolvedIds.length > 0 ? unresolvedIds : findings.slice(0, 1).map((finding) => finding.id),
   });
 
-  const nextStep = !client.resolved
+  const nextStep = !client.clientKnown
     ? "Confirm the client and project."
     : openQuestions[0]?.theme === "Ownership and handoff"
       ? "Find the owner after the handoff."
