@@ -53,7 +53,14 @@ describe("buildBottomLine", () => {
     ];
     const gaps: Gap[] = [gap({ id: "g1", question: "Who approved the 4.12 release?" })];
 
-    const bottom = buildBottomLine({ events, claims, notes: [] as SkepticNote[], gaps });
+    const bottom = buildBottomLine({
+      events,
+      claims,
+      notes: [] as SkepticNote[],
+      gaps,
+      // The report passes the scope's client evidence (B5).
+      clientActors: ["priya nair"],
+    });
     const byId = new Map(bottom.cells.map((cell) => [cell.id, cell]));
 
     expect(byId.get("cause")).toMatchObject({ determined: true, tone: "neutral" });
@@ -97,7 +104,7 @@ describe("buildBottomLine", () => {
     const byId = new Map(bottom.cells.map((cell) => [cell.id, cell]));
     expect(byId.get("cause")?.value).toBe("not determined");
     expect(byId.get("promises")?.value).toBe("no promises found");
-    expect(byId.get("chasers")?.value).toBe("none found");
+    expect(byId.get("chasers")?.value).toBe("not determined (client unresolved)");
     expect(byId.get("silence")?.value).toBe("not determined");
     expect(byId.get("questions")?.value).toBe("none open");
   });

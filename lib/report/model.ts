@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import { isPromiseLike } from "../pipeline/commitments";
 import type { CoverageReport } from "../pipeline/coverage";
+import { buildCaseState } from "./case-state";
 import { rankGaps, type GapTag } from "./gaps";
 
 /* The report revision brief: one normalized model is the source of truth for
@@ -78,14 +79,18 @@ export interface ReportStateField<T> {
   value: T | null;
   basis: string[];
   unknownReason: string | null;
+  /** C1: how the value is known — a Jira transition, a message, a claim. */
+  basisLabel?: string | null;
 }
 
 export interface ReportStateModel {
   asOf: string;
   currentStatus: ReportStateField<string>;
   owner: ReportStateField<string>;
-  lastClientContact: ReportStateField<{ actorId: string; name: string; ts: string }>;
-  lastInternalUpdate: ReportStateField<{ actorId: string; name: string; ts: string }>;
+  /** C1: who made the last status change, when no owner is recorded. */
+  statusChangedBy: ReportStateField<string>;
+  lastClientContact: ReportStateField<{ actor: string; ts: string }>;
+  lastInternalUpdate: ReportStateField<{ actor: string; ts: string }>;
   latestFix: ReportStateField<{ text: string; ts: string }>;
   nextCommitment: ReportStateField<{ object: string; deadline: string | null }>;
 }
@@ -198,7 +203,6 @@ const STATUS_TRANSITION = /^\s*Status:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const ASSIGNEE_TRANSITION = /^\s*Assignee:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const VERSION_TOKEN = /\b\d+\.\d+(?:\.\d+)?\b/;
 const FIX_WORD = /\b(?:fix(?:ed|es|ing)?|hotfix|patch(?:ed)?|corrected)\b/i;
-const DELIVERY_WORD = /\b(?:shipped|deployed|released|is live|went live|rolled out|included|corrected|fixed)\b/i;
 const QA_EVENT = /\bQA\b/i;
 const UNANSWERED = /\b(?:no reply|unanswered|no response|chase|chaser|follow(?:ed)? up|awaiting)\b/i;
 function decodeEntities(value: string): string {
@@ -856,161 +860,50 @@ function computeSilence(events: Event[]): ReportSilence | null {
 function buildState(
   input: ReportModelInput,
   findings: ReportFindingModel[],
-  actorsById: Map<string, ReportActorModel>,
-  client: ReportClientModel,
-  commitments: Commitment[],
 ): ReportStateModel {
-  const orderedEvents = [...input.events].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+  // C1: ONE case state. buildCaseState computes what is true now from
+  // records only; this adapter projects it into the report's field shape
+  // (finding ids for citations, labelled bases, explicit unknown reasons).
+  const caseState = buildCaseState({
+    events: input.events,
+    claims: input.claims,
+    commitments: input.commitments,
+    gaps: input.gaps,
+    notes: input.notes,
+    clientDomains: input.clientDomains,
+    clientActors: input.clientActors,
+  });
   const findingByEvent = new Map<string, ReportFindingModel>();
   for (const finding of findings) for (const eventId of finding.eventIds) findingByEvent.set(eventId, finding);
-  const actorByName = (raw: string | null | undefined): ReportActorModel | null => {
-    if (!raw) return null;
-    const key = actorKey(raw);
-    for (const actor of actorsById.values()) {
-      if (actorKey(actor.name) === key) return actor;
-      if (actor.aliases.some((alias) => actorKey(alias) === key)) return actor;
-    }
-    return null;
-  };
-  const asOf = orderedEvents.length > 0 ? orderedEvents[orderedEvents.length - 1].ts : "";
 
-  let currentStatus: ReportStateField<string> = {
-    known: false,
-    value: null,
-    basis: [],
-    unknownReason: "No status transition is recorded.",
-  };
-  let owner: ReportStateField<string> = {
-    known: false,
-    value: null,
-    basis: [],
-    unknownReason: "No assignee transition is recorded.",
-  };
-  let latestFix: ReportStateField<{ text: string; ts: string }> = {
-    known: false,
-    value: null,
-    basis: [],
-    unknownReason: "No record shows a fix shipping.",
-  };
-  let lastClientContact: ReportStateField<{ actorId: string; name: string; ts: string }> = {
-    known: false,
-    value: null,
-    basis: [],
-    unknownReason: "No actor is confirmed client in the scoped evidence.",
-  };
-  let lastInternalUpdate: ReportStateField<{ actorId: string; name: string; ts: string }> = {
-    known: false,
-    value: null,
-    basis: [],
-    unknownReason: "No actor is confirmed internal in the scoped evidence.",
-  };
-
-  for (const event of orderedEvents) {
-    const finding = findingByEvent.get(event.id);
-    const basis = finding ? [finding.id] : [];
-    const status = event.text.match(STATUS_TRANSITION);
-    if (status) {
-      currentStatus = { known: true, value: status[2].trim(), basis, unknownReason: null };
+  const project = <T>(field: { known: boolean; value: T | null; reason?: string | null; since?: string | null; eventId?: string | null; basisLabel?: string | null; basis?: string[] | null }): ReportStateField<T> => {
+    if (!field.known) {
+      return { known: false, value: null, basis: [], unknownReason: field.reason ?? "Not determined from the records.", basisLabel: null };
     }
-    const assignee = event.text.match(ASSIGNEE_TRANSITION);
-    if (assignee) {
-      const next = assignee[2].trim();
-      owner = /^unassigned$/i.test(next)
-        ? {
-            known: false,
-            value: null,
-            basis,
-            unknownReason: `The latest assignee change unassigned the ticket on ${dateOnly(event.ts)}.`,
-          }
-        : { known: true, value: next, basis, unknownReason: null };
-    }
-    // The client complaining about a promised fix with version words is not
-    // a fix record; the latest-fix card reads the vendor's own delivery.
-    const fixActorRole = actorByName(event.actorResolved ?? event.actor)?.role;
-    if (
-      VERSION_TOKEN.test(event.text) &&
-      FIX_WORD.test(event.text) &&
-      DELIVERY_WORD.test(event.text) &&
-      fixActorRole !== "client"
-    ) {
-      latestFix = { known: true, value: { text: cleanHumanText(event.text), ts: event.ts }, basis, unknownReason: null };
-    }
-  }
-
-  if (!client.clientKnown) {
-    lastClientContact = {
-      known: false,
-      value: null,
-      basis: [],
-      unknownReason: "Needs client confirmation — the client is not identified.",
+    const eventBasis = field.eventId ? findingByEvent.get(field.eventId)?.id ?? field.eventId : null;
+    return {
+      known: true,
+      value: field.value,
+      basis: [...(field.basis ?? []), ...(eventBasis ? [eventBasis] : [])].filter(Boolean),
+      unknownReason: null,
+      basisLabel: field.basisLabel ?? null,
     };
-    lastInternalUpdate = {
-      known: false,
-      value: null,
-      basis: [],
-      unknownReason: "Needs client confirmation — client vs internal roles are unresolved.",
-    };
-  } else {
-    for (const event of orderedEvents) {
-      const finding = findingByEvent.get(event.id);
-      if (!finding) continue;
-      const actorId = finding.eventActorId;
-      const actor = actorId ? actorsById.get(actorId) : undefined;
-      if (!actor) continue;
-      if (actor.role === "client") {
-        lastClientContact = {
-          known: true,
-          value: { actorId: actor.id, name: actor.name, ts: event.ts },
-          basis: [finding.id],
-          unknownReason: null,
-        };
-      }
-      if (actor.role === "internal") {
-        lastInternalUpdate = {
-          known: true,
-          value: { actorId: actor.id, name: actor.name, ts: event.ts },
-          basis: [finding.id],
-          unknownReason: null,
-        };
-      }
-    }
-  }
-
-  const findingByClaim = new Map<string, ReportFindingModel>();
-  for (const finding of findings) for (const claimId of finding.claimIds) findingByClaim.set(claimId, finding);
-  const open = commitments
-    .filter(
-      (commitment) =>
-        !input.claims.find((claim) => claim.id === commitment.claimId)?.review &&
-        commitment.status !== "kept" &&
-        commitment.status !== "withdrawn" &&
-        commitment.deadlineIso !== null &&
-        (asOf === "" || commitment.deadlineIso > asOf),
-    )
-    .sort((a, b) => ((a.deadlineIso ?? "") < (b.deadlineIso ?? "") ? -1 : 1));
-  const nextCommitment: ReportStateField<{ object: string; deadline: string | null }> =
-    open.length > 0
-      ? {
-          known: true,
-          value: { object: open[0].object, deadline: open[0].deadlineIso },
-          basis: [findingByClaim.get(open[0].claimId)?.id ?? findingByEvent.get(open[0].sourceEventIds[0] ?? "")?.id ?? ""].filter(Boolean),
-          unknownReason: null,
-        }
-      : {
-          known: false,
-          value: null,
-          basis: [],
-          unknownReason: "No open promise carries a deadline.",
-        };
+  };
 
   return {
-    asOf,
-    currentStatus,
-    owner,
-    lastClientContact,
-    lastInternalUpdate,
-    latestFix,
-    nextCommitment,
+    asOf: caseState.asOf,
+    currentStatus: project(caseState.currentStatus),
+    owner: project(caseState.owner),
+    statusChangedBy: project(caseState.statusChangedBy),
+    lastClientContact: project(caseState.lastClientContact),
+    lastInternalUpdate: project(caseState.lastInternalUpdate),
+    latestFix: project(caseState.latestFix),
+    nextCommitment: project({
+      ...caseState.nextCommitment,
+      value: caseState.nextCommitment.known
+        ? { object: caseState.nextCommitment.value.object, deadline: caseState.nextCommitment.value.deadline }
+        : null,
+    }) as ReportStateField<{ object: string; deadline: string | null }>,
   };
 }
 
@@ -1432,7 +1325,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   const findingByEvent = new Map<string, ReportFindingModel>();
   for (const finding of sorted) for (const eventId of finding.eventIds) findingByEvent.set(eventId, finding);
 
-  const state = buildState(input, sorted, actorsById, client, input.commitments ?? []);
+  const state = buildState(input, sorted);
   const openQuestions = buildOpenQuestions(input, state, client, findingByEvent, sorted);
   const promises = sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
   const failures = sorted.filter((finding) => finding.failureTag !== null);

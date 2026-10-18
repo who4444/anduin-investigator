@@ -166,7 +166,9 @@ describe("buildCaseState (G-06)", () => {
       claims: [],
       clientDomains: ["northwind.example"],
     });
-    expect(state.lastClientContact.value?.actor).toContain("dana.okafor@northwind.example");
+    // B5: a clean display name — the address is linking material, not a metric.
+    expect(state.lastClientContact.value?.actor).toBe("Dana Okoro");
+    expect(state.lastClientContact.value?.ts).toBe("2024-09-28T10:00:00.000Z");
     expect(state.lastInternalUpdate.value?.actor).toBe("Marcus Webb");
     expect(state.lastInternalUpdate.value?.ts).toBe("2024-10-02T10:00:00.000Z");
   });
@@ -196,5 +198,98 @@ describe("buildCaseState (G-06)", () => {
     expect(state.currentStatus.known).toBe(false);
     expect(state.owner.known).toBe(false);
     expect(state.lastClientContact.known).toBe(false);
+  });
+});
+
+describe("one case state: claim fallback, QA labelling, client evidence (C1/B5)", () => {
+  it("falls back to the latest verified status claim when no transition exists", () => {
+    const events = [event({ id: "e-no-transition", ts: "2024-09-20T10:00:00.000Z", text: "discussion only" })];
+    const claims = [
+      {
+        id: "c-status",
+        eventId: "e-no-transition",
+        type: "ownership",
+        text: "Marcus Webb told the channel MER-101 was marked resolved.",
+        actor: "Marcus Webb",
+        verifyStatus: "verified",
+        quote: "marked resolved",
+        status: "n/a",
+        confidence: 0.9,
+        skepticFlag: false,
+      } as import("../lib/types").Claim,
+    ];
+    const state = buildCaseState({ events, claims, clientDomains: [] });
+    expect(state.currentStatus.known).toBe(true);
+    expect(state.currentStatus.value).toMatch(/resolved/i);
+    // The basis is labelled: this is a claim, not a Jira transition.
+    expect((state.currentStatus as { basisLabel?: string }).basisLabel).toMatch(/claim|message/i);
+  });
+
+  it("records who made the last status change even without an owner", () => {
+    const events = [
+      event({ id: "e-s1", ts: "2024-09-20T10:00:00.000Z", actor: "Marcus Webb", text: "Status: Open → In Progress" }),
+    ];
+    const state = buildCaseState({ events, claims: [], clientDomains: [] });
+    expect(state.owner.known).toBe(false);
+    expect((state as { statusChangedBy?: { known: boolean; value: string | null } }).statusChangedBy).toMatchObject({
+      known: true,
+      value: "Marcus Webb",
+    });
+  });
+
+  it("labels an attempted fix whose QA contradicts it", () => {
+    const events = [
+      event({
+        id: "e-fix-1",
+        ts: "2024-09-20T10:00:00.000Z",
+        text: "Release 5.3.3 shipped with the VAT fix.",
+      }),
+      event({
+        id: "e-qa-1",
+        ts: "2024-09-20T12:00:00.000Z",
+        text: "Re-ran finance sandbox: VAT exports are still blank. 5.3.3 did not fix it; QA failing.",
+      }),
+    ];
+    const state = buildCaseState({ events, claims: [], clientDomains: [] });
+    expect(state.latestFix.known).toBe(true);
+    expect(state.latestFix.value?.label).toMatch(/attempted fix/i);
+  });
+
+  it("last client contact keeps the chase and ignores general chatter", () => {
+    const events = [
+      event({
+        id: "e-chase",
+        ts: "2024-09-28T09:00:00.000Z",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okafor <dana@brightmarket.example>",
+        text: "Fourth follow-up since Sep 2. No confirmation on the fix.",
+      }),
+      event({
+        id: "e-chat",
+        ts: "2024-09-29T09:00:00.000Z",
+        actor: "Dana Okafor",
+        text: "Quick sync later about the migration notes.",
+      }),
+    ];
+    const state = buildCaseState({
+      events,
+      claims: [],
+      clientDomains: ["brightmarket.example"],
+      clientActors: ["dana okafor"],
+    });
+    expect(state.lastClientContact.known).toBe(true);
+    expect(state.lastClientContact.value?.ts.startsWith("2024-09-28")).toBe(true);
+    // A clean display name: no address in the metric.
+    expect(state.lastClientContact.value?.actor).not.toMatch(/@/);
+  });
+
+  it("asOf is the latest incident-relevant record, not channel noise", () => {
+    const events = [
+      event({ id: "e-real", ts: "2024-09-20T10:00:00.000Z", text: "Status: Open → In Progress" }),
+      event({ id: "e-noise", ts: "2024-10-15T10:00:00.000Z", text: "Lunch order closes at noon." }),
+    ];
+    const state = buildCaseState({ events, claims: [], clientDomains: [] });
+    expect(state.asOf.startsWith("2024-09-20")).toBe(true);
   });
 });

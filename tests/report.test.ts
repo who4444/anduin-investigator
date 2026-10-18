@@ -149,7 +149,7 @@ const notes: SkepticNote[] = [
 
 describe("report metrics", () => {
   it("computes window, first response, commitments, silence and chasers", () => {
-    const metrics = buildMetrics({ events, claims, notes });
+    const metrics = buildMetrics({ events, claims, notes, clientActors: ["priya nair"] });
     const byId = new Map(metrics.map((metric) => [metric.id, metric]));
 
     expect(byId.get("window")).toMatchObject({ determined: true, value: "17 days" });
@@ -157,9 +157,9 @@ describe("report metrics", () => {
     expect(byId.get("commitments")).toMatchObject({ value: "1 of 1 broken" });
     // Cited records only: uncited registry noise no longer shortens the gap.
     expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "15 days" });
-    // e1→e2 (Lin, nothing in between) and e6→e7 (Priya) are both unanswered
-    // consecutive runs in the full registry; the earliest one wins the tie.
-    expect(byId.get("chasers")).toMatchObject({ determined: true, value: "2 from Lin Chen", eventIds: ["e1", "e2"] });
+    // B5: only client evidence counts chases — the engineer's e1→e2 run is
+    // never a chase, the client's e6→e7 run is.
+    expect(byId.get("chasers")).toMatchObject({ determined: true, value: "2 from Priya Nair", eventIds: ["e6", "e7"] });
     expect(byId.get("statusConflicts")?.claimIds).toEqual(["c4"]);
     expect(byId.get("processFailures")?.judgment).toBe(true);
   });
@@ -232,7 +232,12 @@ describe("report metrics", () => {
   });
 
   it("detects an unanswered chaser run even when the later message was never cited", () => {
-    const metrics = buildMetrics({ events: [events[5], events[6]], claims: [claims[4]], notes: [] });
+    const metrics = buildMetrics({
+      events: [events[5], events[6]],
+      claims: [claims[4]],
+      notes: [],
+      clientActors: ["priya nair"],
+    });
     const chasers = metrics.find((metric) => metric.id === "chasers");
     expect(chasers?.determined).toBe(true);
     expect(chasers?.value).toContain("2 from Priya");
@@ -261,6 +266,7 @@ describe("report metrics", () => {
         }),
       ],
       notes: [],
+      clientActors: ["priya nair"],
     });
     const chasers = metrics.find((metric) => metric.id === "chasers");
     expect(chasers?.determined).toBe(false);

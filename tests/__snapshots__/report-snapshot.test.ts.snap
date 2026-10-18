@@ -15,20 +15,6 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
         "reason": "A source-backed promise reads as broken.",
         "text": "Re-commit to The fix will ship in the Sep 24 release. with a dated plan, or withdraw it in writing.",
       },
-      {
-        "claimIds": [
-          "f3-c-jira",
-          "f3-c-slack",
-          "f3-c-email",
-        ],
-        "eventIds": [
-          "f3-jira",
-          "f3-slack",
-          "f3-email",
-        ],
-        "reason": "Consecutive cited records from one person have no interleaved reply.",
-        "text": "Reply to the unanswered run of 3 from Marcus Webb.",
-      },
     ],
   },
   "audit": [],
@@ -36,7 +22,7 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     "asOf": "2024-09-25T09:00:00.000Z",
     "currentStatus": {
       "known": false,
-      "reason": "no status transition was recorded",
+      "reason": "no status transition is recorded and no verified status claim exists",
       "value": null,
     },
     "fixCheck": {
@@ -47,7 +33,7 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     },
     "lastClientContact": {
       "known": false,
-      "reason": "no client domain is confirmed for this investigation",
+      "reason": "no client evidence is confirmed for this investigation",
       "value": null,
     },
     "lastInternalUpdate": {
@@ -71,7 +57,12 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     },
     "owner": {
       "known": false,
-      "reason": "no assignee transition was recorded",
+      "reason": "no assignee transition is recorded",
+      "value": null,
+    },
+    "statusChangedBy": {
+      "known": false,
+      "reason": "no status change actor is recorded",
       "value": null,
     },
   },
@@ -244,22 +235,14 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
       "value": "3 days",
     },
     {
-      "claimIds": [
-        "f3-c-jira",
-        "f3-c-slack",
-        "f3-c-email",
-      ],
-      "detail": "2024-09-20 → 2024-09-22",
-      "determined": true,
-      "eventIds": [
-        "f3-jira",
-        "f3-slack",
-        "f3-email",
-      ],
+      "claimIds": [],
+      "detail": "No client evidence confirms who the client's contacts are; chases cannot be counted.",
+      "determined": false,
+      "eventIds": [],
       "id": "chasers",
       "judgment": false,
       "label": "Unanswered chases from the client",
-      "value": "3 from Marcus Webb",
+      "value": "not determined (client unresolved)",
     },
     {
       "claimIds": [
@@ -446,7 +429,7 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     "asOf": "2024-09-30T09:00:00.000Z",
     "currentStatus": {
       "known": false,
-      "reason": "no status transition was recorded",
+      "reason": "no status transition is recorded and no verified status claim exists",
       "value": null,
     },
     "fixCheck": {
@@ -456,7 +439,7 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     },
     "lastClientContact": {
       "known": false,
-      "reason": "no client domain is confirmed for this investigation",
+      "reason": "no client evidence is confirmed for this investigation",
       "value": null,
     },
     "lastInternalUpdate": {
@@ -464,7 +447,7 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
       "known": true,
       "since": "2024-09-30T09:00:00.000Z",
       "value": {
-        "actor": "Dana Okoro <dana.okafor@northwind.example>",
+        "actor": "Dana Okoro",
         "ts": "2024-09-30T09:00:00.000Z",
       },
     },
@@ -480,7 +463,12 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     },
     "owner": {
       "known": false,
-      "reason": "no assignee transition was recorded",
+      "reason": "no assignee transition is recorded",
+      "value": null,
+    },
+    "statusChangedBy": {
+      "known": false,
+      "reason": "no status change actor is recorded",
       "value": null,
     },
   },
@@ -601,13 +589,13 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     },
     {
       "claimIds": [],
-      "detail": "No run of consecutive client records without an interleaved reply.",
+      "detail": "No client evidence confirms who the client's contacts are; chases cannot be counted.",
       "determined": false,
       "eventIds": [],
       "id": "chasers",
       "judgment": false,
       "label": "Unanswered chases from the client",
-      "value": "none found",
+      "value": "not determined (client unresolved)",
     },
     {
       "claimIds": [

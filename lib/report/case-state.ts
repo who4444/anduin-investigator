@@ -1,14 +1,19 @@
-import type { Claim, Commitment, Event } from "../types";
+import type { Claim, Commitment, Event, SkepticNote } from "../types";
 
-/* G-06: what is true NOW, computed from stored records only. Every field is
-   either evidence-linked or explicitly unknown with a reason — the report
-   must never guess a status, an owner or a fix date. */
+/* G-06 + C1: what is true NOW, computed from stored records only. Every field
+   is either evidence-linked or explicitly unknown with a reason — the report
+   must never guess a status, an owner or a fix date. This is THE case state:
+   the report model and the reply both read it; no parallel state exists. */
 
 export interface CaseStateValue<T> {
   known: true;
   value: T;
   since?: string | null;
   eventId: string;
+  /** C1: how the record is known — a Jira transition, a message, a claim. */
+  basisLabel?: string | null;
+  /** B5: finding ids backing this value, for citations. */
+  basis?: string[];
 }
 
 export interface CaseStateUnknown {
@@ -23,28 +28,33 @@ export type CaseStateField<T> = CaseStateValue<T> | CaseStateUnknown;
 export interface CaseFix {
   text: string;
   ts: string;
+  /** C1: an attempted fix that a later QA record contradicts. */
+  label?: string | null;
 }
 
 export interface CaseState {
-  /** The horizon: the latest stored record's timestamp. */
+  /** The horizon: the latest incident-relevant record's timestamp. */
   asOf: string;
   currentStatus: CaseStateField<string>;
   latestFix: CaseStateField<CaseFix>;
   fixCheck: CaseStateField<string>;
   owner: CaseStateField<string>;
+  /** C1: who made the last status change, when no owner is recorded. */
+  statusChangedBy: CaseStateField<string>;
   nextCommitment: CaseStateField<{ object: string; deadline: string | null; claimId: string }>;
   lastClientContact: CaseStateField<{ actor: string; ts: string }>;
   lastInternalUpdate: CaseStateField<{ actor: string; ts: string }>;
 }
 
-const STATUS_TRANSITION = /^\s*Status:\s*(.+?)\s*→\s*(.+?)\s*$/;
-const ASSIGNEE_TRANSITION = /^\s*Assignee:\s*(.+?)\s*→\s*(.+?)\s*$/;
-const VERSION_TOKEN = /\b\d+\.\d+(?:\.\d+)?\b/;
-/* A release announcement is not a fix: the record needs a fix word and a
-   delivery word. "4.12 is live" introduced the defect; "5.3.4 fixed the VAT
-   rounding" is the fix. */
-const FIX_WORD = /\b(?:fix(?:ed|es|ing)?|hotfix|patch(?:ed)?|corrected)\b/i;
-const DELIVERY_WORD = /\b(?:shipped|deployed|released|is live|went live|rolled out|included|corrected|fixed)\b/i;
+import {
+  ASSIGNEE_TRANSITION,
+  DELIVERY_WORD,
+  FIX_WORD,
+  incidentRelevantEventIds,
+  STATUS_TRANSITION,
+  VERSION_TOKEN,
+} from "./silence";
+
 const QA_EVENT = /\bQA\b/i;
 /* "until QA passes" is a plan, not a result. */
 const QA_OUTCOME = /\b(?:failed|failing|passed|green|red)\b/i;
@@ -60,24 +70,37 @@ function shorten(text: string): string {
   return flat.length > 160 ? `${flat.slice(0, 160)}…` : flat;
 }
 
+/** C1: a clean display name — decoded, address-free. */
+function displayName(value: string | null | undefined): string {
+  return (value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeName(value: string | null | undefined): string {
+  return displayName(value)
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+const STATUS_CLAIM =
+  /\b(?:marked|set|moved(?: to)?|re-?opened?|resolved|closed|in progress|reopened)\b/i;
+
 export function buildCaseState(input: {
   events: Event[];
   claims: Claim[];
   commitments?: Commitment[];
+  gaps?: import("../types").Gap[];
+  notes?: SkepticNote[];
   clientDomains?: string[];
   clientActors?: string[];
 }): CaseState {
   const ordered = [...input.events].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
-  const asOf = ordered.length > 0 ? ordered[ordered.length - 1].ts : "";
   const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
-  const normalizeName = (value: string | null | undefined): string =>
-    (value ?? "")
-      .replace(/<[^>]*>/g, " ")
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, " ")
-      .split(/\s+/)
-      .filter(Boolean)
-      .join(" ");
   const clientActors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
   const isClientEvent = (event: Event): boolean => {
     const domain = actorDomain(event);
@@ -88,18 +111,44 @@ export function buildCaseState(input: {
   };
   const unknown = (reason: string): CaseStateUnknown => ({ known: false, value: null, reason });
 
+  // Incident relevance bounds the horizon and the contact metrics: channel
+  // chatter and distractor noise never set or break a window (C5).
+  const relevant = incidentRelevantEventIds({
+    events: input.events,
+    claims: input.claims,
+    commitments: input.commitments,
+    gaps: input.gaps,
+    notes: input.notes,
+  });
+  const scopedRecords = ordered.filter((event) => relevant.has(event.id));
+  const horizonRecords = scopedRecords.length > 0 ? scopedRecords : ordered;
+  const asOf = horizonRecords.length > 0 ? horizonRecords[horizonRecords.length - 1].ts : "";
+
   // Jira changelog transitions are the canonical status/assignee record; the
   // LATEST transition wins, so a reopen after a premature Resolved is what
   // shows as the current state.
-  let currentStatus: CaseStateField<string> = unknown("no status transition was recorded");
-  let owner: CaseStateField<string> = unknown("no assignee transition was recorded");
+  let currentStatus: CaseStateField<string> = unknown("no status transition is recorded and no verified status claim exists");
+  let statusChangedBy: CaseStateField<string> = unknown("no status change actor is recorded");
+  let owner: CaseStateField<string> = unknown("no assignee transition is recorded");
   let latestFix: CaseStateField<CaseFix> = unknown("no record shows a fix shipping");
   let fixCheck: CaseStateField<string> = unknown("no QA record was found");
 
-  for (const event of ordered) {
+  for (const event of horizonRecords) {
     const status = event.text.match(STATUS_TRANSITION);
     if (status) {
-      currentStatus = { known: true, value: status[2].trim(), since: event.ts, eventId: event.id };
+      currentStatus = {
+        known: true,
+        value: status[2].trim(),
+        since: event.ts,
+        eventId: event.id,
+        basisLabel: `${event.source === "jira" ? "Jira status transition" : `${event.source} message`} on ${event.ts.slice(0, 10)}`,
+      };
+      statusChangedBy = {
+        known: true,
+        value: displayName(event.actorResolved ?? event.actor) || "unknown",
+        since: event.ts,
+        eventId: event.id,
+      };
     }
     const assignee = event.text.match(ASSIGNEE_TRANSITION);
     if (assignee) {
@@ -123,6 +172,68 @@ export function buildCaseState(input: {
     }
     if (QA_EVENT.test(event.text) && QA_OUTCOME.test(event.text)) {
       fixCheck = { known: true, value: shorten(event.text), since: event.ts, eventId: event.id };
+    }
+  }
+
+  // C1: no transition — the latest verified status claim stands in, clearly
+  // labelled. A client complaint is never a status.
+  if (!currentStatus.known) {
+    const statusClaims = input.claims
+      .filter(
+        (claim) =>
+          (claim.verifyStatus === "verified" || claim.verifyStatus === "supported") &&
+          !claim.review &&
+          STATUS_CLAIM.test(claim.text),
+      )
+      .map((claim) => ({ claim, event: ordered.find((e) => e.id === claim.eventId) }))
+      .filter((entry) => entry.event)
+      .sort((a, b) => ((a.event!.ts ?? "") < (b.event!.ts ?? "") ? -1 : 1));
+    const latest = statusClaims[statusClaims.length - 1];
+    if (latest) {
+      currentStatus = {
+        known: true,
+        value: latest.claim.text.replace(/^.*?\b(?:marked|told the channel|said)\b\s*/i, "").slice(0, 120) || "recorded as resolved",
+        since: latest.event!.ts,
+        eventId: latest.event!.id,
+        basisLabel: `verified claim citing ${latest.event!.source} on ${latest.event!.ts.slice(0, 10)}`,
+      };
+    }
+  }
+
+  // C1: no assignee transition — a verified ownership/handoff claim stands
+  // in; otherwise "No owner recorded" with the last status change as its own
+  // labelled field.
+  if (!owner.known) {
+    const ownershipClaims = input.claims
+      .filter(
+        (claim) =>
+          (claim.verifyStatus === "verified" || claim.verifyStatus === "supported") &&
+          !claim.review &&
+          (claim.type === "ownership" || /took over|owns|owner|took ownership|handoff|hand(ed)? over/i.test(claim.text)),
+      )
+      .map((claim) => ({ claim, event: ordered.find((e) => e.id === claim.eventId) }))
+      .filter((entry) => entry.event)
+      .sort((a, b) => ((a.event!.ts ?? "") < (b.event!.ts ?? "") ? -1 : 1));
+    const latest = ownershipClaims[ownershipClaims.length - 1];
+    if (latest) {
+      owner = {
+        known: true,
+        value: displayName(latest.claim.actor) || displayName(latest.event!.actor) || "recorded owner",
+        since: latest.event!.ts,
+        eventId: latest.event!.id,
+        basisLabel: "verified ownership claim",
+      };
+    }
+  }
+
+  // C1: a later QA failure contradicting the latest fix keeps the record but
+  // labels it an attempted fix — never presented as the latest working fix.
+  if (latestFix.known && fixCheck.known && (fixCheck.since ?? "") >= (latestFix.since ?? "")) {
+    if (/fail|failing|did not fix|not fixed|still blank|still wrong/i.test(fixCheck.value)) {
+      latestFix = {
+        ...latestFix,
+        value: { ...latestFix.value, label: "attempted fix, QA failed" },
+      };
     }
   }
 
@@ -157,37 +268,41 @@ export function buildCaseState(input: {
         }
       : unknown("no open promise carries a date");
 
-  const clientEvents = ordered.filter(isClientEvent);
+  // B5: last client contact from CLIENT EVIDENCE on incident-relevant
+  // records — the client's chases about this issue, never general chatter.
+  const clientEvents = horizonRecords.filter(
+    (event) => isClientEvent(event) && (event.source === "email" || relevant.has(event.id)),
+  );
   const lastClient: CaseStateField<{ actor: string; ts: string }> =
     clientEvents.length > 0
       ? {
           known: true,
           value: {
-            actor: clientEvents[clientEvents.length - 1].actorResolved ?? clientEvents[clientEvents.length - 1].actor,
+            actor: displayName(clientEvents[clientEvents.length - 1].actorResolved ?? clientEvents[clientEvents.length - 1].actor),
             ts: clientEvents[clientEvents.length - 1].ts,
           },
           since: clientEvents[clientEvents.length - 1].ts,
           eventId: clientEvents[clientEvents.length - 1].id,
         }
       : unknown(
-          clientDomains.size === 0
-            ? "no client domain is confirmed for this investigation"
-            : "no client-authored record in scope",
+          clientDomains.size === 0 && clientActors.size === 0
+            ? "no client evidence is confirmed for this investigation"
+            : "no client-authored record in the incident-relevant set",
         );
 
-  const internal = ordered.filter((event) => !isClientEvent(event));
+  const internal = horizonRecords.filter((event) => !isClientEvent(event));
   const lastInternal: CaseStateField<{ actor: string; ts: string }> =
     internal.length > 0
       ? {
           known: true,
           value: {
-            actor: internal[internal.length - 1].actorResolved ?? internal[internal.length - 1].actor,
+            actor: displayName(internal[internal.length - 1].actorResolved ?? internal[internal.length - 1].actor),
             ts: internal[internal.length - 1].ts,
           },
           since: internal[internal.length - 1].ts,
           eventId: internal[internal.length - 1].id,
         }
-      : unknown("no internal record in scope");
+      : unknown("no internal record in the incident-relevant set");
 
   return {
     asOf,
@@ -195,6 +310,7 @@ export function buildCaseState(input: {
     latestFix,
     fixCheck,
     owner,
+    statusChangedBy,
     nextCommitment,
     lastClientContact: lastClient,
     lastInternalUpdate: lastInternal,

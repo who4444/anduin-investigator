@@ -247,10 +247,11 @@ describe("ReportModel revision brief", () => {
     expect(model.state.owner).toMatchObject({ known: true, value: "Lin Chen" });
     expect(model.state.owner.basis).toHaveLength(1);
     expect(model.findings.some((finding) => finding.id === model.state.owner.basis[0])).toBe(true);
-    // Roles cannot be guessed before the client is identified.
+    // Roles cannot be guessed before the client is identified; the last
+    // internal update is still knowable from records alone (C1).
     expect(model.state.lastClientContact.known).toBe(false);
-    expect(model.state.lastClientContact.unknownReason).toContain("Needs client confirmation");
-    expect(model.state.lastInternalUpdate.known).toBe(false);
+    expect(model.state.lastClientContact.unknownReason).toMatch(/client evidence/i);
+    expect(model.state.lastInternalUpdate.known).toBe(true);
     expect(model.client.resolved).toBe(false);
     expect(model.actors.every((actor) => actor.role === "unknown")).toBe(true);
   });
@@ -327,9 +328,9 @@ describe("ReportModel revision brief", () => {
     expect(model.actors.find((actor) => actor.name === "Priya Nair")?.role).toBe("client");
     expect(model.actors.find((actor) => actor.name === "Lin Chen")?.role).toBe("internal");
     expect(model.state.lastClientContact).toMatchObject({ known: true });
-    expect(model.state.lastClientContact.value?.name).toBe("Priya Nair");
+    expect(model.state.lastClientContact.value?.actor).toBe("Priya Nair");
     expect(model.state.lastInternalUpdate).toMatchObject({ known: true });
-    expect(model.state.lastInternalUpdate.value?.name).toBe("Lin Chen");
+    expect(model.state.lastInternalUpdate.value?.actor).toBe("Lin Chen");
   });
 
   it("merges the same actor's restatement across Jira and Slack and keeps the tentative wording", () => {

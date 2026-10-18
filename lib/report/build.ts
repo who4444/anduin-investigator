@@ -3,6 +3,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
 import { buildCaseState, type CaseState } from "./case-state";
+import { incidentRelevantEventIds } from "./silence";
 import { decodeEntities } from "../ingest/entities";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
@@ -526,7 +527,10 @@ export function buildMetrics(input: ReportInput): Metric[] {
   }
 
   // 5. unanswered chases: only the client can chase us. Internal runs are not
-  // chases, and a non-client record between two client messages breaks the run.
+  // chases, and a non-client record between two client messages breaks the
+  // run. B5: the metric needs client evidence — with none confirmed it is
+  // "not determined (client unresolved)", never an internal actor. Chases
+  // count on incident-relevant records, not general channel chatter.
   let longestRun: { actor: string; normalized: string; count: number; events: Event[] } = {
     actor: "",
     normalized: "",
@@ -539,33 +543,40 @@ export function buildMetrics(input: ReportInput): Metric[] {
     count: 0,
     events: [],
   };
-  const useClientIdentity = input.clientActors !== undefined || input.clientDomains !== undefined;
-  for (const event of sortedByTs(events)) {
-    const normalized = normalizedActor(event.actorResolved ?? event.actor);
-    if (useClientIdentity && !isClientReportEvent(event, clientDomains, clientActors)) {
-      run = { actor: "", normalized: "", count: 0, events: [] };
-      continue;
-    }
-    if (run.normalized === normalized) {
-      run.count += 1;
-      run.events.push(event);
-    } else {
-      run = {
-        actor: event.actorResolved ?? event.actor,
-        normalized,
-        count: 1,
-        events: [event],
-      };
-    }
-    if (run.count > longestRun.count) {
-      longestRun = { ...run, events: [...run.events] };
+  const hasClientIdentity = clientDomains.size > 0 || clientActors.size > 0;
+  const chaseEligible = incidentRelevantEventIds({
+    events,
+    claims: input.claims,
+    commitments: input.commitments,
+  });
+  if (hasClientIdentity) {
+    for (const event of sortedByTs(events)) {
+      const normalized = normalizedActor(event.actorResolved ?? event.actor);
+      if (!isClientReportEvent(event, clientDomains, clientActors) || !chaseEligible.has(event.id)) {
+        run = { actor: "", normalized: "", count: 0, events: [] };
+        continue;
+      }
+      if (run.normalized === normalized) {
+        run.count += 1;
+        run.events.push(event);
+      } else {
+        run = {
+          actor: event.actorResolved ?? event.actor,
+          normalized,
+          count: 1,
+          events: [event],
+        };
+      }
+      if (run.count > longestRun.count) {
+        longestRun = { ...run, events: [...run.events] };
+      }
     }
   }
   if (longestRun.count >= 2) {
     metrics.push({
       id: "chasers",
       label: "Unanswered chases from the client",
-      value: `${longestRun.count} from ${longestRun.actor}`,
+      value: `${longestRun.count} from ${cleanDisplayName(longestRun.actor) ?? longestRun.actor}`,
       detail: `${longestRun.events[0].ts.slice(0, 10)} → ${longestRun.events[longestRun.events.length - 1].ts.slice(0, 10)}`,
       judgment: false,
       determined: true,
@@ -573,6 +584,17 @@ export function buildMetrics(input: ReportInput): Metric[] {
         .filter((claim) => longestRun.events.some((event) => event.id === claim.eventId))
         .map((claim) => claim.id),
       eventIds: longestRun.events.map((event) => event.id),
+    });
+  } else if (!hasClientIdentity) {
+    metrics.push({
+      id: "chasers",
+      label: "Unanswered chases from the client",
+      value: "not determined (client unresolved)",
+      detail: "No client evidence confirms who the client's contacts are; chases cannot be counted.",
+      judgment: false,
+      determined: false,
+      claimIds: [],
+      eventIds: [],
     });
   } else {
     metrics.push({

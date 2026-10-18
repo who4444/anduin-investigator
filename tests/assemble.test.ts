@@ -386,7 +386,14 @@ describeDb("verify + assemble", () => {
 
       // …and "unanswered chases" attributes the run to the client, not to an
       // internal actor.
-      const metrics = buildMetrics({ events: result.timeline, claims: result.claims, notes: [] });
+      const metrics = buildMetrics({
+        events: result.timeline,
+        claims: result.claims,
+        notes: [],
+        // The report passes the scope's client evidence (B5) — the client
+        // roster computed from client-domain email authors.
+        clientActors: ["dana okoro"],
+      });
       const chasers = metrics.find((metric) => metric.id === "chasers");
       expect(chasers?.value).toContain("2 from");
       expect(chasers?.value).toContain("Dana Okoro");
