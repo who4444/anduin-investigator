@@ -268,6 +268,21 @@ describe("client-safe classification (A2)", () => {
   });
 });
 
+describe("flag precision (P0-1)", () => {
+  it("a flagged restatement does not bury the verified claim's finding", () => {
+    const events = [event({ id: "e-flag", ts: "2024-09-10T03:00:00.000Z", text: "Timezone change merged for release 4.12." })];
+    const claims = [
+      claim({ id: "c-clean", eventId: "e-flag", type: "root_cause", text: "Release 4.12 merged the timezone change.", verifyStatus: "verified", confidence: 0.9 }),
+      claim({ id: "c-flagged", eventId: "e-flag", type: "root_cause", text: "The UTC merge is suspect here.", verifyStatus: "supported", skepticFlag: true, confidence: 0.6 }),
+    ];
+    const model = buildReportModel(input({ events, claims, clientDomains: ["northwind.example"] }));
+    const finding = model.findings[0];
+    expect(finding.verification).toBe("verified");
+    expect(finding.pill).toBeNull();
+    expect(model.counts.verified).toBe(1);
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());

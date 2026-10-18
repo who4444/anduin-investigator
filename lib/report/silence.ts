@@ -191,3 +191,30 @@ export function computeSilences(input: {
 
   return { clientWait, project, bySource, headline };
 }
+
+/** B5/D1: the unanswered-chase run — the longest run of consecutive
+    client-evidence records with no interleaved reply. Shared by the chasers
+    metric and the story so both show the same number. Returns the run's
+    events (empty when there is no run of 2+). */
+export function chaseRun(
+  events: Event[],
+  isClientEvent: (event: Event) => boolean,
+): { count: number; events: Event[]; actor: string } {
+  const ordered = [...events].sort((a, b) => (a.ts < b.ts ? -1 : 1));
+  let best: { count: number; events: Event[]; actor: string } = { count: 0, events: [], actor: "" };
+  let current: { count: number; events: Event[]; actor: string } = { count: 0, events: [], actor: "" };
+  for (const event of ordered) {
+    if (!isClientEvent(event)) {
+      current = { count: 0, events: [], actor: "" };
+      continue;
+    }
+    const actor = normalizedActorName(event.actorResolved ?? event.actor);
+    if (current.actor === actor) {
+      current = { count: current.count + 1, events: [...current.events, event], actor };
+    } else {
+      current = { count: 1, events: [event], actor };
+    }
+    if (current.count > best.count) best = { ...current, events: [...current.events] };
+  }
+  return best.count >= 2 ? best : { count: 0, events: [], actor: "" };
+}

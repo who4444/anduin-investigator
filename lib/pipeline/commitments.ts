@@ -74,7 +74,7 @@ export function commitmentDedupeKey(input: {
 const PROMISE_CUE =
   /\b(will|shall|commit(?:ted|s|ment)?|promis(?:e|ed|es)|schedul(?:ed|e|ing)?|target(?:ed|s|ing)?|ship|deliver|due|by (?:the )?[\w.-]+ release|tomorrow|next release|plan(?:ned|s)?|intend(?:ed|s)?|should)\b/i;
 const COMPLETED_CUE =
-  /\b(?:was|were|is|are|has been|have been)\s+(?:fixed|resolved|completed|verified|corrected|closed|delivered)\b|\b(?:fixed|resolved|completed|verified|corrected|closed|delivered)\s+(?:by|in|with)\b/i;
+  /\b(?:was|were|is|are|has been|have been)\s+(?:fixed|resolved|completed|verified|corrected|closed|delivered|shipped)\b|\b(?:fixed|resolved|completed|verified|corrected|closed|delivered|shipped)\s+(?:by|in|with)\b|\bshipped\b|\bdelivered\b/i;
 const FORWARD_STEM = /\b(?:will|shall|commit|promis|schedul|target|tomorrow|next release|plan|intend)/i;
 const DUE_WORD = /\bdue\b/i;
 

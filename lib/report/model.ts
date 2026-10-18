@@ -12,7 +12,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import { detectTenantClusters, type TenantCluster } from "../pipeline/scope";
 import { buildCaseState } from "./case-state";
 import { buildStory, type StoryInput, type StoryPromiseInput } from "./story";
-import { computeSilences, type Silences } from "./silence";
+import { chaseRun, computeSilences, type Silences } from "./silence";
 import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
 import { cleanGapText, hasRawReference, rankGaps, type GapCategory, type GapTag } from "./gaps";
 
@@ -1097,11 +1097,13 @@ function clientChaseCount(input: ReportModelInput, state: ReportStateModel): num
   const actors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
   if (domains.size === 0 && actors.size === 0) return null;
   if (!state.lastClientContact.known) return null;
-  return input.events.filter((event) => {
+  // D1/B5: the unanswered-run count via the shared chaseRun computation —
+  // the story and the chasers metric show the same number.
+  return chaseRun(input.events, (event) => {
     const domain = emailDomain(event.actorResolved ?? event.actor);
     if (domain && domains.has(domain)) return true;
     return [event.actor, event.actorResolved ?? ""].some((value) => actors.has(normalizeName(value)));
-  }).length;
+  }).count;
 }
 
 function actorNameForFinding(finding: ReportFindingModel, actors: ReportActorModel[]): string | null {
@@ -1305,7 +1307,10 @@ function buildHeadline(
       }
     : null;
 
-  const open = openQuestions[0];
+  // D1: the story's open question is a well-formed system question when one
+  // exists (the deterministic unknowns), else the top grouped question.
+  const open =
+    openQuestions.find((group) => group.gapIds.length === 0) ?? openQuestions[0] ?? null;
   const story = buildStory({
     cause,
     promises,
@@ -1418,9 +1423,13 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     const assignee = event.text.match(ASSIGNEE_TRANSITION);
     const actorName = actorIds.length > 0 ? actorsById.get(actorIds[0])?.name ?? null : null;
     const { state: verification, incompatible } = representativeVerification(claims);
+    // P0-1: a flag buried in a weaker restatement does not bury the finding —
+    // only the claims that define the representative state can flag it.
+    const bestRank = CLAIM_STATE_RANK[verification];
+    const bestClaims = claims.filter((claim) => CLAIM_STATE_RANK[claim.verifyStatus] === bestRank);
     const conflict =
       incompatible ||
-      claims.some((claim) => claim.skepticFlag) ||
+      bestClaims.some((claim) => claim.skepticFlag) ||
       Boolean(commitment?.contested) ||
       input.notes.some(
         (note) =>

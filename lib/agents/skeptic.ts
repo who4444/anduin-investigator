@@ -259,7 +259,13 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
       eventIds: issue.eventIds,
     });
     if (issue.kind === "silence" || issue.kind === "unanswered") {
-      gaps.push({ question: issue.text, note: issue.text, eventIds: issue.eventIds });
+      // C6: skeptic gaps carry a structured category (communication).
+      gaps.push({
+        question: issue.text,
+        note: issue.text,
+        eventIds: issue.eventIds,
+        category: "communication",
+      });
     }
   }
 

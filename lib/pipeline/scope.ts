@@ -593,9 +593,34 @@ function recordGraphNodes(event: Event): ScopeNode[] {
   });
 }
 
-/** Node-key adjacency: two nodes are joined when a record touches both. */
-function buildScopeGraph(events: Event[]): Map<string, Set<string>> {
-  const recordNodesList = events.map(recordGraphNodes);
+/** Node-key adjacency: two nodes are joined when a record touches both.
+    When client evidence is known, records authored by the client also add
+    their RECIPIENT domains as nodes — the escalation's correspondence edge:
+    the client's emails address the vendor's mailbox, so the vendor's own
+    domain joins the engagement (B1). */
+function buildScopeGraph(events: Event[], clientEvidence?: ClientEvidence): Map<string, Set<string>> {
+  const recordNodesList = events.map((event) => {
+    const nodes = recordGraphNodes(event);
+    if (clientEvidence) {
+      const actor = event.actorResolved ?? event.actor;
+      const domain = actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
+      const isClientAuthored =
+        (domain && clientEvidence.domains.includes(domain)) ||
+        actorNames(event).some((name) => clientEvidence.actors.includes(name));
+      if (event.source === "email" && isClientAuthored) {
+        const meta = (event.meta ?? {}) as { to?: unknown; cc?: unknown };
+        for (const list of [meta.to, meta.cc]) {
+          if (!Array.isArray(list)) continue;
+          for (const entry of list) {
+            if (typeof entry !== "string") continue;
+            const domain = [...entry.matchAll(EMAIL_ADDRESS)][0]?.[1]?.toLowerCase();
+            if (domain) nodes.push({ kind: "domain", value: domain });
+          }
+        }
+      }
+    }
+    return nodes;
+  });
   const nodeRecords = new Map<string, Set<number>>();
   recordNodesList.forEach((nodes, index) => {
     for (const node of nodes) {
@@ -806,8 +831,9 @@ export function detectTenantClusters(events: Event[]): TenantCluster[] {
 function selectScopeNodes(
   events: Event[],
   seeds: ScopeNode[],
+  clientEvidence?: ClientEvidence,
 ): { selected: Map<ScopeNodeKind, Set<string>>; seedComponents: number } {
-  const neighbors = buildScopeGraph(events);
+  const neighbors = buildScopeGraph(events, clientEvidence);
   const seedKeys = new Set(seeds.map(scopeNodeKey));
   const visited = new Set<string>();
   const selected = new Map<ScopeNodeKind, Set<string>>([
@@ -940,7 +966,7 @@ export async function resolveScope(  escalation: string,
     };
   }
 
-  const { selected, seedComponents } = selectScopeNodes(events, seedNodes);
+  const { selected, seedComponents } = selectScopeNodes(events, seedNodes, clientEvidence);
   // Disjoint seed components union here (everything selected) — they cap the
   // confidence instead of voting each other out.
   const contradiction = seedComponents > 1;

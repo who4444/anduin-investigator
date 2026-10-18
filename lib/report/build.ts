@@ -3,7 +3,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
 import { buildCaseState, type CaseState } from "./case-state";
-import { computeSilences, incidentRelevantEventIds } from "./silence";
+import { chaseRun, computeSilences, incidentRelevantEventIds } from "./silence";
 import { decodeEntities } from "../ingest/entities";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
@@ -540,12 +540,6 @@ export function buildMetrics(input: ReportInput): Metric[] {
     count: 0,
     events: [],
   };
-  let run: { actor: string; normalized: string; count: number; events: Event[] } = {
-    actor: "",
-    normalized: "",
-    count: 0,
-    events: [],
-  };
   const hasClientIdentity = clientDomains.size > 0 || clientActors.size > 0;
   const chaseEligible = incidentRelevantEventIds({
     events,
@@ -553,26 +547,15 @@ export function buildMetrics(input: ReportInput): Metric[] {
     commitments: input.commitments,
   });
   if (hasClientIdentity) {
-    for (const event of sortedByTs(events)) {
-      const normalized = normalizedActor(event.actorResolved ?? event.actor);
-      if (!isClientReportEvent(event, clientDomains, clientActors) || !chaseEligible.has(event.id)) {
-        run = { actor: "", normalized: "", count: 0, events: [] };
-        continue;
-      }
-      if (run.normalized === normalized) {
-        run.count += 1;
-        run.events.push(event);
-      } else {
-        run = {
-          actor: event.actorResolved ?? event.actor,
-          normalized,
-          count: 1,
-          events: [event],
-        };
-      }
-      if (run.count > longestRun.count) {
-        longestRun = { ...run, events: [...run.events] };
-      }
+    // B5/D1: the shared chase-run computation (one number everywhere).
+    const runEvents = chaseRun(events, (event) => isClientReportEvent(event, clientDomains, clientActors) && chaseEligible.has(event.id));
+    if (runEvents.count >= 2) {
+      longestRun = {
+        actor: runEvents.events[0].actorResolved ?? runEvents.events[0].actor,
+        normalized: runEvents.actor,
+        count: runEvents.count,
+        events: runEvents.events,
+      };
     }
   }
   if (longestRun.count >= 2) {

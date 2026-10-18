@@ -73,6 +73,9 @@ describe("deterministic scope graph (B1)", () => {
     // Status, assignee and comment records of the selected project are in scope.
     expect(inScope.some((e) => e.source === "jira" && /status/i.test(e.text) === false && e.channel === "MER-101")).toBe(true);
     expect(inScope.filter((e) => e.channel === "MER-101").length).toBeGreaterThan(2);
+    // B1: the vendor's own release email (addressed from the vendor the client
+    // escalates to) is in scope — the correspondence edge.
+    expect(inScope.some((e) => /build is going out tonight/i.test(e.text))).toBe(true);
   });
 
   it("the realistic keeps LUM-804 and the qa/assignee records and never leaks tenants", async () => {
