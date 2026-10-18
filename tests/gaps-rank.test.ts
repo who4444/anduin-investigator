@@ -121,6 +121,22 @@ describe("rankGaps (G-11)", () => {
     expect(ranked.map((entry) => entry.id)).toEqual(["ok"]);
   });
 
+  it("collapses near-duplicate questions instead of listing 24 variants", () => {
+    const ranked = rankGaps(
+      Array.from({ length: 24 }, (_, index) =>
+        gap({
+          id: `dup_${index}`,
+          question: `Did the client hear about the fix? (check ${index + 1})`,
+          note: "No reply was recorded in the searched mail.",
+          category: "communication",
+        }),
+      ),
+    );
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].question).toBe("Did the client hear about the fix?");
+  });
+
   it("promotes a generic umbrella question to the actual unknown", () => {
     const ranked = rankGaps([
       gap({

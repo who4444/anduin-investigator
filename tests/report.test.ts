@@ -182,6 +182,36 @@ describe("report metrics", () => {
     expect(chasers?.eventIds).toEqual(["x1", "x2"]);
   });
 
+  it("uses display names, not raw addresses, in metric values and details", () => {
+    const addressedEvents = [
+      event({
+        id: "addr1",
+        ts: "2024-09-10T03:00:00.000Z",
+        source: "email",
+        channel: "email",
+        actor: "Priya Nair <priya.nair@northwind.example>",
+        text: "Totals are wrong.",
+      }),
+      event({
+        id: "addr2",
+        ts: "2024-09-11T03:00:00.000Z",
+        source: "email",
+        channel: "email",
+        actor: "Marcus Webb <marcus.webb@meridian.example>",
+        text: "We are looking into it.",
+      }),
+    ];
+    const addressedClaims = [
+      claim({ id: "addr-c1", eventId: "addr1", text: "The client reports wrong totals." }),
+      claim({ id: "addr-c2", eventId: "addr2", text: "The vendor is investigating." }),
+    ];
+    const metrics = buildMetrics({ events: addressedEvents, claims: addressedClaims, notes: [] });
+    const firstResponse = metrics.find((metric) => metric.id === "firstResponse");
+
+    expect(firstResponse?.detail).toBe("Priya Nair → Marcus Webb");
+    expect(JSON.stringify(metrics)).not.toMatch(/@/);
+  });
+
   it("reports not-determined instead of guessing on thin data", () => {
     const metrics = buildMetrics({
       events: [events[0]],

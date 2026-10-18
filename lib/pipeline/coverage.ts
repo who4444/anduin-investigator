@@ -73,6 +73,41 @@ export interface CoverageReport {
   neverSearched: SourceKind[];
 }
 
+export const SOURCE_LABELS: Record<SourceKind, string> = {
+  jira: "Jira",
+  email: "Email",
+  slack: "Slack",
+};
+
+function countBySource(events: Event[]): Map<SourceKind, number> {
+  const counts = new Map<SourceKind, number>();
+  for (const event of events) {
+    counts.set(event.source, (counts.get(event.source) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/* F1: the prompt-time coverage state. Agents must know that a missing source
+   was absent or excluded BEFORE they search, so they never phrase an absence
+   claim about a source that was never testable. This is deliberately cheap:
+   it counts the registry and the in-scope records, not the tool log. */
+export function coveragePromptLines(events: Event[], inScopeEvents: Event[]): string[] {
+  const totals = countBySource(events);
+  const inScope = countBySource(inScopeEvents);
+  return SOURCES.map((source) => {
+    const total = totals.get(source) ?? 0;
+    const available = inScope.get(source) ?? 0;
+    const label = SOURCE_LABELS[source];
+    if (total === 0) {
+      return `${label}: 0 records — not part of this export. Do not describe it as searched, and do not draw conclusions from its absence.`;
+    }
+    if (available === 0) {
+      return `${label}: 0 records in scope (${total} excluded by scope) — not searched; do not draw conclusions about the excluded records.`;
+    }
+    return `${label}: ${available} record${available === 1 ? "" : "s"} in scope — available to search.`;
+  });
+}
+
 interface ToolCallLogEntry {
   name?: unknown;
   args?: unknown;

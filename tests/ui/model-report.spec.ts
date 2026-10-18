@@ -12,6 +12,7 @@ loadEnv();
 
 let investigationId = "";
 let longMessageId = "";
+let tenantId = "";
 
 const LONG_TAIL = "finance keeps re-running the exports by hand every morning";
 const LONG_ESCALATION =
@@ -83,12 +84,57 @@ test.beforeAll(async () => {
     },
   ]);
   await upsertLongStage(longMessageId, "ingest", 1, "done");
+
+  // F5: two disjoint engagements with no client seed. The report must offer
+  // candidate cards instead of one combined story.
+  tenantId = await createInvestigation({
+    title: "Candidate engagements sample",
+    escalationText: "Everything is broken; please investigate.",
+    contentHash: `model-tenants-${randomUUID()}`,
+    origin: "upload",
+  });
+  await insertEvents(tenantId, [
+    {
+      id: "e_tenant_alpha_jira",
+      source: "jira",
+      ts: "2024-09-10T03:00:00.000Z",
+      actor: "Alex Owner",
+      channel: "ALPHA-1",
+      text: "ALPHA-1 timezone migration merged.",
+    },
+    {
+      id: "e_tenant_alpha_mail",
+      source: "email",
+      ts: "2024-09-11T03:00:00.000Z",
+      actor: "Avery Client <ops@alpha.example>",
+      channel: "email",
+      text: "ALPHA-1 totals are still wrong.",
+    },
+    {
+      id: "e_tenant_beta_jira",
+      source: "jira",
+      ts: "2024-09-10T04:00:00.000Z",
+      actor: "Bea Owner",
+      channel: "BETA-9",
+      text: "BETA-9 webhook backlog drained.",
+    },
+    {
+      id: "e_tenant_beta_mail",
+      source: "email",
+      ts: "2024-09-11T04:00:00.000Z",
+      actor: "Blake Client <ops@beta.example>",
+      channel: "email",
+      text: "BETA-9 queue is clear.",
+    },
+  ]);
+  await upsertStage(tenantId, "ingest", 1, "done");
 });
 
 test.afterAll(async () => {
   const { deleteInvestigation } = await import("../../lib/store");
   if (investigationId) await deleteInvestigation(investigationId);
   if (longMessageId) await deleteInvestigation(longMessageId);
+  if (tenantId) await deleteInvestigation(tenantId);
 });
 
 test("a long client message keeps a see more preview that expands in place", async ({ page }) => {
@@ -136,6 +182,11 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   await expect(page.locator("#gaps .count-chip")).toHaveText("5 themes · 7 questions");
   await expect(page.getByText("7 questions")).toBeVisible();
   await expect(page.locator(".scope-flag")).toHaveCount(0);
+  // F1: an absent source is disclosed as absent, never as a search that found
+  // nothing. This sample has Jira and email only.
+  await expect(page.locator("#gaps")).toContainText(
+    "Slack was not part of this export; no conclusion about Slack.",
+  );
 
   // Role-dependent state is explicit, not guessed.
   const state = await page.locator(".now-block").innerText();
@@ -198,4 +249,25 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   await expect(page.locator(".scope-line")).toContainText("Scope confirmed by you");
   await expect(page.locator(".client-resolution")).toHaveCount(0);
   await expect(page.locator(".now-block")).toContainText("Priya Nair");
+});
+
+test("an unscoped multi-tenant export offers candidate engagement cards and blocks a reply", async ({
+  page,
+}) => {
+  await page.goto(`/investigations/${tenantId}`);
+
+  const notice = page.locator(".client-resolution");
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText("candidate engagement");
+  const cards = page.locator(".tenant-card");
+  await expect(cards).toHaveCount(2);
+  await expect(cards.filter({ hasText: "ALPHA" })).toContainText("records");
+  await expect(cards.filter({ hasText: "BETA" })).toContainText("records");
+  await expect(cards.getByRole("button", { name: "Confirm this engagement" }).first()).toBeVisible();
+
+  // No combined answer, ledger or draft while the engagement is unconfirmed.
+  await expect(page.locator(".say-block")).toHaveCount(0);
+  await expect(page.locator("#promises")).toHaveCount(0);
+  await expect(page.locator("#reply")).toContainText("candidate engagement");
+  await expect(page.getByRole("button", { name: "Draft the client reply" })).toHaveCount(0);
 });

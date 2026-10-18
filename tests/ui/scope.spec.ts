@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
@@ -26,6 +27,8 @@ async function seed(
     form.append("files", new File([readFileSync(`public/demo/${name}`)], name, { type: mimeType }));
   }
   form.append("escalation", escalation);
+  // Freshness through the cache key only, never the escalation text.
+  form.append("cacheBust", randomUUID());
   if (origin) form.append("origin", origin);
   form.append("client", client);
   form.append("title", `Scope ${escalation.slice(0, 24)}`);
@@ -51,7 +54,10 @@ async function seed(
   return `/investigations/${investigationId}?synthetic=1`;
 }
 
-test("a vague escalation runs as partial scope with a loud disclosure", async ({ page, request }) => {
+test("a vague escalation with no client seed discloses no scope and one candidate engagement", async ({
+  page,
+  request,
+}) => {
   const url = await seed(
     request,
     "Our billing module has been wrong since the last update. Please explain.",
@@ -59,9 +65,16 @@ test("a vague escalation runs as partial scope with a loud disclosure", async ({
   );
 
   await page.goto(url);
-  await expect(page.locator(".scope-flag")).toContainText("Unconfirmed scope");
-  await expect(page.locator(".scope-line.tone-partial")).toContainText("meridian-billing");
-  await expect(page.locator(".scope-line.tone-partial")).toContainText("verify before relying on it");
+  // B1: a model-proposed channel alone is not a deterministic seed, so an
+  // escalation with no identifier is honestly unscoped (never a partial guess).
+  await expect(page.locator(".scope-line.tone-none")).toContainText(
+    "No client or project could be identified",
+  );
+  // F5: this export holds one engagement; show it, still unconfirmed.
+  await expect(page.locator(".client-resolution")).toContainText(
+    "Single engagement in the export",
+  );
+  await expect(page.locator(".client-resolution")).toContainText("client not confirmed");
 });
 
 test("an unverifiable declared client falls back to an honest no-scope line", async ({

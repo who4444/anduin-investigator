@@ -145,6 +145,7 @@ export default async function ReportPage({
         title: assembled.investigation.title,
         escalationText: assembled.investigation.escalationText,
         createdAt: assembled.investigation.createdAt,
+        declaredClient: assembled.investigation.declaredClient,
       },
       events: activeEvents,
       claims: activeClaims,

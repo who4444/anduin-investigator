@@ -1,4 +1,5 @@
 import type { Claim, Commitment, Event, SkepticNote } from "../types";
+import { decodeEntities } from "../ingest/entities";
 
 /* G-06 + C1: what is true NOW, computed from stored records only. Every field
    is either evidence-linked or explicitly unknown with a reason — the report
@@ -72,7 +73,7 @@ function shorten(text: string): string {
 
 /** C1: a clean display name — decoded, address-free. */
 function displayName(value: string | null | undefined): string {
-  return (value ?? "")
+  return decodeEntities(value ?? "")
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();

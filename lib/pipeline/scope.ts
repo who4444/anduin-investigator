@@ -616,6 +616,186 @@ function buildScopeGraph(events: Event[]): Map<string, Set<string>> {
   return neighbors;
 }
 
+/* F5: candidate engagements in a registry with no resolved client seed.
+   The cluster graph uses the tenant-identifying features only — a ticket
+   prefix that has Jira records, an email sender domain and a Slack channel.
+   A feature shared across several prefixes (a vendor mailbox, a company-wide
+   room) is a bridge, not a tenant: it never merges clusters. Channel-only or
+   domain-only clusters are candidates only when the registry has no ticket
+   prefixes at all (an engagement that lives entirely in chat/mail). */
+export interface TenantCluster {
+  id: string;
+  label: string;
+  records: number;
+  features: string[];
+  ticketPrefixes: string[];
+  channels: string[];
+  senderDomains: string[];
+  eventIds: string[];
+}
+
+function tenantFeatureKey(kind: "prefix" | "domain" | "channel", value: string): string {
+  return `${kind}:${value}`;
+}
+
+function humanizeDomain(domain: string): string {
+  const stem = domain.split("@")[0].split(".")[0];
+  return stem
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+interface TenantFeatures {
+  prefixes: Set<string>;
+  domains: Set<string>;
+  channels: Set<string>;
+}
+
+function tenantFeatures(event: Event): TenantFeatures {
+  const prefixes = new Set<string>();
+  if (event.source === "jira") {
+    const prefix = parsePrefixFromChannel(event.channel);
+    if (prefix) prefixes.add(prefix);
+  }
+  for (const match of event.text.matchAll(TICKET_ANYWHERE)) prefixes.add(match[1].toUpperCase());
+  for (const ref of event.refs ?? []) {
+    const prefix = ref.match(TICKET_KEY)?.[1]?.toUpperCase();
+    if (prefix) prefixes.add(prefix);
+  }
+  const domains = new Set<string>();
+  if (event.source === "email") {
+    const domain = event.actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
+    if (domain) domains.add(domain);
+  }
+  const channels = new Set<string>();
+  if (event.source === "slack" && event.channel) channels.add(event.channel.toLowerCase());
+  return { prefixes, domains, channels };
+}
+
+function addAssociation(map: Map<string, Set<string>>, key: string, prefixes: Set<string>): void {
+  if (prefixes.size === 0) return;
+  const existing = map.get(key) ?? new Set<string>();
+  for (const prefix of prefixes) existing.add(prefix);
+  map.set(key, existing);
+}
+
+export function detectTenantClusters(events: Event[]): TenantCluster[] {
+  const features = events.map(tenantFeatures);
+  const jiraPrefixes = new Set<string>();
+  for (const event of events) {
+    if (event.source !== "jira") continue;
+    const prefix = parsePrefixFromChannel(event.channel);
+    if (prefix) jiraPrefixes.add(prefix);
+  }
+
+  // Which prefixes does a domain or channel touch? More than one means the
+  // feature is shared across engagements and must not bridge them.
+  const domainPrefixes = new Map<string, Set<string>>();
+  const channelPrefixes = new Map<string, Set<string>>();
+  for (const entry of features) {
+    const anchors = new Set([...entry.prefixes].filter((prefix) => jiraPrefixes.has(prefix)));
+    for (const domain of entry.domains) addAssociation(domainPrefixes, domain, anchors);
+    for (const channel of entry.channels) addAssociation(channelPrefixes, channel, anchors);
+  }
+
+  const parent = new Map<string, string>();
+  const find = (key: string): string => {
+    let current = key;
+    while (parent.get(current) !== current) current = parent.get(current)!;
+    return current;
+  };
+  const ensure = (key: string): void => {
+    if (!parent.has(key)) parent.set(key, key);
+  };
+  const union = (left: string, right: string): void => {
+    ensure(left);
+    ensure(right);
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent.set(rightRoot, leftRoot);
+  };
+
+  const eventKeys = features.map((entry) => {
+    const keys = new Set<string>();
+    const prefixes = new Set([...entry.prefixes].filter((prefix) => jiraPrefixes.has(prefix)));
+    for (const prefix of prefixes) keys.add(tenantFeatureKey("prefix", prefix));
+    for (const domain of entry.domains) {
+      const anchors = domainPrefixes.get(domain) ?? new Set<string>();
+      if (anchors.size > 1) continue;
+      keys.add(tenantFeatureKey("domain", domain));
+      for (const prefix of anchors) keys.add(tenantFeatureKey("prefix", prefix));
+    }
+    for (const channel of entry.channels) {
+      const anchors = channelPrefixes.get(channel) ?? new Set<string>();
+      if (anchors.size > 1) continue;
+      keys.add(tenantFeatureKey("channel", channel));
+      for (const prefix of anchors) keys.add(tenantFeatureKey("prefix", prefix));
+    }
+    return [...keys];
+  });
+
+  // Every key needs a parent entry even when its record touches only one
+  // feature; otherwise single-feature records cannot be found by component.
+  for (const keys of eventKeys) for (const key of keys) ensure(key);
+  for (const keys of eventKeys) {
+    for (let index = 1; index < keys.length; index += 1) union(keys[0], keys[index]);
+  }
+
+  const components = new Map<string, { keys: Set<string>; eventIds: Set<string> }>();
+  eventKeys.forEach((keys, eventIndex) => {
+    if (keys.length === 0) return;
+    const root = find(keys[0]);
+    const component = components.get(root) ?? { keys: new Set<string>(), eventIds: new Set<string>() };
+    for (const key of keys) component.keys.add(key);
+    component.eventIds.add(events[eventIndex].id);
+    components.set(root, component);
+  });
+
+  const all = [...components.values()];
+  const hasPrefixComponent = all.some((component) =>
+    [...component.keys].some((key) => key.startsWith("prefix:")),
+  );
+  const tenants = all.filter((component) =>
+    hasPrefixComponent
+      ? [...component.keys].some((key) => key.startsWith("prefix:"))
+      : component.eventIds.size > 0,
+  );
+
+  const clusters = tenants.map((component): TenantCluster => {
+    const ticketPrefixes = [...component.keys]
+      .filter((key) => key.startsWith("prefix:"))
+      .map((key) => key.slice("prefix:".length))
+      .sort();
+    const senderDomains = [...component.keys]
+      .filter((key) => key.startsWith("domain:"))
+      .map((key) => key.slice("domain:".length))
+      .sort();
+    const channels = [...component.keys]
+      .filter((key) => key.startsWith("channel:"))
+      .map((key) => key.slice("channel:".length))
+      .sort();
+    const dominantPrefix = ticketPrefixes[0] ?? null;
+    const dominantDomain = senderDomains[0] ?? null;
+    const id = dominantPrefix ?? dominantDomain ?? channels[0] ?? "engagement";
+    const name = dominantDomain ? humanizeDomain(dominantDomain) : null;
+    const label = [name, dominantPrefix ?? channels[0] ?? null].filter(Boolean).join(" / ") || id;
+    return {
+      id,
+      label,
+      records: component.eventIds.size,
+      features: [...ticketPrefixes, ...senderDomains, ...channels].slice(0, 6),
+      ticketPrefixes,
+      channels,
+      senderDomains,
+      eventIds: [...component.eventIds].sort(),
+    };
+  });
+
+  return clusters.sort((left, right) => right.records - left.records || left.id.localeCompare(right.id));
+}
+
 /** B1 selection: expand every seed through the graph; several seed
     components all join (never drop an anchor for disjointness). Reached
     (non-seed) ACTOR nodes do not expand: one support engineer working many

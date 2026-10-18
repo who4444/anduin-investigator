@@ -208,6 +208,31 @@ describeDb("buildCoverage", () => {
   });
 });
 
+describe("coverage prompt states (F1)", () => {
+  const promptEvent = (over: Partial<import("../lib/types").Event> & { id: string; source: "jira" | "email" | "slack"; ts: string }): import("../lib/types").Event => ({
+    investigationId: "inv",
+    actor: "Lin Chen",
+    channel: "MER-101",
+    text: "text",
+    ...over,
+  });
+
+  it("tells investigators which sources are absent or excluded before they search", async () => {
+    const { coveragePromptLines } = await import("../lib/pipeline/coverage");
+    const events = [
+      promptEvent({ id: "p1", source: "jira", ts: "2024-09-10T03:00:00.000Z" }),
+      promptEvent({ id: "p2", source: "jira", ts: "2024-09-11T03:00:00.000Z" }),
+      promptEvent({ id: "p3", source: "slack", ts: "2024-09-12T03:00:00.000Z", channel: "other-room" }),
+    ];
+    const lines = coveragePromptLines(events, events.slice(0, 2));
+    const joined = lines.join("\n");
+
+    expect(joined).toMatch(/jira[^\n]*2 records in scope/i);
+    expect(joined).toMatch(/email[^\n]*not part of this export/i);
+    expect(joined).toMatch(/slack[^\n]*1 excluded by scope[^\n]*do not draw conclusions/i);
+  });
+});
+
 describe("coverage states (G-02, F1)", () => {
   const entry = (over: Partial<import("../lib/pipeline/coverage").SourceCoverage>) => ({
     source: "email" as const,

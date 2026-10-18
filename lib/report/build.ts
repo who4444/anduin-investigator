@@ -440,7 +440,9 @@ export function buildMetrics(input: ReportInput): Metric[] {
       id: "firstResponse",
       label: "First response after the first cited record",
       value: hours < 48 ? `${hours}h` : formatDays(Math.round(hours / 24)),
-      detail: `${firstEntry.event.actor} → ${responder.event.actor}`,
+      detail: `${cleanDisplayName(firstEntry.event.actor) ?? "the client"} → ${
+        cleanDisplayName(responder.event.actor) ?? "a participant"
+      }`,
       judgment: false,
       determined: true,
       claimIds: [firstEntry.claim.id, responder.claim.id],
@@ -577,7 +579,7 @@ export function buildMetrics(input: ReportInput): Metric[] {
     metrics.push({
       id: "chasers",
       label: "Unanswered chases from the client",
-      value: `${longestRun.count} from ${cleanDisplayName(longestRun.actor) ?? longestRun.actor}`,
+      value: `${longestRun.count} from ${cleanDisplayName(longestRun.actor) ?? "the client"}`,
       detail: `${longestRun.events[0].ts.slice(0, 10)} → ${longestRun.events[longestRun.events.length - 1].ts.slice(0, 10)}`,
       judgment: false,
       determined: true,
@@ -810,7 +812,7 @@ export function buildTimeline(input: ReportInput): TimelineGroup[] {
         kind: "claim" as const,
         claimId: claim.id,
         ts: effectiveTs(claim, event),
-        actor: event.actorResolved ?? event.actor,
+        actor: cleanDisplayName(event.actorResolved ?? event.actor) ?? "Unknown",
         source: event.source,
         text: claim.text,
         status: claim.status,
@@ -1068,7 +1070,7 @@ export function buildLanes(input: ReportInput): Lane[] {
 
   const byActor = new Map<string, Event[]>();
   for (const event of ordered) {
-    const actor = event.actorResolved ?? event.actor;
+    const actor = cleanDisplayName(event.actorResolved ?? event.actor) ?? "Unknown";
     const list = byActor.get(actor) ?? [];
     list.push(event);
     byActor.set(actor, list);

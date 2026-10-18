@@ -19,7 +19,7 @@ const DEMO_FILES = [
 ] as const;
 
 const DEFAULT_ESCALATION =
-  "Meridian reports invoice totals wrong for Bright Market since 4.12 (MER-101).";
+  "Northwind reports invoice totals wrong since 4.12 (MER-101).";
 
 function demoForm(escalation: string, client = "Northwind Logistics"): FormData {
   const form = new FormData();
@@ -311,6 +311,9 @@ test("the pre-run scope review pauses, survives reload, and confirms the report"
   await expect(page.locator(".scope-line")).toContainText("Scope confirmed by you");
   await expect(page.locator(".scope-line")).toContainText("reviewed record added back into scope");
   await expect(page.locator(".scope-line")).not.toContainText("Unconfirmed scope");
+  // F3: one confirmation phrase, never "confirmed by you — confirmed by you".
+  const scopeText = await page.locator(".scope-line").innerText();
+  expect(scopeText.match(/confirmed by you/gi) ?? []).toHaveLength(1);
 });
 
 /* G-13: a run interrupted after one investigator must not redo that

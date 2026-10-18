@@ -395,6 +395,10 @@ describeDb("runInvestigator", () => {
 
     expect(seenUserPrompt).toContain("Vocabulary observed in the records");
     expect(seenUserPrompt).toContain("MER-101");
+    // F1: the prompt states each source's coverage before searching. This
+    // investigation has jira and slack records and no email at all.
+    expect(seenUserPrompt).toContain("Source coverage before searching");
+    expect(seenUserPrompt).toMatch(/email[^\n]*not part of this export/i);
   });
 
   it("merges the forced reply instead of concatenating unparseable fragments", async () => {

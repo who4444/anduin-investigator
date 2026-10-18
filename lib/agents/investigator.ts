@@ -1,6 +1,7 @@
 import { extractJson, isPlainObject } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import { getLlmClient, runToolLoop } from "../llm";
+import { coveragePromptLines } from "../pipeline/coverage";
 import { issuePromptBlock, resolveIssueId } from "../pipeline/issues";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
 import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
@@ -171,6 +172,7 @@ export async function runInvestigator(
   const scopeLine = scopePromptLine(investigation?.scope ?? null);
   // Prompts see only in-scope records, matching what the tools can return.
   const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
+  const coverageLines = coveragePromptLines(events, inScope);
   const digest = renderVocabularyDigest(buildVocabularyDigest(inScope));
   const issueBlock = issuePromptBlock(issues);
 
@@ -196,6 +198,9 @@ export async function runInvestigator(
     "Investigation plan:",
     plan,
     ...(scopeLine ? ["", scopeLine] : []),
+    "",
+    "Source coverage before searching:",
+    ...coverageLines.map((line) => `- ${line}`),
     ...(digest ? ["", "Vocabulary observed in the records (use these exact terms when searching):", digest] : []),
     ...(issueBlock ? ["", issueBlock] : []),
     ...(retryReasons.length > 0

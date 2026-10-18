@@ -95,6 +95,8 @@ export interface ReplyEligibilityInput {
   issues: Issue[];
   issueId?: string | null;
   excludedClientRecords?: number;
+  /** F5: several tenant clusters and no resolved client seed. */
+  crossTenant?: boolean;
 }
 
 /** E1: a client reply may be drafted only from a resolved client, a named
@@ -109,6 +111,12 @@ export function replyEligible(input: ReplyEligibilityInput): {
   if (excluded > 0) {
     return blocked(
       `Client evidence is excluded from this investigation (${excluded} record${excluded === 1 ? "" : "s"}). A reply could contradict records that were never searched, so drafting is blocked until the scope is resolved.`,
+    );
+  }
+
+  if (input.crossTenant) {
+    return blocked(
+      "This export contains more than one candidate engagement and the escalation does not identify which one. Confirm the engagement before drafting a reply.",
     );
   }
 

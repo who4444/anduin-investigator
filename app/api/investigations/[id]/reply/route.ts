@@ -9,6 +9,7 @@ import {
   readJsonBody,
 } from "@/lib/api/pipeline";
 import { buildResult } from "@/lib/pipeline/assemble";
+import { detectTenantClusters } from "@/lib/pipeline/scope";
 
 export const maxDuration = 60;
 
@@ -38,14 +39,21 @@ export async function POST(
       );
     }
 
+    // F5: an unscoped export with several candidate engagements has no
+    // single client to reply to. Confirm the engagement first.
+    const scope = assembled.investigation.scope;
+    const clientSeedResolved = Boolean(scope?.client) && scope?.confidence !== "none";
+    const crossTenant = !clientSeedResolved && detectTenantClusters(assembled.timeline).length > 1;
+
     // E1: refuse before any model call when the client, scope, verified
     // client-safe facts or (for a multi-issue run) the issue id are missing.
     const eligibility = replyEligible({
-      scope: assembled.investigation.scope,
+      scope,
       claims: assembled.claims,
       issues: assembled.issues,
       issueId,
       excludedClientRecords: excluded,
+      crossTenant,
     });
     if (!eligibility.eligible) {
       return errorResponse(

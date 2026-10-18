@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildReportModel, fullFindingLabel, shortFindingLabel, type ReportModelInput } from "../lib/report/model";
-import type { Claim, Commitment, Event, InvestigationScope } from "../lib/types";
+import type { Claim, Commitment, Event, Gap, InvestigationScope } from "../lib/types";
 
 const event = (over: Partial<Event> & { id: string; ts: string; text: string }): Event => ({
   investigationId: "inv",
@@ -121,11 +121,21 @@ describe("client and project resolve independently (B2)", () => {
 
   it("the confirm action appears only when no client can be established", () => {
     const model = buildReportModel(
-      input({ scope: { ...declaredOnly, client: null, confidence: "none" } }),
+      input({
+        scope: { ...declaredOnly, client: null, confidence: "none" },
+        investigation: {
+          title: "MER-101: Issue created: Timezone totals wrong",
+          escalationText: "Client says totals are wrong since 4.12.",
+          createdAt: "2024-09-10T03:00:00.000Z",
+          declaredClient: "Northwind Logistics",
+        },
+      }),
     );
     expect(model.client.clientKnown).toBe(false);
     expect(model.client.resolved).toBe(false);
     expect(model.headline.nextStep).toContain("Confirm the client");
+    // F3: the blank confirm form prefills the manager's declared client.
+    expect(model.declaredClient).toBe("Northwind Logistics");
   });
 });
 
@@ -809,5 +819,151 @@ describe("action policy and audit (G1/G2/C4)", () => {
     expect(noteRows).toHaveLength(1);
     expect(noteRows[0].headline).toBe(model.promises[0].headline);
     expect(model.audit.every((entry) => !/a stored record|stored findings/i.test(entry.note))).toBe(true);
+  });
+});
+
+describe("unscoped multi-tenant cards (F5)", () => {
+  const tenantEvents: Event[] = [
+    event({
+      id: "alpha-jira",
+      source: "jira",
+      channel: "ALPHA-1",
+      actor: "Alex Owner",
+      ts: "2024-09-10T03:00:00.000Z",
+      text: "ALPHA-1 timezone migration merged.",
+    }),
+    event({
+      id: "alpha-mail",
+      source: "email",
+      channel: "email",
+      actor: "Avery Client <ops@alpha.example>",
+      ts: "2024-09-11T03:00:00.000Z",
+      text: "ALPHA-1 totals are still wrong.",
+    }),
+    event({
+      id: "alpha-slack",
+      source: "slack",
+      channel: "alpha-room",
+      actor: "Avery Client",
+      ts: "2024-09-12T03:00:00.000Z",
+      text: "Following up on ALPHA-1.",
+    }),
+    event({
+      id: "beta-jira",
+      source: "jira",
+      channel: "BETA-9",
+      actor: "Bea Owner",
+      ts: "2024-09-10T04:00:00.000Z",
+      text: "BETA-9 webhook backlog drained.",
+    }),
+    event({
+      id: "beta-mail",
+      source: "email",
+      channel: "email",
+      actor: "Blake Client <ops@beta.example>",
+      ts: "2024-09-11T04:00:00.000Z",
+      text: "BETA-9 queue is clear.",
+    }),
+    event({
+      id: "beta-slack",
+      source: "slack",
+      channel: "beta-room",
+      actor: "Blake Client",
+      ts: "2024-09-12T04:00:00.000Z",
+      text: "BETA-9 checks out.",
+    }),
+    // A shared vendor domain writes about both tenants: it must not merge them.
+    event({
+      id: "vendor-alpha",
+      source: "email",
+      channel: "email",
+      actor: "Vendor Support <support@shared-vendor.example>",
+      ts: "2024-09-13T04:00:00.000Z",
+      text: "ALPHA-1 rate limit needs a look.",
+    }),
+    event({
+      id: "vendor-beta",
+      source: "email",
+      channel: "email",
+      actor: "Vendor Support <support@shared-vendor.example>",
+      ts: "2024-09-13T05:00:00.000Z",
+      text: "BETA-9 rate limit needs a look.",
+    }),
+  ];
+
+  const tenantClaims: Claim[] = [
+    claim({
+      id: "alpha-promise",
+      eventId: "alpha-jira",
+      type: "commitment",
+      actor: "Alex Owner",
+      text: "The ALPHA fix will ship in the Sep 24 release.",
+      status: "unclear",
+    }),
+    claim({
+      id: "beta-promise",
+      eventId: "beta-jira",
+      type: "commitment",
+      actor: "Bea Owner",
+      text: "The BETA fix will ship in the Sep 24 release.",
+      status: "unclear",
+    }),
+  ];
+
+  it("groups disjoint tenants into candidate cards and suppresses a combined story and ledger", () => {
+    const model = buildReportModel(
+      input({ events: tenantEvents, claims: tenantClaims, scope: null }),
+    );
+
+    expect(model.crossTenant).toBe(true);
+    expect(model.tenantCards).toHaveLength(2);
+    const alpha = model.tenantCards.find((card) => card.label.includes("ALPHA"));
+    const beta = model.tenantCards.find((card) => card.label.includes("BETA"));
+    expect(alpha?.records).toBeGreaterThanOrEqual(3);
+    expect(beta?.records).toBeGreaterThanOrEqual(3);
+    expect(alpha?.features.join(" ")).toMatch(/ALPHA|alpha\.example|alpha-room/);
+    // No single-client answer, ledger or promises while the tenant is unconfirmed.
+    expect(model.promises).toEqual([]);
+    expect(model.headline.sentences[0].text).toMatch(/candidate engagement/i);
+  });
+
+  it("keeps a single unscoped engagement visible as one card", () => {
+    const solo = tenantEvents.filter((entry) => !entry.id.startsWith("beta") && !entry.id.startsWith("vendor-beta"));
+    const model = buildReportModel(input({ events: solo, claims: [], scope: null }));
+
+    expect(model.crossTenant).toBe(false);
+    expect(model.tenantCards).toHaveLength(1);
+    expect(model.tenantCards[0].label).toMatch(/ALPHA/);
+    expect(model.tenantCards[0].records).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("sparse gap input (F3)", () => {
+  it("collapses near-duplicate gaps and caps the labelled question pair", () => {
+    const gaps: Gap[] = Array.from({ length: 24 }, (_, index) => ({
+      id: `gap_${index}`,
+      investigationId: "inv",
+      eventIds: [],
+      category: "communication",
+      question: `Did the client hear about the fix? (check ${index + 1})`,
+      note: "No reply was recorded in the searched mail.",
+    }));
+    gaps.push({
+      id: "gap_distinct",
+      investigationId: "inv",
+      eventIds: [],
+      category: "technical",
+      question: "Which build contained the failed fix?",
+      note: "Two records conflict on the build number.",
+    });
+
+    const model = buildReportModel(input({ gaps }));
+
+    expect(model.questionCounts.groups).toBeLessThanOrEqual(8);
+    expect(model.questionCounts.raw).toBeLessThanOrEqual(24);
+    const allQuestions = model.openQuestions.flatMap((group) => group.questions);
+    expect(
+      allQuestions.filter((question) => /Did the client hear about the fix/i.test(question)),
+    ).toHaveLength(1);
   });
 });

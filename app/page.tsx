@@ -23,7 +23,7 @@ interface ScopeState {
 }
 
 const SCENARIO_ESCALATION =
-  "Meridian reports that invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.";
+  "Northwind reports that our Meridian Billing vendor's invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.";
 
 const MULTI_ESCALATION =
   "Contoso has two independent issues. First, VAT invoice totals have been blank since the 2.1.0 upgrade; the fix was promised for the Sep 20 release and the ticket was closed while the totals were still blank. Second, finance users cannot sign in since the identity migration; the SSO fix was promised for the Sep 26 release and still fails. Our chases on 22 and 23 September went unanswered. Explain what happened on each issue and when each will actually be fixed.";
@@ -190,13 +190,17 @@ export default function StartPage() {
           />
         </label>
         <label className="field">
-          <span className="field-label">Client (if known)</span>
+          <span className="field-label">Client (the external party)</span>
           <input
             className="input"
             value={client}
             onChange={(event) => setClient(event.target.value)}
-            placeholder="e.g. Northwind Logistics — used to confirm which records belong to this escalation."
+            placeholder="e.g. Northwind Logistics — the party who escalated, not the product or vendor."
           />
+          <span className="small muted">
+            Name the external party who escalated, not the product or vendor. The project/product is
+            confirmed from the records after the plan.
+          </span>
         </label>
         <div className="row">
           <button type="button" className="btn" onClick={loadScenario} disabled={busy}>

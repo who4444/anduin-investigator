@@ -130,13 +130,16 @@ export default function UploadPage() {
         </label>
 
         <label className="field">
-          <span className="field-label">Client (if known)</span>
+          <span className="field-label">Client (the external party)</span>
           <input
             className="input"
             value={client}
             onChange={(event) => setClient(event.target.value)}
-            placeholder="e.g. Northwind Logistics — keeps the client's own records in scope."
+            placeholder="e.g. Northwind Logistics — the party who escalated, not the product or vendor."
           />
+          <span className="small muted">
+            Name the external party who escalated, not the product or vendor.
+          </span>
         </label>
 
         <div

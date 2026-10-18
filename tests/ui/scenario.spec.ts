@@ -6,6 +6,9 @@ test("the built-in scenario runs end to end and lands on the answer-first report
   page,
 }) => {
   await page.goto("/");
+  // F3: the intake distinguishes the external client from the project/vendor.
+  await expect(page.getByLabel("Client (the external party)")).toBeVisible();
+  await expect(page.getByText(/not the product or vendor/i)).toBeVisible();
   await page.getByRole("button", { name: "Load Northwind scenario" }).click();
   await page.getByRole("button", { name: "Investigate" }).click();
 

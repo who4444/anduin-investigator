@@ -67,7 +67,7 @@ const jira = {
           {
             author: { displayName: "Priya Nair" },
             created: "2024-09-10T12:30:00.000+0000",
-            body: "<p>Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.</p>",
+            body: "<p>Northwind reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.</p>",
           },
           {
             author: { displayName: "Marcus Webb" },
@@ -223,7 +223,7 @@ const escalationEml = [
   "Message-ID: <m11@northwind.example>",
   "In-Reply-To: <m7@northwind.example>",
   "",
-  "As discussed on our call, Meridian carries a contractual SLA on invoice accuracy.",
+  "As discussed on our call, our Meridian Billing vendor carries a contractual SLA on invoice accuracy.",
   "",
   "Totals are still wrong five days after the promised Sep 24 fix, and we have had no reply to four messages.",
   "",

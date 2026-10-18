@@ -91,10 +91,39 @@ export function cleanGapText(text: string): string {
     .replace(/\bthe source lookups?\b/gi, "the search")
     .replace(CLAIM_NUMBER, " ")
     .replace(RAW_ID, " ")
+    .replace(/\s*\(\s*(?:check|record|item|case|note|variant|entry)\s*#?\d+\s*\)\s*$/i, "")
     .replace(/\s*\(\s*\)/g, "")
     .replace(/\s+([,.;:])/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeMeaning(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function meaningTokens(text: string): Set<string> {
+  return new Set(normalizeMeaning(text).split(" ").filter((token) => token.length > 2));
+}
+
+/* Near-duplicate questions differ by a parenthetical, an article or one word.
+   Two gaps are the same manager question when their normalized token sets
+   overlap at this threshold; the first wording is kept. */
+function sameMeaning(left: string, right: string): boolean {
+  const a = normalizeMeaning(left);
+  const b = normalizeMeaning(right);
+  if (a === b) return true;
+  const leftTokens = meaningTokens(left);
+  const rightTokens = meaningTokens(right);
+  if (leftTokens.size === 0 || rightTokens.size === 0) return false;
+  let shared = 0;
+  for (const token of leftTokens) if (rightTokens.has(token)) shared += 1;
+  return shared / (leftTokens.size + rightTokens.size - shared) >= 0.85;
 }
 
 function tagFor(text: string): GapTag {
@@ -107,6 +136,7 @@ function tagFor(text: string): GapTag {
 export function rankGaps(gaps: Gap[], coverage?: CoverageReport): RankedGap[] {
   const seen = new Set<string>();
   const ranked: RankedGap[] = [];
+  const meanings: string[] = [];
 
   for (const gap of gaps) {
     // C4: a gap whose text still carries an internal id or claim number has no
@@ -139,6 +169,10 @@ export function rankGaps(gaps: Gap[], coverage?: CoverageReport): RankedGap[] {
     // A gap the coverage report can back with "never searched" outranks a
     // same-tagged guess: the manager can act on it directly.
     if (coverage && coverage.neverSearched.length > 0 && tag === "not-searched") rank += 1;
+
+    const meaning = `${question} ${note}`.trim();
+    if (meanings.some((existing) => sameMeaning(existing, meaning))) continue;
+    meanings.push(meaning);
 
     ranked.push({ id: gap.id, question, note, tag, rank, eventIds: gap.eventIds, category: gap.category ?? undefined });
   }

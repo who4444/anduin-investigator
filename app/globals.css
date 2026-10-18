@@ -2468,6 +2468,34 @@ button.promise-card {
   min-width: 190px;
 }
 
+.tenant-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.tenant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  padding: 12px 14px;
+}
+
+.tenant-card-name {
+  font-weight: 700;
+}
+
+.coverage-note {
+  margin: 0;
+}
+
 .headline {
   display: flex;
   flex-direction: column;

@@ -99,7 +99,7 @@
               "displayName": "Priya Nair"
             },
             "created": "2024-09-10T12:30:00.000+0000",
-            "body": "<p>Meridian reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.</p>"
+            "body": "<p>Northwind reports invoice totals are wrong since the 4.12 deploy; timelines are off by a day.</p>"
           },
           {
             "author": {

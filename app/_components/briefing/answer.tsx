@@ -172,7 +172,7 @@ export function AnswerSection({
             <span className="small muted"> — verify before relying on it.</span>
           )}
           {scope.confidence === "partial" && scope.reviewed && (
-            <span className="small muted"> — confirmed by you before the run.</span>
+            <span className="small muted"> — this run used the confirmed scope.</span>
           )}
           {scope.includedByReview > 0 && (
             <span className="small muted">

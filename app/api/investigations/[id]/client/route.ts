@@ -17,20 +17,37 @@ export async function POST(
   const found = await readInvestigationOrDefault(id);
   if ("response" in found) return found.response;
 
-  const body = (await readJsonBody(request)) as { client?: unknown; project?: unknown };
+  const body = (await readJsonBody(request)) as {
+    client?: unknown;
+    project?: unknown;
+    ticketPrefixes?: unknown;
+    channels?: unknown;
+    senderDomains?: unknown;
+  };
   const client = typeof body.client === "string" ? body.client.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const project = typeof body.project === "string" ? body.project.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   if (!client || !/\p{L}/u.test(client)) {
     return errorResponse("client must name the client from the roster.", 400);
   }
+  const unitList = (value: unknown): string[] | null =>
+    Array.isArray(value)
+      ? value
+          .filter((entry): entry is string => typeof entry === "string")
+          .map((entry) => entry.replace(/\s+/g, " ").trim())
+          .filter(Boolean)
+          .slice(0, 50)
+      : null;
+  const selectedPrefixes = unitList(body.ticketPrefixes);
+  const selectedChannels = unitList(body.channels);
+  const selectedDomains = unitList(body.senderDomains);
 
   const existing = found.investigation.scope;
   const scope: InvestigationScope = {
     client,
     project: project || existing?.project || null,
-    ticketPrefixes: existing?.ticketPrefixes ?? [],
-    channels: existing?.channels ?? [],
-    senderDomains: existing?.senderDomains ?? [],
+    ticketPrefixes: selectedPrefixes ?? existing?.ticketPrefixes ?? [],
+    channels: selectedChannels ?? existing?.channels ?? [],
+    senderDomains: selectedDomains ?? existing?.senderDomains ?? [],
     confidence: "partial",
     anchors: [
       ...(existing?.anchors ?? []).filter((anchor) => anchor.source !== "declared"),

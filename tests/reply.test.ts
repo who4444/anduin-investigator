@@ -225,6 +225,17 @@ describe("reply eligibility", () => {
     ).toEqual({ eligible: true, reason: null });
   });
 
+  it("blocks a cross-tenant unscoped export until the engagement is confirmed", () => {
+    const result = replyEligible({
+      scope: scope(),
+      claims: [verified],
+      issues: [issue("i1", 1)],
+      crossTenant: true,
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toMatch(/candidate engagement|engagement/i);
+  });
+
   it("blocks excluded client evidence", () => {
     const result = replyEligible({
       scope: scope(),

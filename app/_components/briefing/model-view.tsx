@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Avatar, PERSON_COLORS } from "@/app/_components/briefing/people";
 import { ExcludedRecordsPanel } from "@/app/_components/briefing/sections";
+import { SOURCE_LABELS } from "@/lib/pipeline/coverage";
 import type { ReportPayload } from "@/lib/report/build";
 import type {
   ReportActorModel,
@@ -113,26 +114,115 @@ export function ClientResolutionNotice({ report }: { report: ReportPayload }) {
           </span>
         )}
         {partial && !reviewed && <span className="small muted"> — verify before relying on it.</span>}
-        {partial && reviewed && <span className="small muted"> — confirmed by you before the run.</span>}
+        {partial && reviewed && <span className="small muted"> — this run used the confirmed scope.</span>}
       </p>
       {!model.client.clientKnown && (
         <div className="client-resolution-body">
-          <h2>Client and project not confirmed</h2>
-          <p>
-            {model.client.reasons.join(" ")} Until this is resolved, customer contact, actor roles and
-            the told-vs-actual audit cannot be stated.
-          </p>
-          <ClientConfirmForm investigationId={report.investigation.id} />
+          <h2>{model.crossTenant ? "Which engagement is this?" : "Client and project not confirmed"}</h2>
+          {model.crossTenant ? (
+            <p>
+              {model.tenantCards.length} candidate engagements are present in the export and the
+              escalation does not identify which one. Confirm one to build its timeline, promises and
+              reply; no combined answer is shown.
+            </p>
+          ) : (
+            <p>
+              {model.client.reasons.join(" ")} Until this is resolved, customer contact, actor roles and
+              the told-vs-actual audit cannot be stated.
+            </p>
+          )}
+          {model.tenantCards.length === 1 && (
+            <p className="small muted">
+              Single engagement in the export ({model.tenantCards[0].label},{" "}
+              {model.tenantCards[0].records} records); client not confirmed.
+            </p>
+          )}
+          {model.crossTenant && (
+            <TenantCards investigationId={report.investigation.id} cards={model.tenantCards} />
+          )}
+          <ClientConfirmForm
+            investigationId={report.investigation.id}
+            initialClient={model.declaredClient ?? ""}
+            initialProject={model.client.project ?? ""}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function ClientConfirmForm({ investigationId }: { investigationId: string }) {
+function TenantCards({
+  investigationId,
+  cards,
+}: {
+  investigationId: string;
+  cards: ReportModel["tenantCards"];
+}) {
   const router = useRouter();
-  const [client, setClient] = useState("");
-  const [project, setProject] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirm = async (card: ReportModel["tenantCards"][number]) => {
+    setSavingId(card.id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/investigations/${investigationId}/client`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client: card.label,
+          project: card.ticketPrefixes[0] ?? null,
+          ticketPrefixes: card.ticketPrefixes,
+          channels: card.channels,
+          senderDomains: card.senderDomains,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Could not confirm the engagement.");
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setSavingId(null);
+    }
+  };
+
+  return (
+    <div className="stack stack-sm">
+      <ul className="tenant-cards">
+        {cards.map((card) => (
+          <li key={card.id} className="tenant-card">
+            <span className="tenant-card-name">{card.label}</span>
+            <span className="small muted">
+              {card.records} record{card.records === 1 ? "" : "s"} · {card.features.join(" · ")}
+            </span>
+            <button
+              type="button"
+              className="btn"
+              disabled={savingId !== null}
+              onClick={() => void confirm(card)}
+            >
+              {savingId === card.id ? "Confirming…" : "Confirm this engagement"}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="alert alert-error">{error}</p>}
+    </div>
+  );
+}
+
+function ClientConfirmForm({
+  investigationId,
+  initialClient = "",
+  initialProject = "",
+}: {
+  investigationId: string;
+  initialClient?: string;
+  initialProject?: string;
+}) {
+  const router = useRouter();
+  const [client, setClient] = useState(initialClient);
+  const [project, setProject] = useState(initialProject);
   const [state, setState] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -731,6 +821,32 @@ export function ModelOpenQuestions({
             </ul>
           </div>
         )}
+        {report.coverage.sources.map((entry) => {
+          const label = SOURCE_LABELS[entry.source];
+          if (entry.state === "not-in-export") {
+            return (
+              <p key={entry.source} className="coverage-note small muted">
+                {label} was not part of this export; no conclusion about {label}.
+              </p>
+            );
+          }
+          if (entry.state === "searched-empty") {
+            return (
+              <p key={entry.source} className="coverage-note small muted">
+                {label} was searched; no matching records were found.
+              </p>
+            );
+          }
+          if (entry.state === "not-searched-excluded") {
+            return (
+              <p key={entry.source} className="coverage-note small muted">
+                {label} records were excluded by scope ({entry.excluded}); no conclusion about the
+                excluded records.
+              </p>
+            );
+          }
+          return null;
+        })}
         {report.coverage.neverSearched.length > 0 && (
           <p className="alert alert-warn">
             Available but never searched: {report.coverage.neverSearched.join(", ")}. Findings may be incomplete.

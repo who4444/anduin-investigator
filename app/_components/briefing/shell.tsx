@@ -83,13 +83,15 @@ export function BriefingShell({
       ? `${excludedClientRecords} record${excludedClientRecords === 1 ? "" : "s"} authored by the client ${
           excludedClientRecords === 1 ? "is" : "are"
         } excluded from this investigation — a reply could contradict evidence that was never searched, so drafting is blocked until the scope is resolved.`
-      : multi && !report.activeIssueId
-        ? "Open an issue tab to draft its reply; the combined view mixes issues."
-        : !model.client.clientKnown
-          ? "Confirm the client before drafting a reply — a draft to the wrong party could contradict the records."
-          : model.counts.verified === 0
-            ? "No verified, client-safe finding is available yet; run verification and review the findings before drafting a reply."
-            : null;
+      : model.crossTenant
+        ? "This export contains more than one candidate engagement and the escalation does not identify which one. Confirm the engagement before drafting a reply."
+        : multi && !report.activeIssueId
+          ? "Open an issue tab to draft its reply; the combined view mixes issues."
+          : !model.client.clientKnown
+            ? "Confirm the client before drafting a reply — a draft to the wrong party could contradict the records."
+            : model.counts.verified === 0
+              ? "No verified, client-safe finding is available yet; run verification and review the findings before drafting a reply."
+              : null;
 
   const issueHref = (issueId: string | null) => {
     const query = new URLSearchParams();
@@ -250,15 +252,34 @@ export function BriefingShell({
           </p>
         )}
         <ClientResolutionNotice report={report} />
-        <ModelAnswer report={report} onFinding={openFinding} />
-        <ModelStory report={report} onFinding={openFinding} />
-        <section className="briefing-section board-section" id="timeline-detail" aria-labelledby="board-title">
-          <h2 id="board-title">Timeline detail</h2>
-          <p className="small muted">One board for the whole report; the silent period is drawn here once.</p>
-          <ModelSwimlane report={report} onFinding={openFinding} />
-        </section>
-        <ModelPromises report={report} onFinding={openFinding} />
-        <ModelFailures report={report} onFinding={openFinding} />
+        {model.crossTenant ? (
+          <section className="briefing-section answer" id="answer" aria-labelledby="answer-title">
+            <h2 id="answer-title" className="visually-hidden">The answer</h2>
+            <div className="verdict headline">
+              {model.headline.sentences.map((sentence, index) => (
+                <p key={index} className={index === 0 ? "headline-lead" : "headline-line"}>
+                  {sentence.text}
+                </p>
+              ))}
+              {model.headline.nextStep && (
+                <p className="headline-next">Next step: {model.headline.nextStep}</p>
+              )}
+              <p className="headline-stats small muted">{model.headline.statsLine}</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <ModelAnswer report={report} onFinding={openFinding} />
+            <ModelStory report={report} onFinding={openFinding} />
+            <section className="briefing-section board-section" id="timeline-detail" aria-labelledby="board-title">
+              <h2 id="board-title">Timeline detail</h2>
+              <p className="small muted">One board for the whole report; the silent period is drawn here once.</p>
+              <ModelSwimlane report={report} onFinding={openFinding} />
+            </section>
+            <ModelPromises report={report} onFinding={openFinding} />
+            <ModelFailures report={report} onFinding={openFinding} />
+          </>
+        )}
         <ModelOpenQuestions report={report} rerunHref={rerunHref} onFinding={openFinding} />
         <ReplySection
           reply={reply}

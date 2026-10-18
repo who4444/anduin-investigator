@@ -35,6 +35,7 @@ export async function GET(
         title: assembled.investigation.title,
         escalationText: assembled.investigation.escalationText,
         createdAt: assembled.investigation.createdAt,
+        declaredClient: assembled.investigation.declaredClient,
       },
       events: assembled.timeline,
       claims: assembled.claims,

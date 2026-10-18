@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import { isPromiseLike } from "../pipeline/commitments";
 import type { CoverageReport } from "../pipeline/coverage";
+import { detectTenantClusters, type TenantCluster } from "../pipeline/scope";
 import { buildCaseState } from "./case-state";
 import { buildStory, type StoryInput, type StoryPromiseInput } from "./story";
 import { computeSilences, type Silences } from "./silence";
@@ -193,9 +194,25 @@ export interface ReportAuditRow {
   internalOnly: boolean;
 }
 
+export interface ReportTenantCard {
+  id: string;
+  label: string;
+  records: number;
+  features: string[];
+  ticketPrefixes: string[];
+  channels: string[];
+  senderDomains: string[];
+}
+
 export interface ReportModel {
   title: string;
   client: ReportClientModel;
+  /** F5: candidate engagements when no client seed resolved and the export
+      contains more than one tenant. */
+  tenantCards: ReportTenantCard[];
+  crossTenant: boolean;
+  /** The manager's declared client at intake, for prefilling the confirm form. */
+  declaredClient: string | null;
   actors: ReportActorModel[];
   findings: ReportFindingModel[];
   promises: ReportFindingModel[];
@@ -222,7 +239,12 @@ export interface ReportModel {
 }
 
 export interface ReportModelInput {
-  investigation: { title: string; escalationText: string; createdAt: string };
+  investigation: {
+    title: string;
+    escalationText: string;
+    createdAt: string;
+    declaredClient?: string | null;
+  };
   events: Event[];
   claims: Claim[];
   commitments?: Commitment[];
@@ -1162,9 +1184,10 @@ function buildActions(input: {
   const broken = promises.filter((finding) => finding.promiseStatus === "broken");
   for (const finding of broken) {
     const commitment = input.commitmentForFinding.get(finding.id);
-    const promisor = commitment?.promisor?.trim() || actorNameForFinding(finding, actors) || "the owner";
+    const promisor =
+      displayName(commitment?.promisor ?? "") || actorNameForFinding(finding, actors) || "the owner";
     const object = commitment?.object?.trim() || derivedPromiseObject(finding, promisor);
-    const promisee = commitment?.promisee?.trim() || null;
+    const promisee = commitment?.promisee ? displayName(commitment.promisee) : null;
     push(
       `Agree a new date with ${promisor} for ${object}${promisee ? ` and tell ${promisee}` : ""}.`,
       [finding.id],
@@ -1316,8 +1339,40 @@ function buildHeadline(
   };
 }
 
+/* F5: with several candidate engagements and no client seed, the report must
+   not tell one combined story. The headline names the candidates and asks for
+   the one confirmation that makes a single-client answer possible. */
+function crossTenantHeadline(cards: ReportTenantCard[]): ReportHeadline {
+  return {
+    sentences: [
+      {
+        text: `${cards.length} candidate engagements are present in the export; the escalation does not identify which one.`,
+        findingIds: [],
+      },
+    ],
+    statsLine: `${cards.length} candidate engagement${cards.length === 1 ? "" : "s"} · no single-client answer until one is confirmed`,
+    nextStep:
+      "Confirm the engagement in the notice above; then the report can build its timeline, promises and client reply.",
+    tooThin: false,
+  };
+}
+
+function tenantCardsFrom(clusters: TenantCluster[]): ReportTenantCard[] {
+  return clusters.map((cluster) => ({
+    id: cluster.id,
+    label: cluster.label,
+    records: cluster.records,
+    features: cluster.features,
+    ticketPrefixes: cluster.ticketPrefixes,
+    channels: cluster.channels,
+    senderDomains: cluster.senderDomains,
+  }));
+}
+
 export function buildReportModel(input: ReportModelInput): ReportModel {
   const client = buildClientModel(input);
+  const tenantCards = client.clientKnown ? [] : tenantCardsFrom(detectTenantClusters(input.events));
+  const crossTenant = tenantCards.length > 1;
   const actorInfo = buildActors(input);
   const actorsById = actorInfo.byId;
   const actorIdFor = (raw: string | null | undefined): string | null => {
@@ -1564,7 +1619,11 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     groups: openQuestions.length,
     raw: openQuestions.reduce((total, group) => total + Math.max(group.questions.length, 1), 0),
   };
-  const promises = sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
+  // F5: a combined ledger across tenants would attribute one engagement's
+  // promise to another. Until the engagement is confirmed there is no ledger.
+  const promises = crossTenant
+    ? []
+    : sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
   const failures = sorted.filter((finding) => finding.failureTag !== null);
   // A2: "You can say" = verified AND client-safe AND unflagged. The count
   // and the list are one value.
@@ -1615,18 +1674,22 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     if (commitment) commitmentForFinding.set(finding.id, commitment);
   }
   const chases = clientChaseCount(input, state);
-  const actions = buildActions({
-    findings: sorted,
-    promises,
-    state,
-    actors: actorInfo.actors,
-    client,
-    contradictions,
-    openQuestions,
-    commitmentForFinding,
-    chases,
-  });
-  const headline = buildHeadline(input, sorted, state, openQuestions, counts, actions, chases);
+  const actions = crossTenant
+    ? []
+    : buildActions({
+        findings: sorted,
+        promises,
+        state,
+        actors: actorInfo.actors,
+        client,
+        contradictions,
+        openQuestions,
+        commitmentForFinding,
+        chases,
+      });
+  const headline = crossTenant
+    ? crossTenantHeadline(tenantCards)
+    : buildHeadline(input, sorted, state, openQuestions, counts, actions, chases);
   const audit = buildAudit(contradictions, sorted, input.notes, findingByEvent, client);
   const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
   const pillSummary = suppressPills
@@ -1643,6 +1706,9 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   return {
     title: cleanReportTitle(input.investigation.title),
     client,
+    tenantCards,
+    crossTenant,
+    declaredClient: input.investigation.declaredClient ?? null,
     actors: actorInfo.actors,
     findings: sorted,
     promises,
