@@ -403,12 +403,30 @@ function claimTypePriority(claim: Claim | undefined): number {
   return 5;
 }
 
-function verificationFor(claims: Claim[]): FindingVerification {
-  if (claims.length === 0) return "unverified";
-  if (claims.some((claim) => claim.verifyStatus === "unverified")) return "unverified";
-  if (claims.some((claim) => claim.verifyStatus === "supported")) return "supported";
-  if (claims.every((claim) => claim.verifyStatus === "verified")) return "verified";
-  return "unverified";
+/* A1: an event's claims are assertion clusters — the same statement restated
+   across investigators keeps its strongest verified state, and a supported
+   restatement never downgrades a verified one. Incompatible assertions
+   ("resolved" vs "still failing") raise a conflict instead of choosing. */
+const CLAIM_STATE_RANK: Record<FindingVerification, number> = {
+  verified: 3,
+  supported: 2,
+  unverified: 1,
+  rejected: 0,
+};
+
+function representativeVerification(claims: Claim[]): { state: FindingVerification; incompatible: boolean } {
+  let state: FindingVerification = "unverified";
+  for (const claim of claims) {
+    const rank = CLAIM_STATE_RANK[claim.verifyStatus] ?? 1;
+    if (rank > CLAIM_STATE_RANK[state]) state = claim.verifyStatus;
+  }
+  const positive = claims.some((claim) =>
+    /\b(?:marked|was|is|got)\s+(?:resolved|closed|fixed)|\b(?:resolved|fixed|verified|passed)\b/i.test(claim.text),
+  );
+  const negative = claims.some((claim) =>
+    /\bstill\s+(?:wrong|failing|blank|broken|open)|\bnot\s+(?:fixed|resolved|shipped)|\bdid not\s+(?:fix|ship)|\bQA\s+(?:still\s+)?(?:is\s+)?failing|unanswered|no reply/i.test(claim.text),
+  );
+  return { state, incompatible: positive && negative };
 }
 
 function kindFor(event: Event, claim: Claim | undefined): FindingKind {
@@ -1145,8 +1163,9 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     const status = event.text.match(STATUS_TRANSITION);
     const assignee = event.text.match(ASSIGNEE_TRANSITION);
     const actorName = actorIds.length > 0 ? actorsById.get(actorIds[0])?.name ?? null : null;
-    const verification = verificationFor(claims);
+    const { state: verification, incompatible } = representativeVerification(claims);
     const conflict =
+      incompatible ||
       claims.some((claim) => claim.skepticFlag) ||
       Boolean(commitment?.contested) ||
       input.notes.some(
@@ -1223,11 +1242,10 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     const quotes = [...new Set(group.flatMap((entry) => entry.quotes))];
     const actorIds = [...new Set(group.flatMap((entry) => entry.actorIds))];
     const conflict = group.some((entry) => entry.flags.includes("conflict")) || Boolean(commitment?.contested);
-    const verification = group.some((entry) => entry.verification === "unverified")
-      ? "unverified"
-      : group.some((entry) => entry.verification === "supported")
-        ? "supported"
-        : "verified";
+    // A1: the strongest state survives; restatements never downgrade.
+    const verification = group
+      .map((entry) => entry.verification)
+      .reduce((best, current) => (CLAIM_STATE_RANK[current] > CLAIM_STATE_RANK[best] ? current : best), "unverified" as FindingVerification);
     merged.push({
       ...representative,
       ts,
@@ -1302,18 +1320,26 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     } else {
       target.ts = target.ts;
     }
-    if (finding.verification === "unverified" && target.verification !== "unverified") {
-      target.verification = "unverified";
-    } else if (finding.verification === "supported" && target.verification === "verified") {
-      target.verification = "supported";
-    }
-    if (finding.pill === "conflict") {
-      target.pill = "conflict";
-      target.flags = ["conflict"];
-    } else if (finding.pill === "needs_check" && target.pill === null) {
-      target.pill = "needs_check";
-      target.flags = ["needs_check"];
-    }
+    // A1: the strongest state survives the merge; a supported restatement
+    // never downgrades a verified representative.
+    target.verification =
+      CLAIM_STATE_RANK[finding.verification] > CLAIM_STATE_RANK[target.verification]
+        ? finding.verification
+        : target.verification;
+    const mergedConflict =
+      finding.flags.includes("conflict") || target.flags.includes("conflict");
+    target.pill =
+      mergedConflict
+        ? "conflict"
+        : target.verification === "verified"
+          ? null
+          : "needs_check";
+    target.flags =
+      target.pill === "conflict"
+        ? ["conflict"]
+        : target.verification === "verified"
+          ? []
+          : ["needs_check"];
   }
 
   const sorted = deduped.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));

@@ -208,6 +208,33 @@ describe("role evidence (B4)", () => {
   });
 });
 
+describe("assertion clusters (A1)", () => {
+  it("a verified claim survives supported restatements on the same record", () => {
+    const events = [event({ id: "e-agg", ts: "2024-09-10T03:00:00.000Z", text: "Timezone change merged for release 4.12." })];
+    const claims = [
+      claim({ id: "c-strong", eventId: "e-agg", type: "root_cause", text: "The 4.12 timezone merge introduced the invoice defect.", verifyStatus: "verified", confidence: 0.9 }),
+      claim({ id: "c-weak-1", eventId: "e-agg", type: "root_cause", text: "The 4.12 timezone merge introduced the invoice defect.", verifyStatus: "supported", confidence: 0.5 }),
+      claim({ id: "c-weak-2", eventId: "e-agg", type: "root_cause", text: "The timezone merge introduced the invoice defect.", verifyStatus: "supported", confidence: 0.4 }),
+    ];
+    const model = buildReportModel(input({ events, claims }));
+    const finding = model.findings[0];
+    expect(finding.verification).toBe("verified");
+    expect(finding.claimIds.sort()).toEqual(["c-strong", "c-weak-1", "c-weak-2"]);
+    expect(model.counts.verified).toBe(model.findings.filter((f) => f.verification === "verified" && f.pill === null).length);
+    expect(finding.flags).not.toContain("conflict");
+  });
+
+  it("incompatible assertions on one record raise a conflict instead of choosing", () => {
+    const events = [event({ id: "e-conf", ts: "2024-09-10T03:00:00.000Z", text: "Timezone change merged for release 4.12." })];
+    const claims = [
+      claim({ id: "c-res", eventId: "e-conf", type: "ownership", text: "The ticket was marked resolved.", verifyStatus: "verified", confidence: 0.9 }),
+      claim({ id: "c-fail", eventId: "e-conf", type: "ownership", text: "The build is still failing QA on the same day.", verifyStatus: "supported", confidence: 0.7 }),
+    ];
+    const model = buildReportModel(input({ events, claims }));
+    expect(model.findings[0].flags).toContain("conflict");
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());
