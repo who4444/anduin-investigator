@@ -124,8 +124,73 @@ describeDb("agent tools", () => {
     expect(result.count).toBe(2);
     expect(result.items.map((item) => item.id)).toEqual([issueId, commentId]);
 
-    const missing = JSON.parse(await tools.exec("get_issue", { key: "MER-999" })) as { error?: string };
+    const missing = JSON.parse(await tools.exec("get_issue", { key: "MER-999" })) as {
+      error?: string;
+      status?: string;
+    };
     expect(missing.error).toMatch(/No stored issue/);
+    expect(missing.status).toBe("not_in_export");
+  });
+
+  it("distinguishes absent sources, excluded keys and empty results (I2)", async () => {
+    const { createInvestigation, insertEvents, setScope } = await import("../lib/store");
+    const bare = await createInvestigation({
+      title: `Tools bare ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(bare);
+    await insertEvents(bare, [
+      {
+        id: "e_test_jira_bare",
+        source: "jira",
+        ts: "2024-09-10T03:00:00.000Z",
+        actor: "Lin Chen",
+        channel: "MER-101",
+        text: "Timezone change merged for release 4.12.",
+        threadId: "MER-101",
+      },
+    ]);
+    const bareTools = buildAgentTools(bare, "root_cause");
+
+    // The source itself is not part of the export: never a zero-count absence.
+    const noSlack = JSON.parse(await bareTools.exec("search_slack", { query: "anything" })) as {
+      status?: string;
+      count?: number;
+    };
+    expect(noSlack.status).toBe("not_in_export");
+    expect(noSlack.count).toBe(0);
+
+    // The key exists in the registry but is excluded by scope: say so, with an add-back path.
+    await setScope(bare, {
+      client: "Other Client",
+      project: "Other",
+      ticketPrefixes: ["OTH"],
+      channels: [],
+      senderDomains: [],
+      confidence: "scoped",
+      anchors: [],
+    });
+    const excluded = JSON.parse(await bareTools.exec("get_issue", { key: "MER-101" })) as {
+      status?: string;
+      error?: string;
+    };
+    expect(excluded.status).toBe("excluded_by_scope");
+    expect(excluded.error).toMatch(/excluded|add it back/i);
+
+    // The source exists in scope but the query matches nothing: searched, empty.
+    const { setScope: clearScope } = await import("../lib/store");
+    await clearScope(bare, null);
+    const empty = JSON.parse(await bareTools.exec("search_jira", { query: "zzz-no-such-record" })) as {
+      status?: string;
+      count?: number;
+    };
+    expect(empty.status).toBe("empty");
+    expect(empty.count).toBe(0);
+
+    // A successful search carries an explicit ok status.
+    const ok = JSON.parse(await bareTools.exec("search_jira", { query: "4.12" })) as { status?: string };
+    expect(ok.status).toBe("ok");
   });
 
   it("search_slack searches text and channel", async () => {
@@ -388,8 +453,14 @@ describeDb("agent tools", () => {
       };
       expect(email.items.every((item) => item.actor.includes("northwind.example"))).toBe(true);
 
-      const kst = JSON.parse(await tools.exec("get_issue", { key: "KST-301" })) as { error?: string };
-      expect(kst.error).toMatch(/different client or project/);
+      const kst = JSON.parse(await tools.exec("get_issue", { key: "KST-301" })) as {
+        error?: string;
+        status?: string;
+      };
+      // I2: the key exists in the registry but is scoped away — an add-back,
+      // never a phony "not stored" or a scope guess about another client.
+      expect(kst.status).toBe("excluded_by_scope");
+      expect(kst.error).toMatch(/excluded by this investigation's scope/);
     } finally {
       await setScope(investigationId, null);
     }

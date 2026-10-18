@@ -21,28 +21,50 @@ export interface SourceCoverage {
   excludedEventIds: string[];
   searched: boolean;
   queries: string[];
+  /** The largest result count a search on this source returned. */
+  resultCount: number;
   /** Calls that were logged but returned errors instead of counts. */
   failedQueries: string[];
+  /** I2/F1: the honest five-state summary for this source (filled by buildCoverage). */
+  state?: CoverageState;
 }
 
-/* Coverage is three states, never two (G-02): "we searched and found it",
-   "we searched and it is absent", and "we never looked (excluded)". Copy
-   that collapses the last two into "no records" is a lie by omission. */
-export type CoverageState = "searched" | "not-searched-excluded" | "not-searched";
+/* Coverage states, never collapsed (G-02, F1): "we searched and found it",
+   "we searched and found nothing", "we never looked (excluded)",
+   "we never looked (available)", and "the source was not part of the
+   export". Copy that turns an unavailable source into an absence claim
+   is a lie. */
+export type CoverageState =
+  | "not-in-export"
+  | "available-not-searched"
+  | "searched-with-results"
+  | "searched-empty"
+  | "not-searched-excluded";
 
 export function coverageState(entry: SourceCoverage): CoverageState {
-  if (entry.searched) return "searched";
-  return entry.excluded > 0 ? "not-searched-excluded" : "not-searched";
+  if (entry.available === 0 && entry.excluded === 0) return "not-in-export";
+  if (entry.searched) {
+    return entry.queries.some((q) => q !== "" && entryHasResults(entry)) ? "searched-with-results" : "searched-empty";
+  }
+  return entry.excluded > 0 ? "not-searched-excluded" : "available-not-searched";
+}
+
+function entryHasResults(entry: SourceCoverage): boolean {
+  return entry.resultCount > 0;
 }
 
 export function coverageLabel(entry: SourceCoverage): string {
   switch (coverageState(entry)) {
-    case "searched":
+    case "searched-with-results":
       return `${entry.queries.length} quer${entry.queries.length === 1 ? "y" : "ies"}`;
+    case "searched-empty":
+      return `searched · no matches (${entry.queries.length} quer${entry.queries.length === 1 ? "y" : "ies"})`;
+    case "not-in-export":
+      return "not part of this export";
     case "not-searched-excluded":
       return `not searched · ${entry.excluded} excluded`;
     default:
-      return entry.available > 0 ? "never searched" : "no data";
+      return "never searched";
   }
 }
 
@@ -55,6 +77,7 @@ interface ToolCallLogEntry {
   name?: unknown;
   args?: unknown;
   resultCount?: unknown;
+  status?: unknown;
 }
 
 interface StageLogEntry {
@@ -110,6 +133,7 @@ export function buildCoverage(
 
   const searched = new Map<SourceKind, string[]>();
   const failed = new Map<SourceKind, string[]>();
+  const resultCounts = new Map<SourceKind, number>();
 
   const record = (entry: ToolCallLogEntry) => {
     if (typeof entry?.name !== "string") return;
@@ -120,10 +144,17 @@ export function buildCoverage(
         ? (entry.args as Record<string, unknown>)
         : {};
     const label = formatQuery(entry.name, args);
+    const status = typeof entry.status === "string" ? entry.status : undefined;
     // The tool loop logs a parsed result count for every call that returned
     // counts ({count: N}); calls whose result was an error carry none.
     const outcomeFailed = typeof entry.resultCount !== "number";
-    const target = outcomeFailed ? failed : searched;
+    if (!outcomeFailed && typeof entry.resultCount === "number") {
+      resultCounts.set(source, Math.max(resultCounts.get(source) ?? 0, entry.resultCount));
+    }
+    // I2: an absent source or a scope-excluded read examined no in-scope
+    // records — it is not a search and never yields an absence claim.
+    const blocked = status === "not_in_export" || status === "excluded_by_scope";
+    const target = outcomeFailed || blocked ? failed : searched;
     const list = target.get(source) ?? [];
     if (!list.includes(label)) list.push(label);
     target.set(source, list);
@@ -158,9 +189,15 @@ export function buildCoverage(
       excludedEventIds,
       searched: searched.has(source),
       queries: searched.get(source) ?? [],
+      resultCount: resultCounts.get(source) ?? 0,
       failedQueries: failed.get(source) ?? [],
+      state: "not-in-export",
     };
   });
+
+  for (const entry of sources) {
+    entry.state = coverageState(entry);
+  }
 
   const neverSearched = sources
     .filter((entry) => entry.available > 0 && !entry.searched)

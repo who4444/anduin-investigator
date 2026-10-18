@@ -215,15 +215,33 @@ function matchesQuery(event: Event, needle: string | undefined): boolean {
 }
 
 /* Search results are relevance-ordered (see ranking.ts), then capped; the
-   count and truncated flag describe the full match set, not the slice. */
+   count and truncated flag describe the full match set, not the slice.
+   I2: every result carries a structured status so absence is never faked —
+   "not in this export", "excluded by scope" and "searched, no matches" are
+   different answers. */
+export type ToolStatus = "ok" | "not_in_export" | "excluded_by_scope" | "empty" | "failed";
+
+interface Split {
+  all: Event[];
+  inScope: Event[];
+}
+
+function searchStatus(split: Split, matches: Event[]): ToolStatus {
+  if (split.all.length === 0) return "not_in_export";
+  if (split.inScope.length === 0) return "excluded_by_scope";
+  return matches.length === 0 ? "empty" : "ok";
+}
+
 function searchResult(
+  split: Split,
   matches: Event[],
   query: string | undefined,
-): { count: number; items: Record<string, unknown>[]; truncated: boolean } {
+): { status: ToolStatus; count: number; items: Record<string, unknown>[]; truncated: boolean } {
   // A ranked query orders by relevance; a bare listing shows the most
   // recent records first (the tools describe this as listing recent).
   const ordered = query && query.trim() ? rankEvents(matches, query) : [...matches].reverse();
   return {
+    status: searchStatus(split, matches),
     count: matches.length,
     items: ordered.slice(0, MAX_SEARCH_RESULTS).map((event) => compactEvent(event) as unknown as Record<string, unknown>),
     truncated: ordered.length > MAX_SEARCH_RESULTS,
@@ -306,14 +324,20 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
   // The registry may hold records for several clients and projects; when a
   // scope has been identified for this escalation, the tools only surface
   // records inside it (thread-aware, matching the report).
-  async function sourceItems(source: SourceKind): Promise<Event[]> {
+  // I2: availability is checked against the full registry, not just the scope,
+  // so a key that exists but was scoped away gets a different answer than a
+  // key that is not in the export at all.
+  async function sourceSplit(source: SourceKind): Promise<Split> {
     const [events, investigation] = await Promise.all([
       getEvents(investigationId),
       getInvestigation(investigationId),
     ]);
     const scope: InvestigationScope | null = investigation?.scope ?? null;
     const { inScope } = splitEventsByScope(events, scope, investigation?.scopeOverrides ?? []);
-    return inScope.filter((event) => event.source === source);
+    return {
+      all: events.filter((event) => event.source === source),
+      inScope: inScope.filter((event) => event.source === source),
+    };
   }
 
   async function exec(name: string, args: Record<string, unknown>): Promise<string> {
@@ -322,36 +346,58 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const query = asString(args.query);
         const from = asString(args.from);
         const to = asString(args.to);
-        const matches = (await sourceItems("jira")).filter(
+        const split = await sourceSplit("jira");
+        const matches = split.inScope.filter(
           (event) => matchesQuery(event, query) && matchesWindow(event, from, to),
         );
-        return JSON.stringify(searchResult(matches, query));
+        return JSON.stringify(searchResult(split, matches, query));
       }
 
       case "get_issue": {
         const key = asString(args.key);
         if (!key) return JSON.stringify({ error: "key is required." });
         const needle = key.toLowerCase();
-        const items = (await sourceItems("jira")).filter(
-          (event) => event.channel.toLowerCase() === needle,
-        );
+        const split = await sourceSplit("jira");
+        if (split.all.length === 0) {
+          return JSON.stringify({
+            status: "not_in_export",
+            count: 0,
+            items: [],
+            error: `The Jira source was not part of this export; no stored issue ${key}. No conclusion can be drawn from its absence.`,
+          });
+        }
+        const items = split.inScope.filter((event) => event.channel.toLowerCase() === needle);
         if (items.length === 0) {
-          const investigation = await getInvestigation(investigationId);
-          const scope = investigation?.scope ?? null;
-          if (
-            scope &&
-            scope.confidence !== "none" &&
-            !scope.ticketPrefixes.some((prefix) =>
-              key.toUpperCase().startsWith(`${prefix.toUpperCase()}-`),
-            )
-          ) {
+          // Full-registry check BEFORE the scope filter (I2): an excluded key
+          // is an add-back, an absent key is simply not in this export.
+          const inRegistry = split.all.filter((event) => event.channel.toLowerCase() === needle);
+          if (inRegistry.length > 0) {
             return JSON.stringify({
-              error: `No stored issue ${key} — it belongs to a different client or project than this investigation's scope.`,
+              status: "excluded_by_scope",
+              count: 0,
+              items: [],
+              error: `Issue ${key} exists in the registry but is excluded by this investigation's scope — the manager can add it back in the scope review.`,
             });
           }
-          return JSON.stringify({ error: `No stored issue ${key}.` });
+          const investigation = await getInvestigation(investigationId);
+          const scope = investigation?.scope ?? null;
+          const scopedProject = Boolean(
+            scope &&
+              scope.confidence !== "none" &&
+              !scope.ticketPrefixes.some((prefix) =>
+                key.toUpperCase().startsWith(`${prefix.toUpperCase()}-`),
+              ),
+          );
+          return JSON.stringify({
+            status: "not_in_export",
+            count: 0,
+            items: [],
+            error: scopedProject
+              ? `No stored issue ${key} — it is not in this export, and its project is outside this investigation's scope. Treat it as referenced but not available.`
+              : `No stored issue ${key} — it is not in this export. Treat it as referenced but not available.`,
+          });
         }
-        return JSON.stringify({ count: items.length, ...readCapped(items) });
+        return JSON.stringify({ status: "ok", count: items.length, ...readCapped(items) });
       }
 
       case "search_slack": {
@@ -359,23 +405,48 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const channel = asString(args.channel);
         const from = asString(args.from);
         const to = asString(args.to);
-        const matches = (await sourceItems("slack")).filter((event) => {
+        const split = await sourceSplit("slack");
+        const matches = split.inScope.filter((event) => {
           if (channel && event.channel.toLowerCase() !== channel.toLowerCase()) return false;
           return matchesQuery(event, query) && matchesWindow(event, from, to);
         });
-        return JSON.stringify(searchResult(matches, query));
+        return JSON.stringify(searchResult(split, matches, query));
       }
 
       case "get_slack_thread": {
         const channel = asString(args.channel);
         const ts = asString(args.ts);
         if (!channel) return JSON.stringify({ error: "channel is required." });
-        const slack = await sourceItems("slack");
+        const split = await sourceSplit("slack");
+        if (split.all.length === 0) {
+          return JSON.stringify({
+            status: "not_in_export",
+            count: 0,
+            items: [],
+            error: `The Slack source was not part of this export; no stored messages for ${channel}. No conclusion can be drawn from its absence.`,
+          });
+        }
+        const slack = split.inScope;
         const channelItems = slack.filter(
           (event) => event.channel.toLowerCase() === channel.toLowerCase(),
         );
         if (channelItems.length === 0) {
-          return JSON.stringify({ error: `No stored messages for channel ${channel}.` });
+          const inRegistry = split.all.filter(
+            (event) => event.channel.toLowerCase() === channel.toLowerCase(),
+          );
+          return inRegistry.length > 0
+            ? JSON.stringify({
+                status: "excluded_by_scope",
+                count: 0,
+                items: [],
+                error: `Channel ${channel} exists in the registry but is excluded by this investigation's scope — the manager can add it back in the scope review.`,
+              })
+            : JSON.stringify({
+                status: "not_in_export",
+                count: 0,
+                items: [],
+                error: `Channel ${channel} is not in this export.`,
+              });
         }
         // Models reach this tool with whatever a record showed: a Slack epoch,
         // an ISO timestamp, or an item id. Resolve all of them to a thread;
@@ -402,6 +473,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         }
         if (items.length === 0) {
           return JSON.stringify({
+            status: "ok",
             count: channelItems.length,
             note: ts
               ? `No stored thread matched ts "${ts}"; returning the stored messages for ${channel}.`
@@ -409,7 +481,7 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
             ...readCapped(channelItems),
           });
         }
-        return JSON.stringify({ count: items.length, ...readCapped(items) });
+        return JSON.stringify({ status: "ok", count: items.length, ...readCapped(items) });
       }
 
       case "search_email": {
@@ -417,26 +489,37 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const sender = asString(args.sender);
         const from = asString(args.from);
         const to = asString(args.to);
-        const matches = (await sourceItems("email")).filter((event) => {
+        const split = await sourceSplit("email");
+        const matches = split.inScope.filter((event) => {
           if (sender) {
             const haystack = `${event.actor} ${event.actorResolved ?? ""}`.toLowerCase();
             if (!haystack.includes(sender.toLowerCase())) return false;
           }
           return matchesQuery(event, query) && matchesWindow(event, from, to);
         });
-        return JSON.stringify(searchResult(matches, query));
+        return JSON.stringify(searchResult(split, matches, query));
       }
 
       case "get_email_thread": {
         const id = asString(args.id);
         if (!id) return JSON.stringify({ error: "id is required." });
-        const email = await sourceItems("email");
+        const split = await sourceSplit("email");
+        if (split.all.length === 0) {
+          return JSON.stringify({
+            status: "not_in_export",
+            count: 0,
+            items: [],
+            error: `The email source was not part of this export; no stored thread for ${id}. No conclusion can be drawn from its absence.`,
+          });
+        }
+        const email = split.inScope;
         const byItem = email.find((event) => event.id === id);
         const needle = normalizeThreadRef(byItem?.threadId ?? id);
         let items = email.filter((event) => event.threadId === needle);
         if (items.length === 0) items = email.filter((event) => event.threadId?.includes(needle));
-        if (items.length === 0) return JSON.stringify({ error: `No stored thread for ${id}.` });
-        return JSON.stringify({ count: items.length, ...readCapped(items) });
+        if (items.length === 0)
+          return JSON.stringify({ status: "empty", count: 0, items: [], error: `No stored thread for ${id}.` });
+        return JSON.stringify({ status: "ok", count: items.length, ...readCapped(items) });
       }
 
       case "verify_quote": {

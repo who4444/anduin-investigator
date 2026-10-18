@@ -208,7 +208,7 @@ describeDb("buildCoverage", () => {
   });
 });
 
-describe("coverage states (G-02)", () => {
+describe("coverage states (G-02, F1)", () => {
   const entry = (over: Partial<import("../lib/pipeline/coverage").SourceCoverage>) => ({
     source: "email" as const,
     available: 4,
@@ -216,26 +216,32 @@ describe("coverage states (G-02)", () => {
     excludedEventIds: [],
     searched: false,
     queries: [],
+    resultCount: 0,
     failedQueries: [],
     ...over,
   });
 
-  it("names the three states: searched, excluded, absent", async () => {
+  it("names the five states: searched with/without results, excluded, available, absent", async () => {
     const { coverageLabel, coverageState } = await import("../lib/pipeline/coverage");
 
-    const searched = entry({ searched: true, queries: ["search_email(\"totals\")"] });
-    expect(coverageState(searched)).toBe("searched");
+    const searched = entry({ searched: true, queries: ["search_email(\"totals\")"], resultCount: 2 });
+    expect(coverageState(searched)).toBe("searched-with-results");
     expect(coverageLabel(searched)).toBe("1 query");
+
+    const empty = entry({ searched: true, queries: ["search_email(\"zzz\")"], resultCount: 0 });
+    expect(coverageState(empty)).toBe("searched-empty");
+    expect(coverageLabel(empty)).toBe("searched · no matches (1 query)");
 
     const excluded = entry({ excluded: 256, excludedEventIds: ["x"] });
     expect(coverageState(excluded)).toBe("not-searched-excluded");
     expect(coverageLabel(excluded)).toBe("not searched · 256 excluded");
 
-    const absent = entry({ available: 0 });
-    expect(coverageState(absent)).toBe("not-searched");
-    expect(coverageLabel(absent)).toBe("no data");
+    const notInExport = entry({ available: 0 });
+    expect(coverageState(notInExport)).toBe("not-in-export");
+    expect(coverageLabel(notInExport)).toBe("not part of this export");
 
     const unsearched = entry({ available: 3 });
+    expect(coverageState(unsearched)).toBe("available-not-searched");
     expect(coverageLabel(unsearched)).toBe("never searched");
   });
 });

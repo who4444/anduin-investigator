@@ -809,7 +809,11 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
                   <li key={entry.source} className="row small">
                     <span className={`source-label source-${entry.source}`}>{entry.source}</span>
                     <span className="tabular">{entry.available} items</span>
-                    <span className={coverageState(entry) === "searched" ? "muted" : "activity-result"}>
+                    <span
+                      className={
+                        coverageState(entry).startsWith("searched") ? "muted" : "activity-result"
+                      }
+                    >
                       {coverageLabel(entry)}
                     </span>
                     {entry.failedQueries.length > 0 && (
