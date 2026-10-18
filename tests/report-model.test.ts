@@ -235,6 +235,29 @@ describe("assertion clusters (A1)", () => {
   });
 });
 
+describe("client-safe classification (A2)", () => {
+  it("process and refute-marked findings never enter You can say", () => {
+    const events = [
+      event({ id: "e-cov", ts: "2024-09-10T03:00:00.000Z", text: "Coverage was thin during the failure window." }),
+      event({ id: "e-cause", ts: "2024-09-10T04:00:00.000Z", text: "Timezone change merged for release 4.12." }),
+    ];
+    const claims = [
+      claim({ id: "c-cov", eventId: "e-cov", type: "process_failure", text: "Coverage was thin during the failure window.", quote: "Coverage was thin during the failure window.", verifyStatus: "verified", confidence: 0.9 }),
+      claim({ id: "c-refuted", eventId: "e-cause", type: "root_cause", text: "The UTC merge caused the wrong totals.", quote: "Timezone change merged for release 4.12.", verifyStatus: "supported", verifyError: "entailment_refutes", confidence: 0.8 }),
+      claim({ id: "c-narrow", eventId: "e-cause", type: "root_cause", text: "The timezone change merged for release 4.12.", quote: "Timezone change merged for release 4.12.", verifyStatus: "verified", confidence: 0.85 }),
+    ];
+    const model = buildReportModel(input({ events, claims }));
+    const covFinding = model.findings.find((f) => f.eventIds.includes("e-cov"));
+    const causeFinding = model.findings.find((f) => f.eventIds.includes("e-cause"));
+    expect(covFinding?.clientSafe).toBe(false);
+    expect(covFinding?.verification).toBe("verified");
+    // The refuted claim must not represent the cause finding.
+    expect(causeFinding?.verification).toBe("verified");
+    expect(model.counts.verified).toBe(1);
+    expect(model.verifiedFindings.map((f) => f.id)).toEqual([causeFinding?.id]);
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());

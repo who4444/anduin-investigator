@@ -12,6 +12,10 @@ import type { CoverageReport } from "../pipeline/coverage";
 import { buildCaseState } from "./case-state";
 import { rankGaps, type GapTag } from "./gaps";
 
+/* A2: a quote that was judged to REFUTE its claim is not a soft "needs check"
+   — the quote does not support the claim at all. */
+const NEGATIVE_REFUTE_ERRORS = new Set(["entailment_refutes"]);
+
 /* The report revision brief: one normalized model is the source of truth for
    the page. Every count, role, state card, story sentence and compact link is
    computed here; components render this object and never re-derive facts from
@@ -62,6 +66,8 @@ export interface ReportFindingModel {
   quotes: string[];
   eventIds: string[];
   verification: FindingVerification;
+  /** A2: whether a manager may repeat this to the client. */
+  clientSafe: boolean;
   importance: FindingImportance;
   flags: FindingFlag[];
   /** Exactly one exception pill; verified findings have null. */
@@ -657,13 +663,28 @@ function buildActors(input: ReportModelInput): {
 }
 
 function chooseRepresentative(claims: Claim[], event: Event): Claim | undefined {
+  // A2: a claim whose quote was judged not to support it (entailment_refutes)
+  // never represents the finding while a cleaner claim exists.
+  const refuted = (claim: Claim | undefined): number =>
+    claim && NEGATIVE_REFUTE_ERRORS.has(claim.verifyError ?? "") ? 1 : 0;
   return [...claims].sort((a, b) => {
+    const refuteRank = refuted(a) - refuted(b);
+    if (refuteRank !== 0) return refuteRank;
     const priority = claimTypePriority(a) - claimTypePriority(b);
     if (priority !== 0) return priority;
     const verified = Number(a.verifyStatus === "verified") - Number(b.verifyStatus === "verified");
     if (verified !== 0) return -verified;
     return (a.ts ?? event.ts).localeCompare(b.ts ?? event.ts);
   })[0];
+}
+
+/* A2: what a manager may repeat to the client. Cause, fix, promise and
+   client-visible status/communication are safe; process, coverage,
+   ownership and internal-decision findings are not. */
+function clientSafeFor(kind: FindingKind, text: string): boolean {
+  if (kind === "technical_finding" || kind === "promise" || kind === "status_change") return true;
+  if (kind === "communication") return /\bclient\b/i.test(text);
+  return false;
 }
 
 function buildClientModel(input: ReportModelInput): ReportClientModel {
@@ -1176,6 +1197,10 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     const flags: FindingFlag[] = [];
     if (conflict) flags.push("conflict");
     if (verification !== "verified" && !conflict) flags.push("needs_check");
+    // A2: a refuted representative is never a verified fact — label it.
+    const representativeRefuted =
+      Boolean(representative && NEGATIVE_REFUTE_ERRORS.has(representative.verifyError ?? ""));
+    if (representativeRefuted) flags.push("needs_check");
     const pill = conflict ? "conflict" : verification === "verified" ? null : "needs_check";
     const importance: FindingImportance =
       kind === "process_failure" || kind === "technical_finding" || conflict || (kind === "promise" && commitment?.status === "broken")
@@ -1213,6 +1238,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
       failureTag: failureTagFor(kind, text),
       promiseStatus: isPromiseFinding ? promiseStatusFor(representative, commitment) : null,
       deadline: commitment?.deadlinePhrase ?? null,
+      clientSafe: clientSafeFor(kind, text),
       sourceCount: 1,
     });
   }
@@ -1280,7 +1306,10 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
       const bothQuoted = candidate.quotes.length > 0 && finding.quotes.length > 0;
       const similar =
         textSimilarity >= 0.55 ||
-        (bothQuoted && (quoteSimilarity >= 0.5 || (sharedTicket && quoteSimilarity >= 0.45)));
+        // Identical quotes alone must not merge textually unrelated findings:
+        // the texts still have to overlap for this to be one restatement.
+        (bothQuoted && quoteSimilarity >= 0.5 && textSimilarity >= 0.25) ||
+        (bothQuoted && sharedTicket && quoteSimilarity >= 0.45);
       // Same person restating the same point in Jira and Slack within a short
       // window is one finding; quote/ticket overlap is the disambiguator when
       // the agent's paraphrases differ ("confirmed" vs "assessed as likely").
@@ -1355,7 +1384,11 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   const openQuestions = buildOpenQuestions(input, state, client, findingByEvent, sorted);
   const promises = sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
   const failures = sorted.filter((finding) => finding.failureTag !== null);
-  const verifiedFindings = sorted.filter((finding) => finding.verification === "verified" && finding.pill === null);
+  // A2: "You can say" = verified AND client-safe AND unflagged. The count
+  // and the list are one value.
+  const verifiedFindings = sorted.filter(
+    (finding) => finding.verification === "verified" && finding.pill === null && finding.clientSafe,
+  );
   const withheldVerified = sorted.filter((finding) => finding.verification === "verified" && finding.pill !== null);
   const flagged = sorted.filter((finding) => finding.pill !== null);
   const counts: ReportCounts = {
