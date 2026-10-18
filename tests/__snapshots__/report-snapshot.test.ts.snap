@@ -223,16 +223,13 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     },
     {
       "claimIds": [],
-      "detail": "after Marcus Webb <marcus.webb@meridian.example>'s email record",
-      "determined": true,
-      "eventIds": [
-        "f3-email",
-        "f3-qa",
-      ],
+      "detail": "No gap of three days or more between incident-relevant records.",
+      "determined": false,
+      "eventIds": [],
       "id": "longestSilence",
       "judgment": false,
-      "label": "Longest silence in the cited record",
-      "value": "3 days",
+      "label": "Longest silence in the incident record",
+      "value": "not determined",
     },
     {
       "claimIds": [],
@@ -576,7 +573,7 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
     },
     {
       "claimIds": [],
-      "detail": "after Lin Chen's jira record",
+      "detail": "2024-09-10 → 2024-09-26 — the one incident-relevant computation (C5)",
       "determined": true,
       "eventIds": [
         "f1-jira",
@@ -584,7 +581,7 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
       ],
       "id": "longestSilence",
       "judgment": false,
-      "label": "Longest silence in the cited record",
+      "label": "Longest silence in the incident record",
       "value": "16 days",
     },
     {

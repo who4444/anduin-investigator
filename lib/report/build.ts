@@ -3,7 +3,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
 import { buildCaseState, type CaseState } from "./case-state";
-import { incidentRelevantEventIds } from "./silence";
+import { computeSilences, incidentRelevantEventIds } from "./silence";
 import { decodeEntities } from "../ingest/entities";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
@@ -495,36 +495,35 @@ export function buildMetrics(input: ReportInput): Metric[] {
     eventIds: promiseEventIds,
   });
 
-  // 4. longest silence in the cited record (noise events must not set it)
-  const orderedEvents = sortedByTs(citedEvents.map((entry) => entry.event));
-  let longest: { from: Event; to: Event; days: number } | null = null;
-  for (let index = 1; index < orderedEvents.length; index += 1) {
-    const from = orderedEvents[index - 1];
-    const to = orderedEvents[index];
-    const days = daysBetween(from.ts, to.ts);
-    if (!longest || days > longest.days) longest = { from, to, days };
-  }
-  if (longest && longest.days >= SILENCE_THRESHOLD_DAYS) {
+  // 4. longest silence — C5: the ONE computation over incident-relevant
+  // records; the metric projects its project window.
+  const silences = computeSilences({
+    events,
+    claims: input.claims,
+    commitments: input.commitments,
+  });
+  const longest = silences.project;
+  if (longest) {
     metrics.push({
       id: "longestSilence",
-      label: "Longest silence in the cited record",
+      label: "Longest silence in the incident record",
       value: formatDays(longest.days),
-      detail: `after ${longest.from.actor}'s ${longest.from.source} record`,
+      detail: `${longest.from.slice(0, 10)} → ${longest.to.slice(0, 10)} — the one incident-relevant computation (C5)`,
       judgment: false,
       determined: true,
       claimIds: [],
-      eventIds: [longest.from.id, longest.to.id],
+      eventIds: [longest.fromEventId ?? "", longest.toEventId ?? ""].filter(Boolean),
     });
   } else {
     metrics.push({
       id: "longestSilence",
-      label: "Longest silence in the cited record",
-      value: longest ? formatDays(longest.days) : "not determined",
-      detail: "No gap of three days or more between cited records.",
+      label: "Longest silence in the incident record",
+      value: "not determined",
+      detail: "No gap of three days or more between incident-relevant records.",
       judgment: false,
-      determined: Boolean(longest),
+      determined: false,
       claimIds: [],
-      eventIds: longest ? [longest.from.id, longest.to.id] : [],
+      eventIds: [],
     });
   }
 

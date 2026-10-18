@@ -1,4 +1,5 @@
 import type { Claim, Commitment, Event, SourceKind } from "../types";
+import { computeSilences } from "./silence";
 import {
   buildLedger,
   buildSilences,
@@ -277,6 +278,8 @@ export function buildBriefing(input: {
   // shorten or lengthen the gap a manager sees.
   const citedEventIds = new Set(claims.map((claim) => claim.eventId));
   const citedEvents = events.filter((event) => citedEventIds.has(event.id));
+  // C5: the narrative's silence reads the ONE computation, not its own pass.
+  const oneSilence = computeSilences({ events: citedEvents.length > 1 ? citedEvents : events, claims }).project;
   const rawSilences = buildSilences(citedEvents.length > 1 ? citedEvents : events);
   const silences: BriefingSilence[] = rawSilences.map((silence) => {
     const quietSources = (["jira", "email", "slack"] as SourceKind[]).filter(
@@ -395,7 +398,7 @@ export function buildBriefing(input: {
   const storyClaims = ordered.map((entry) => entry.claim);
   const flagged = storyClaims.filter((claim) => claim.skepticFlag).length;
   const supportedCount = storyClaims.filter((claim) => claim.verifyStatus === "supported").length;
-  const longestSilence = silences.reduce((longest, silence) => Math.max(longest, silence.days), 0);
+  const longestSilence = Math.max(oneSilence?.days ?? 0, ...silences.map((silence) => silence.days));
 
   const narrativeParts: string[] = [];
   if (eventsOut.length === 0) {

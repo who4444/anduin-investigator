@@ -10,6 +10,7 @@ import type {
 import { isPromiseLike } from "../pipeline/commitments";
 import type { CoverageReport } from "../pipeline/coverage";
 import { buildCaseState } from "./case-state";
+import { computeSilences, type Silences } from "./silence";
 import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
 import { rankGaps, type GapTag } from "./gaps";
 
@@ -187,6 +188,8 @@ export interface ReportModel {
   questionCounts: QuestionCounts;
   /** C3: deterministic contradiction detectors (the audit's first rows). */
   contradictions: Contradiction[];
+  /** C5: all three silence windows from the one computation. */
+  silences: Silences;
   headline: ReportHeadline;
   verifiedFindings: ReportFindingModel[];
   /** Verified in code but excluded from safe copy because a conflict pill applies. */
@@ -886,26 +889,31 @@ function buildOpenQuestions(
     .map((group, index) => ({ ...group, id: `q_${index + 1}` }));
 }
 
-function computeSilence(events: Event[]): ReportSilence | null {
-  const ordered = [...events]
-    .map((event) => ({ event, time: Date.parse(event.ts) }))
-    .filter((entry) => Number.isFinite(entry.time))
-    .sort((a, b) => a.time - b.time);
-  if (ordered.length < 2) return null;
-  let best: ReportSilence | null = null;
-  for (let index = 1; index < ordered.length; index += 1) {
-    const days = Math.floor((ordered[index].time - ordered[index - 1].time) / 86_400_000);
-    if (days < 3) continue;
-    if (!best || days > best.days) {
-      best = {
-        from: ordered[index - 1].event.ts,
-        to: ordered[index].event.ts,
-        days,
-        label: `${days} days, no recorded activity`,
-      };
-    }
-  }
-  return best;
+function computeSilence(
+  input: ReportModelInput,
+): { headline: ReportSilence | null; full: Silences } {
+  // C5: the ONE silence computation. The model exposes all three windows and
+  // projects the decision-impact headline for the compat field.
+  const full = computeSilences({
+    events: input.events,
+    claims: input.claims,
+    commitments: input.commitments,
+    gaps: input.gaps,
+    notes: input.notes,
+    clientEvidence: (input.clientDomains ?? []).length + (input.clientActors ?? []).length > 0
+      ? {
+          domains: (input.clientDomains ?? []).map((domain) => domain.toLowerCase()),
+          actors: input.clientActors ?? [],
+          channels: [],
+          threads: [],
+          eventIds: [],
+        }
+      : undefined,
+  });
+  const headline = full.headline
+    ? { from: full.headline.from, to: full.headline.to, days: full.headline.days, label: full.headline.label }
+    : null;
+  return { headline, full };
 }
 
 function buildState(
@@ -1461,6 +1469,8 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
       ? "Process failures are judged against generic norms; no client SLA is recorded for this project."
       : null;
 
+  const silence = computeSilence(input);
+
   return {
     title: cleanReportTitle(input.investigation.title),
     client,
@@ -1477,7 +1487,8 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     withheldVerified,
     actions,
     openQuestions,
-    silence: computeSilence(input.events),
+    silence: silence.headline,
+    silences: silence.full,
     audit,
     suppressPills,
     pillSummary,

@@ -1,4 +1,12 @@
-import type { Claim, Commitment, Event, Gap, SkepticNote } from "../types";
+import type { Claim, Commitment, Event, Gap, SkepticNote, SourceKind } from "../types";
+
+export interface ClientEvidenceInput {
+  domains: string[];
+  actors: string[];
+  channels: string[];
+  threads: string[];
+  eventIds: string[];
+}
 
 /* Shared record patterns. The case-state builder and the silence computation
    must agree on what counts as a status/assignee transition and a delivery. */
@@ -55,4 +63,131 @@ export function incidentRelevantEventIds(input: {
     }
   }
   return relevant;
+}
+
+/* ---- C5: the one silence computation ---- */
+
+export interface SilenceWindow {
+  from: string;
+  to: string;
+  days: number;
+  label: string;
+  /** The records bounding the window (for citations). */
+  fromEventId?: string;
+  toEventId?: string;
+}
+
+export interface Silences {
+  /** Last client message → first vendor reply after it (or the horizon). */
+  clientWait: (SilenceWindow & { clientActor: string; kind: "clientWait" }) | null;
+  /** Longest gap between incident-relevant records. */
+  project: (SilenceWindow & { kind: "project" }) | null;
+  /** Longest gap per source among incident-relevant records. */
+  bySource: Partial<Record<SourceKind, SilenceWindow & { kind: string }>>;
+  /** The decision-impact headline: the client wait first, else the longest. */
+  headline: (SilenceWindow & { kind: "clientWait" | "project" | "source" }) | null;
+}
+
+const DAY_MS = 86_400_000;
+const MINIMUM_DAYS = 3;
+
+function normalizedActorName(value: string | null | undefined): string {
+  return (value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function isClientEvidenceEvent(event: Event, evidence?: ClientEvidenceInput): boolean {
+  if (!evidence) return false;
+  if (evidence.eventIds.includes(event.id)) return true;
+  const actor = event.actorResolved ?? event.actor;
+  const domain = actor.match(/@([A-Za-z0-9.-]+)/)?.[1]?.toLowerCase();
+  if (domain && evidence.domains.includes(domain)) return true;
+  return evidence.actors.includes(normalizedActorName(actor));
+}
+
+function longestGap(records: Event[], label: string): SilenceWindow | null {
+  let best: { from: Event; to: Event; days: number } | null = null;
+  for (let index = 1; index < records.length; index += 1) {
+    const days = Math.floor(
+      (Date.parse(records[index].ts) - Date.parse(records[index - 1].ts)) / DAY_MS,
+    );
+    if (days < MINIMUM_DAYS) continue;
+    if (!best || days > best.days) {
+      best = { from: records[index - 1], to: records[index], days };
+    }
+  }
+  if (!best) return null;
+  return {
+    from: best.from.ts,
+    to: best.to.ts,
+    days: best.days,
+    fromEventId: best.from.id,
+    toEventId: best.to.id,
+    label: `${best.days} days, no incident activity — ${label} (between ${best.from.ts.slice(0, 10)} and ${best.to.ts.slice(0, 10)}; the records in between contain no incident activity)`,
+  };
+}
+
+/** The ONE silence computation (C5): incident-relevant records only; the
+    client wait, the project silence and per-source silences are distinct
+    windows from the same object — never conflated. */
+export function computeSilences(input: {
+  events: Event[];
+  claims: Claim[];
+  commitments?: Commitment[];
+  gaps?: Gap[];
+  notes?: SkepticNote[];
+  clientEvidence?: ClientEvidenceInput;
+}): Silences {
+  const relevant = incidentRelevantEventIds(input);
+  const ordered = [...input.events]
+    .filter((event) => relevant.has(event.id))
+    .sort((a, b) => (a.ts < b.ts ? -1 : 1));
+
+  const project = ordered.length >= 2 ? (longestGap(ordered, "the incident timeline") ? { ...longestGap(ordered, "the incident timeline")!, kind: "project" as const } : null) : null;
+
+  const bySource: Silences["bySource"] = {};
+  const sources: SourceKind[] = ["jira", "email", "slack"];
+  for (const source of sources) {
+    const perSource = ordered.filter((event) => event.source === source);
+    if (perSource.length >= 2) {
+      const window = longestGap(perSource, `the ${source} record`);
+      if (window) bySource[source] = { ...window, kind: "source" };
+    }
+  }
+
+  let clientWait: Silences["clientWait"] = null;
+  if (input.clientEvidence) {
+    const lastClient = [...ordered].reverse().find((event) => isClientEvidenceEvent(event, input.clientEvidence));
+    if (lastClient) {
+      const replyAfter = ordered.find((event) => event.ts > lastClient.ts && !isClientEvidenceEvent(event, input.clientEvidence));
+      const end = replyAfter?.ts ?? ordered[ordered.length - 1]?.ts ?? lastClient.ts;
+      const days = Math.max(0, Math.floor((Date.parse(end) - Date.parse(lastClient.ts)) / DAY_MS));
+      clientWait = {
+        from: lastClient.ts,
+        to: end,
+        days,
+        label: `${days} day${days === 1 ? "" : "s"} since the client's last message without a vendor reply`,
+        clientActor: normalizedActorName(lastClient.actorResolved ?? lastClient.actor),
+        kind: "clientWait",
+      };
+    }
+  }
+
+  let headline: Silences["headline"] = null;
+  if (clientWait) {
+    headline = { ...clientWait };
+  } else if (project) {
+    headline = { ...project, kind: "project" };
+  } else {
+    const longestSource = (Object.values(bySource) as (SilenceWindow & { kind: string })[])
+      .sort((a, b) => b.days - a.days)[0];
+    if (longestSource) headline = { ...longestSource, kind: "source" };
+  }
+
+  return { clientWait, project, bySource, headline };
 }

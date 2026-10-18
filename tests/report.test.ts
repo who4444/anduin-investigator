@@ -155,8 +155,8 @@ describe("report metrics", () => {
     expect(byId.get("window")).toMatchObject({ determined: true, value: "17 days" });
     expect(byId.get("firstResponse")).toMatchObject({ determined: true });
     expect(byId.get("commitments")).toMatchObject({ value: "1 of 1 broken" });
-    // Cited records only: uncited registry noise no longer shortens the gap.
-    expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "15 days" });
+    // C5: one incident-relevant computation; noise never sets the window.
+    expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "13 days" });
     // B5: only client evidence counts chases — the engineer's e1→e2 run is
     // never a chase, the client's e6→e7 run is.
     expect(byId.get("chasers")).toMatchObject({ determined: true, value: "2 from Priya Nair", eventIds: ["e6", "e7"] });
