@@ -12,7 +12,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import { buildCaseState } from "./case-state";
 import { computeSilences, type Silences } from "./silence";
 import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
-import { rankGaps, type GapTag } from "./gaps";
+import { rankGaps, type GapCategory, type GapTag } from "./gaps";
 
 /* A2: a quote that was judged to REFUTE its claim is not a soft "needs check"
    — the quote does not support the claim at all. */
@@ -755,52 +755,53 @@ function buildAudit(
   return rows.slice(0, 8);
 }
 
-const OPEN_THEMES: { match: RegExp; theme: string; nextStep: string; impact: number }[] = [
-  {
-    match: /not[- ]searched|never[- ]searched|search log|lookup|query|source lookup|excluded|unsearched|coverage/i,
-    theme: "Coverage and evidence",
-    nextStep: "Connect the missing source or widen the scope, then re-run the investigation.",
-    impact: 5,
-  },
-  {
-    match: /which client|client and project|customer and project|project scope|identif|roster|confirm/i,
+/* C6: question grouping is by STRUCTURED category, never a text regex.
+   Each category carries its own explicit next step. */
+const CATEGORY_THEMES: Record<GapCategory, { theme: string; nextStep: string; impact: number }> = {
+  scope: {
     theme: "Client and project",
     nextStep: "Confirm the client and project in the notice above, then re-check the role-dependent cards.",
     impact: 5,
   },
-  {
-    match: /own(?:er|ed|s)?|assignee|handoff|leave|rota|coverage/i,
-    theme: "Ownership and handoff",
-    nextStep: "Ask the delivery lead who owned the ticket after the handoff and when it was reassigned.",
+  coverage: {
+    theme: "Coverage and evidence",
+    nextStep: "Connect the missing source or widen the scope, then re-run the investigation.",
     impact: 5,
   },
-  {
-    match: /technical cause|technical change|root cause|what caused/i,
+  state: {
+    theme: "Current state",
+    nextStep: "Ask the delivery lead for the ticket's latest status and assignee.",
+    impact: 4,
+  },
+  technical: {
     theme: "Technical cause",
     nextStep: "Ask the engineer for the failing reproduction or the change that introduced the defect.",
     impact: 4,
   },
-  {
-    match: /release|deploy|build|version|ship|fix|rollout|cause|root|technical|change/i,
-    theme: "Delivery and technical cause",
-    nextStep: "Ask the release manager for the deploy log, or the engineer for the failing reproduction.",
+  commitment: {
+    theme: "Promises and deadlines",
+    nextStep: "Ask the promise owner for the delivery evidence or a new date.",
     impact: 4,
   },
-  {
-    match: /reply|respond|told|email|call|chase|unanswered|communica|hear|client/i,
+  communication: {
     theme: "Client communication",
     nextStep: "Ask the account manager what the client was told, then search the outbound mailbox.",
     impact: 4,
   },
-];
+  ownership: {
+    theme: "Ownership and handoff",
+    nextStep: "Ask the delivery lead who owned the ticket after the handoff and when it was reassigned.",
+    impact: 5,
+  },
+  other: {
+    theme: "Other open questions",
+    nextStep: "Ask the team what else the records do not settle.",
+    impact: 3,
+  },
+};
 
-function themeFor(question: string): (typeof OPEN_THEMES)[number] {
-  return OPEN_THEMES.find((theme) => theme.match.test(question)) ?? OPEN_THEMES[0];
-}
-
-function nextStepFor(_question: string, theme: (typeof OPEN_THEMES)[number]): string {
-  return theme.nextStep;
-}
+const MAX_QUESTION_GROUPS = 8;
+const MAX_RAW_QUESTIONS = 24;
 
 function buildOpenQuestions(
   input: ReportModelInput,
@@ -810,55 +811,69 @@ function buildOpenQuestions(
   allFindings: ReportFindingModel[],
 ): OpenQuestionGroup[] {
   const ranked = rankGaps(input.gaps, input.coverage);
-  const questions: { question: string; note: string; gapIds: string[]; findingIds: string[]; impact: number }[] =
+  const questions: { question: string; note: string; gapIds: string[]; findingIds: string[]; impact: number; category: GapCategory }[] =
     ranked.map((gap) => ({
       question: gap.question,
       note: gap.note,
       gapIds: [gap.id],
       findingIds: [...new Set(gap.eventIds.map((eventId) => findingByEvent.get(eventId)?.id).filter((id): id is string => Boolean(id)))],
       impact: gap.tag === "not-searched" ? 5 : gap.tag === "conflicting" ? 4 : gap.rank + 2,
+      // C6: the structured category from the write; legacy rows fall back
+      // deterministically (never a text regex).
+      category: gap.category ?? "other",
     }));
 
   const addUnknown = (
     question: string,
     impact: number,
     related: string[] = [],
+    category: GapCategory = "state",
   ) => {
     const key = question.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     if (questions.some((entry) => entry.question.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === key)) return;
-    questions.push({ question, note: "", gapIds: [], findingIds: related, impact });
+    questions.push({ question, note: "", gapIds: [], findingIds: related, impact, category });
   };
 
   if (!client.clientKnown) {
-    addUnknown("Which client and project does this escalation concern?", 5, allFindings.slice(0, 1).map((f) => f.id));
+    addUnknown("Which client and project does this escalation concern?", 5, allFindings.slice(0, 1).map((f) => f.id), "scope");
   }
   if (!state.owner.known) {
-    addUnknown("Who owned the ticket after the status changed?", 5, state.currentStatus.basis);
+    addUnknown("Who owned the ticket after the status changed?", 5, state.currentStatus.basis, "ownership");
   }
   if (!state.latestFix.known) {
-    addUnknown("Which change actually fixed the problem?", 4, state.currentStatus.basis.length ? state.currentStatus.basis : allFindings.slice(0, 1).map((f) => f.id));
+    addUnknown("Which change actually fixed the problem?", 4, state.currentStatus.basis.length ? state.currentStatus.basis : allFindings.slice(0, 1).map((f) => f.id), "technical");
   }
   if (!state.lastClientContact.known) {
-    addUnknown("What did the client hear, and when?", 4, allFindings.slice(-1).map((f) => f.id));
+    addUnknown("What did the client hear, and when?", 4, allFindings.slice(-1).map((f) => f.id), "communication");
   }
   if (!allFindings.some((finding) => finding.failureTag === "technical" || finding.kind === "technical_finding")) {
-    addUnknown("What technical change caused the problem?", 4, state.currentStatus.basis.length ? state.currentStatus.basis : allFindings.slice(0, 1).map((finding) => finding.id));
+    addUnknown("What technical change caused the problem?", 4, state.currentStatus.basis.length ? state.currentStatus.basis : allFindings.slice(0, 1).map((finding) => finding.id), "technical");
   }
   const never = input.coverage?.neverSearched ?? [];
   for (const source of never) {
-    addUnknown(`Was the answer in ${source}?`, 3, allFindings.slice(0, 1).map((f) => f.id));
+    addUnknown(`Was the answer in ${source}?`, 3, allFindings.slice(0, 1).map((f) => f.id), "coverage");
   }
   if (never.length === 0 && !client.clientKnown) {
-    addUnknown("Were Slack or other channels searched for the missing context?", 3, allFindings.slice(0, 1).map((f) => f.id));
+    addUnknown("Were Slack or other channels searched for the missing context?", 3, allFindings.slice(0, 1).map((f) => f.id), "coverage");
   }
 
+  // Dedupe questions by normalized meaning before grouping (C6).
+  const seenMeanings = new Set<string>();
+  const deduped = questions.filter((entry) => {
+    const meaning = entry.question.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (seenMeanings.has(meaning)) return false;
+    seenMeanings.add(meaning);
+    return true;
+  });
   const groups = new Map<string, OpenQuestionGroup>();
-  for (const entry of questions) {
-    const theme = themeFor(entry.question);
+  for (const entry of deduped) {
+    const theme = CATEGORY_THEMES[entry.category];
     const existing = groups.get(theme.theme);
     if (existing) {
-      existing.questions.push(entry.question);
-      existing.count += 1;
+      if (existing.questions.length < MAX_RAW_QUESTIONS) {
+        existing.questions.push(entry.question);
+        existing.count += 1;
+      }
       existing.impact = Math.max(existing.impact, entry.impact);
       existing.gapIds.push(...entry.gapIds);
       existing.findingIds.push(...entry.findingIds);
@@ -869,7 +884,7 @@ function buildOpenQuestions(
       theme: theme.theme,
       question: entry.question,
       questions: [entry.question],
-      nextStep: nextStepFor(entry.question, theme),
+      nextStep: theme.nextStep,
       impact: entry.impact,
       gapIds: [...entry.gapIds],
       findingIds: [...new Set(entry.findingIds)],
@@ -885,7 +900,7 @@ function buildOpenQuestions(
 
   return [...groups.values()]
     .sort((a, b) => b.impact - a.impact || a.theme.localeCompare(b.theme))
-    .slice(0, 8)
+    .slice(0, MAX_QUESTION_GROUPS)
     .map((group, index) => ({ ...group, id: `q_${index + 1}` }));
 }
 

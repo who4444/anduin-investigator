@@ -1,4 +1,18 @@
 import type { Gap } from "../types";
+
+/** C6: the structured categories an agent may set. */
+export type GapCategory = import("../types").GapCategory;
+
+export const GAP_CATEGORIES: GapCategory[] = [
+  "scope",
+  "coverage",
+  "state",
+  "technical",
+  "commitment",
+  "communication",
+  "ownership",
+  "other",
+];
 import type { CoverageReport } from "../pipeline/coverage";
 
 /* G-11: gaps ranked by decision impact, deduped, tagged, and cleaned of
@@ -7,6 +21,8 @@ import type { CoverageReport } from "../pipeline/coverage";
 export type GapTag = "not-searched" | "conflicting" | "searched-absent" | "open";
 
 export interface RankedGap {
+  /** C6: the write-time category, when the row has one. */
+  category?: GapCategory;
   id: string;
   question: string;
   note: string;
@@ -89,7 +105,7 @@ export function rankGaps(gaps: Gap[], coverage?: CoverageReport): RankedGap[] {
     // same-tagged guess: the manager can act on it directly.
     if (coverage && coverage.neverSearched.length > 0 && tag === "not-searched") rank += 1;
 
-    ranked.push({ id: gap.id, question, note, tag, rank, eventIds: gap.eventIds });
+    ranked.push({ id: gap.id, question, note, tag, rank, eventIds: gap.eventIds, category: gap.category ?? undefined });
   }
 
   return ranked.sort((a, b) => b.rank - a.rank);

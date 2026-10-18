@@ -324,9 +324,9 @@ describeDb("three-state verification", () => {
       rejected: 2,
       total: 6,
       flagged: 0,
-      // A3: the labelled open-question pair travels with the briefing.
+      // A3/C6: the labelled open-question pair travels with the briefing.
       openQuestions: 6,
-      questionThemes: 5,
+      questionThemes: 4,
     });
     // G-10: one canonical story step per cited record; the four visible claims
     // share two records, so the story has two steps, not four near-duplicates.

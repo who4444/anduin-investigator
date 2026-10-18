@@ -239,6 +239,7 @@ interface GapRow {
   note: string;
   event_ids: string[] | null;
   issue_id: string | null;
+  category: string | null;
 }
 
 function mapGap(row: GapRow): Gap {
@@ -249,6 +250,7 @@ function mapGap(row: GapRow): Gap {
     note: row.note,
     eventIds: row.event_ids ?? [],
     issueId: row.issue_id ?? null,
+    category: (row.category ?? null) as Gap["category"],
   };
 }
 
@@ -932,8 +934,9 @@ export async function insertGaps(investigationId: string, gaps: GapInput[]): Pro
     note: gap.note,
     event_ids: sql.array(gap.eventIds, 25),
     issue_id: gap.issueId ?? null,
+    category: gap.category ?? null,
   }));
-  await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids", "issue_id")}`;
+  await sql`insert into gaps ${sql(rows, "investigation_id", "question", "note", "event_ids", "issue_id", "category")}`;
 }
 
 export async function setIngestWarnings(id: string, warnings: string[]): Promise<void> {

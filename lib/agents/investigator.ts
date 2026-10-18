@@ -4,6 +4,7 @@ import { getLlmClient, runToolLoop } from "../llm";
 import { issuePromptBlock, resolveIssueId } from "../pipeline/issues";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
 import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
+import { GAP_CATEGORIES } from "../report/gaps";
 import {
   appendStageLog,
   getClaims,
@@ -107,6 +108,12 @@ function collectClaims(content: string, agent: string, issues: Issue[]): ClaimIn
   return claims;
 }
 
+const KIND_GAP_CATEGORY: Record<InvestigatorKind, import("../types").GapCategory> = {
+  root_cause: "technical",
+  commitments: "commitment",
+  ownership: "ownership",
+};
+
 function collectNotes(content: string, kind: InvestigatorKind, issues: Issue[]): GapInput[] {
   const parsed = extractJson(content);
   if (!isPlainObject(parsed) || !Array.isArray(parsed.notes)) return [];
@@ -119,10 +126,15 @@ function collectNotes(content: string, kind: InvestigatorKind, issues: Issue[]):
       isPlainObject(raw) && Array.isArray(raw.event_ids)
         ? raw.event_ids.filter((id): id is string => typeof id === "string")
         : [];
+    const category =
+      isPlainObject(raw) && typeof raw.category === "string" && GAP_CATEGORIES.includes(raw.category as never)
+        ? (raw.category as import("../types").GapCategory)
+        : KIND_GAP_CATEGORY[kind];
     notes.push({
       question: isPlainObject(raw) && typeof raw.question === "string" ? raw.question : `Could not determine (${KIND_LABELS[kind]})`,
       note: text.trim(),
       eventIds,
+      category,
       issueId: resolveIssueId(
         isPlainObject(raw) ? raw.issue_id ?? raw.issueId : undefined,
         text.trim(),

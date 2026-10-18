@@ -171,11 +171,23 @@ export interface SkepticNote {
   eventIds: string[];
 }
 
+export type GapCategory =
+  | "scope"
+  | "coverage"
+  | "state"
+  | "technical"
+  | "commitment"
+  | "communication"
+  | "ownership"
+  | "other";
+
 export interface GapInput {
   question: string;
   note: string;
   eventIds: string[];
   issueId?: string | null;
+  /** C6: the structured category, set at write time — never a text regex. */
+  category?: GapCategory | null;
 }
 
 export interface Gap {
@@ -185,6 +197,7 @@ export interface Gap {
   note: string;
   eventIds: string[];
   issueId?: string | null;
+  category?: GapCategory | null;
 }
 
 export type InvestigationOrigin = "upload" | "pull" | "demo";
