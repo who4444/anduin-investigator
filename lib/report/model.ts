@@ -1040,6 +1040,7 @@ function buildHeadline(
   state: ReportStateModel,
   openQuestions: OpenQuestionGroup[],
   counts: ReportCounts,
+  actions: ReportActionModel[],
 ): ReportHeadline {
   const visibleClaimIds = new Set(
     input.claims
@@ -1101,7 +1102,15 @@ function buildHeadline(
     statusChangedBy: { known: state.statusChangedBy.known, value: state.statusChangedBy.value, findingIds: state.statusChangedBy.basis },
     lastClientContact: { known: state.lastClientContact.known, chases, findingIds: state.lastClientContact.basis },
     latestFix: { known: state.latestFix.known, text: state.latestFix.value?.text ?? null, findingIds: state.latestFix.basis },
-    openQuestion: open ? { question: open.question, nextStep: open.nextStep, findingIds: open.findingIds } : null,
+    // D1: the story's action is the decision model's top action, not the
+    // category's next-step copy (which the gaps section renders).
+    openQuestion: open
+      ? {
+          question: open.question,
+          nextStep: (actions.length > 0 && actions[0].id !== "act_none" ? actions[0].text : open.nextStep),
+          findingIds: open.findingIds,
+        }
+      : null,
     recordCount: input.events.length,
     counts,
     sources: [...new Set(input.events.map((event) => event.source))],
@@ -1396,8 +1405,8 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     throw new Error("Report model count mismatch: open questions");
   }
 
-  const headline = buildHeadline(input, sorted, state, openQuestions, counts);
   const actions = buildActions(sorted, state, actorInfo.actors);
+  const headline = buildHeadline(input, sorted, state, openQuestions, counts, actions);
   const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
   const pillSummary = suppressPills
     ? `Needs check: ${flagged.length} of ${sorted.length}${flagged.some((finding) => finding.pill === "conflict") ? " (including conflicts)" : ""} — the supporting records are thin.`

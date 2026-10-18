@@ -104,7 +104,7 @@ describe("thin evidence (D3)", () => {
     });
 
     expect(story.tooThin).toBe(true);
-    expect(story.sentences[0].text).toBe("Only 2 records were found; a full account is not possible.");
+    expect(story.sentences[0].text).toBe("Only 2 stored records back this account, so treat every statement as limited evidence.");
   });
 });
 

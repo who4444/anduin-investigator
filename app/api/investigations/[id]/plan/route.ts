@@ -81,7 +81,11 @@ export async function POST(
       }
     }
     if (refinedScope?.confidence === "scoped" && refinedScope.client) {
-      await upsertLearnedScope(refinedScope.client, refinedScope);
+      // Synthetic runs must not teach the store: a demo/labelling origin is
+      // not evidence about the real client's records.
+      if (found.investigation.origin !== "demo") {
+        await upsertLearnedScope(refinedScope.client, refinedScope);
+      }
     }
 
     const issues = await getIssues(id);

@@ -268,8 +268,18 @@ test("the pre-run scope review pauses, survives reload, and confirms the report"
   page,
   request,
 }) => {
+  // B1: a pause needs deterministic anchors — the declared client links its
+  // registry domain (2 anchors → partial), which pauses for the review;
+  // model proposals alone no longer pause a run. Learned scopes from other
+  // suites would re-verify the same client, so clear them first.
+  const { getPool } = await import("../../lib/db/pool");
+  const sql = getPool();
+  await sql`delete from learned_scopes where declared_client = 'northwind logistics'`;
   const created = await request.post("/api/investigations", {
-    multipart: demoForm("Our billing module has been wrong since the last update. Please explain.", ""),
+    multipart: demoForm(
+      "Our billing module has been wrong since the last update. Please explain.",
+      "Northwind Logistics",
+    ),
   });
   expect([200, 201], "ingest").toContain(created.status());
   const { investigationId } = (await created.json()) as { investigationId: string };

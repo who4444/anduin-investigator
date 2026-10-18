@@ -206,13 +206,17 @@ function StateValue<T>({
     <span className="now-value">
       {render(field.value as T)}
       {field.basis.length > 0 && (
-        <button
-          type="button"
-          className="btn btn-quiet btn-claim now-open"
-          onClick={() => onFinding(field.basis[0])}
-        >
-          record
-        </button>
+        <>
+          {" "}
+          <button
+            type="button"
+            className="btn btn-quiet btn-claim now-open"
+            onClick={() => onFinding(field.basis[0])}
+            title={field.basisLabel ?? undefined}
+          >
+            record
+          </button>
+        </>
       )}
     </span>
   );
@@ -688,7 +692,11 @@ export function ModelOpenQuestions({
   return (
     <section className="briefing-section" id="gaps" aria-labelledby="gaps-title">
       <h2 id="gaps-title">
-        What could not be determined? <span className="count-chip">{model.counts.openQuestions}</span>
+        What could not be determined?{" "}
+        <span className="count-chip">
+          {model.questionCounts.groups} theme{model.questionCounts.groups === 1 ? "" : "s"} ·{" "}
+          {model.questionCounts.raw} question{model.questionCounts.raw === 1 ? "" : "s"}
+        </span>
       </h2>
       <div className="stack">
         <ExcludedRecordsPanel report={report} rerunHref={rerunHref} />
@@ -714,7 +722,7 @@ export function ModelOpenQuestions({
         )}
         {rest.length > 0 && (
           <details className="show-all">
-            <summary>Show all ({model.counts.openQuestions})</summary>
+            <summary>Show all ({model.questionCounts.raw})</summary>
             <ul className="finding-list question-groups">{rest.map(renderGroup)}</ul>
           </details>
         )}

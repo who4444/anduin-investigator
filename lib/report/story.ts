@@ -151,7 +151,7 @@ export function buildStory(input: StoryInput): Story {
 
   if (tooThin) {
     sentences.push({
-      text: `Only ${input.recordCount} record${input.recordCount === 1 ? "" : "s"} were found; a full account is not possible.`,
+      text: `Only ${input.recordCount} stored record${input.recordCount === 1 ? "" : "s"} back this account, so treat every statement as limited evidence.`,
       findingIds: [],
     });
   }

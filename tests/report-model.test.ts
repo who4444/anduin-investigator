@@ -312,7 +312,7 @@ describe("ReportModel revision brief", () => {
     expect(model.headline.sentences.length).toBeGreaterThanOrEqual(2);
     expect(model.headline.sentences.length).toBeLessThanOrEqual(5);
     expect(model.headline.sentences.every((sentence) => sentence.findingIds.length > 0)).toBe(true);
-    expect(text).toContain("Only 3 records were found; a full account is not possible.");
+    expect(text).toContain("Only 3 stored records back this account, so treat every statement as limited evidence.");
     expect(text).toContain("The records do not establish a technical cause.");
     expect(text).not.toContain("the first record is");
     expect(text).not.toContain("the latest record is");

@@ -131,16 +131,19 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   await expect(page.locator(".event-row")).toHaveCount(3);
   await expect(page.locator(".question-group:visible")).toHaveCount(5);
   await expect(page.locator(".question-group").first()).toContainText("Next step:");
-  // The header count includes the group behind the collapsed Show all control.
-  await expect(page.locator("#gaps .count-chip")).toHaveText("6");
-  await expect(page.getByText("Show all (6)")).toBeVisible();
+  // C6: the header shows the labelled pair (themes × questions); every group
+  // carries its own next step.
+  await expect(page.locator("#gaps .count-chip")).toHaveText("5 themes · 7 questions");
+  await expect(page.getByText("7 questions")).toBeVisible();
   await expect(page.locator(".scope-flag")).toHaveCount(0);
 
   // Role-dependent state is explicit, not guessed.
   const state = await page.locator(".now-block").innerText();
-  expect(state).toContain("Needs client confirmation — the client is not identified.");
-  expect(state).toContain("Needs client confirmation — client vs internal roles are unresolved.");
-  await expect(page.locator(".now-block")).toContainText("No assignee transition is recorded.");
+  // C1/B5: honest unknown reasons from the one case state.
+  expect(state).toContain("no client evidence is confirmed for this investigation");
+  expect(state).toContain("no assignee transition is recorded");
+  expect(state).toContain("no record shows a fix shipping");
+  await expect(page.locator(".now-block")).toContainText("no assignee transition is recorded");
 
   // One finding, one full sentence; the headline is a story with citations.
   const text = await bodyText(page);
@@ -148,7 +151,7 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   for (const sentence of sentences(text)) repeated.set(sentence, (repeated.get(sentence) ?? 0) + 1);
   expect([...repeated.values()].filter((count) => count > 1)).toEqual([]);
   expect(await page.locator(".verdict .citation").count()).toBeGreaterThanOrEqual(2);
-  expect(await page.locator(".verdict").innerText()).toContain("Only 3 records were found");
+  expect(await page.locator(".verdict").innerText()).toContain("Only 3 stored records");
 
   // The action is named after its triggering finding, not the draft reply.
   await expect(page.locator("#actions")).toContainText("trigger f2");
