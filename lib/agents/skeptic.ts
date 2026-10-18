@@ -3,6 +3,7 @@ import { getLlmClient } from "../llm";
 import {
   appendStageLog,
   getClaims,
+  getCommitments,
   getEvents,
   getInvestigation,
   getStages,
@@ -12,7 +13,9 @@ import {
 } from "../store";
 import type { SkepticNoteInput, SkepticNoteKind, GapInput } from "../types";
 import { buildCoverage } from "../pipeline/coverage";
+import { latestEventTs } from "../pipeline/plan";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
+import { detectContradictions } from "../report/contradictions";
 import { compactEvent, summarizeEvents } from "./summary";
 
 const SKEPTIC_KINDS: SkepticNoteKind[] = ["contradiction", "unsupported", "silence", "unanswered"];
@@ -55,19 +58,27 @@ function collectIssues(content: string): { kind: SkepticNoteKind; claimIndex?: n
   return issues;
 }
 
-export async function runSkeptic(investigationId: string, pass = 1): Promise<SkepticResult> {
-  const claims = await getClaims(investigationId);
-  const events = await getEvents(investigationId);
-  const investigation = await getInvestigation(investigationId);
-  const scopeLine = scopePromptLine(investigation?.scope ?? null);
-  const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
+interface ResolvedIssue {
+  kind: SkepticNoteKind;
+  claimId?: string;
+  text: string;
+  eventIds: string[];
+}
 
-  if (claims.length === 0) {
-    await appendStageLog(investigationId, "skeptic", pass, { flagged: 0, issues: 0, note: "no claims to review" });
-    return { flagged: 0, issues: 0 };
-  }
+function resolveIssues(
+  issues: { kind: SkepticNoteKind; claimIndex?: number; text: string; eventIds: string[] }[],
+  claims: { id: string }[],
+): ResolvedIssue[] {
+  return issues.map((issue) => ({
+    kind: issue.kind,
+    claimId: issue.claimIndex !== undefined ? claims[issue.claimIndex]?.id : undefined,
+    text: issue.text,
+    eventIds: issue.eventIds,
+  }));
+}
 
-  const indexedClaims = claims.map((claim, index) => ({
+function indexClaims(claims: { id: string; agent: string; type: string; text: string; quote: string; eventId: string; status: string; confidence: number; verifyStatus: string }[]) {
+  return claims.map((claim, index) => ({
     index,
     id: claim.id,
     agent: claim.agent,
@@ -79,6 +90,51 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
     confidence: claim.confidence,
     verify_status: claim.verifyStatus,
   }));
+}
+
+export async function runSkeptic(investigationId: string, pass = 1): Promise<SkepticResult> {
+  const claims = await getClaims(investigationId);
+  const events = await getEvents(investigationId);
+  const commitments = await getCommitments(investigationId);
+  const investigation = await getInvestigation(investigationId);
+  const scopeLine = scopePromptLine(investigation?.scope ?? null);
+  const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
+
+  if (claims.length === 0) {
+    await appendStageLog(investigationId, "skeptic", pass, { flagged: 0, issues: 0, note: "no claims to review" });
+    return { flagged: 0, issues: 0 };
+  }
+
+  // I4: deterministic detectors are the source of truth for contradictions. The
+  // checklist goes into the prompt so a single pass cannot return a false clean
+  // bill of health, and a detector firing gates one focused second pass.
+  const detectorAsOf = latestEventTs(inScope) ?? investigation?.createdAt ?? "";
+  const detectorDomains = investigation?.scope?.senderDomains ?? [];
+  const detectors = detectContradictions({
+    events: inScope,
+    claims,
+    promises: commitments,
+    asOf: detectorAsOf,
+    clientEvidence:
+      detectorDomains.length > 0
+        ? {
+            domains: detectorDomains.map((domain) => domain.toLowerCase()),
+            actors: [],
+            channels: [],
+            threads: [],
+            eventIds: [],
+          }
+        : undefined,
+  });
+  const detectorLines = detectors.map(
+    (contradiction) => `- [${contradiction.severity}] ${contradiction.managerText}`,
+  );
+  const checkedList =
+    detectorLines.length > 0
+      ? `Deterministic checks already fired (facts, not opinions — do not overturn them; find what they miss):\n${detectorLines.join("\n")}`
+      : "Deterministic checks run in code before you: none fired. A single pass finding nothing is not proof the records are consistent.";
+
+  const indexedClaims = indexClaims(claims);
 
   const eventPayload =
     inScope.length <= MAX_EVENTS_IN_PROMPT
@@ -125,13 +181,17 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
       ? `All items (compact):\n${JSON.stringify(eventPayload)}`
       : "Use the summary above; the registry is too large to inline.",
     "",
+    checkedList,
+    "",
     "Report contradictions, unsupported claims, silences, unanswered questions, and never-searched angles.",
+    'If you find nothing, return {"issues":[]}; the report says "no contradiction found in the records searched", never that the records are complete.',
   ].join("\n");
 
+  const client = getLlmClient();
   let content = "";
   let degraded = false;
   try {
-    const response = await getLlmClient().chat(
+    const response = await client.chat(
       [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: user },
@@ -143,29 +203,63 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
     degraded = true;
   }
 
-  const issues = degraded ? [] : collectIssues(content);
+  const firstIssues = degraded ? [] : collectIssues(content);
+  const resolved = resolveIssues(firstIssues, claims);
+
+  // I4: one focused second pass over the top claims only when a detector fired
+  // or the first pass found nothing — never more than one extra call.
+  const shouldRefocus = firstIssues.length === 0 || detectors.length > 0;
+  let secondPass = false;
+  let secondDegraded = false;
+  if (shouldRefocus) {
+    secondPass = true;
+    const topClaims = [...claims].sort((a, b) => b.confidence - a.confidence).slice(0, 6);
+    const topUser = [
+      "Focused second pass. The first pass returned nothing decisive.",
+      "Examine ONLY the top claims and the deterministic checklist below; do not introduce new findings.",
+      "Top claims (index is how to reference them here):",
+      JSON.stringify(indexClaims(topClaims)),
+      "",
+      checkedList,
+      "",
+      'Reply with JSON only: {"issues":[{"kind":"contradiction|unsupported|silence|unanswered","claim_index":0,"text":"...","event_ids":["..."]}]}. If you still find nothing, return {"issues":[]}.',
+    ].join("\n");
+    try {
+      const response = await client.chat(
+        [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: topUser },
+        ],
+        { forceJson: true },
+      );
+      resolved.push(...resolveIssues(collectIssues(response.content), topClaims));
+    } catch {
+      secondDegraded = true;
+    }
+  }
+
+  const seen = new Set<string>();
+  const merged = resolved.filter((issue) => {
+    const key = `${issue.kind}|${issue.claimId ?? ""}|${issue.text}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   const notes: SkepticNoteInput[] = [];
   const gaps: GapInput[] = [];
   const flaggedClaimIds = new Set<string>();
 
-  for (const issue of issues) {
-    const claim = issue.claimIndex !== undefined ? claims[issue.claimIndex] : undefined;
-    if (claim) flaggedClaimIds.add(claim.id);
-
+  for (const issue of merged) {
+    if (issue.claimId) flaggedClaimIds.add(issue.claimId);
     notes.push({
-      claimId: claim?.id,
+      claimId: issue.claimId,
       kind: issue.kind,
       text: issue.text,
       eventIds: issue.eventIds,
     });
-
     if (issue.kind === "silence" || issue.kind === "unanswered") {
-      gaps.push({
-        question: issue.text,
-        note: issue.text,
-        eventIds: issue.eventIds,
-      });
+      gaps.push({ question: issue.text, note: issue.text, eventIds: issue.eventIds });
     }
   }
 
@@ -177,9 +271,11 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
 
   await appendStageLog(investigationId, "skeptic", pass, {
     flagged: flaggedClaimIds.size,
-    issues: issues.length,
+    issues: merged.length,
+    detectors: detectors.length,
     degraded,
+    ...(secondPass ? { secondPass: { degraded: secondDegraded } } : {}),
   });
 
-  return { flagged: flaggedClaimIds.size, issues: issues.length };
+  return { flagged: flaggedClaimIds.size, issues: merged.length };
 }

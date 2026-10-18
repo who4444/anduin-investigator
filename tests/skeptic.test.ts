@@ -172,4 +172,143 @@ describeDb("runSkeptic", () => {
     const skepticStage = stages.find((stage) => stage.stage === "skeptic" && stage.pass === 2);
     expect(skepticStage?.log).toHaveLength(1);
   });
+
+  /* I4: a single zero-finding pass is not a clean bill of health. */
+  it("keeps deterministic detectors when the skeptic returns zero", async () => {
+    const {
+      createInvestigation,
+      insertEvents,
+      insertClaims,
+      getClaims,
+      getEvents,
+      getSkepticNotes,
+      getStages,
+    } = await import("../lib/store");
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runSkeptic } = await import("../lib/agents/skeptic");
+    const { buildReportModel } = await import("../lib/report/model");
+
+    const id = await createInvestigation({
+      title: `Premature ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+
+    await insertEvents(id, [
+      {
+        id: "e_prem_status",
+        source: "jira",
+        ts: "2024-09-26T03:00:00.000Z",
+        actor: "Marcus Webb",
+        channel: "MER-101",
+        text: "Status: In Progress → Resolved",
+      },
+      {
+        id: "e_prem_qa",
+        source: "slack",
+        ts: "2024-09-26T10:00:00.000Z",
+        actor: "Lin Chen",
+        channel: "meridian-billing",
+        text: "QA is still failing on the Sep 24 build.",
+      },
+    ]);
+    await insertClaims(id, [
+      {
+        agent: "ownership",
+        type: "process_failure",
+        text: "The ticket was marked resolved.",
+        quote: "Status: In Progress → Resolved",
+        eventId: "e_prem_status",
+        status: "n/a",
+        confidence: 0.8,
+      },
+    ]);
+
+    setLlmClientForTests({ chat: async () => ({ content: JSON.stringify({ issues: [] }) }) });
+    const result = await runSkeptic(id);
+
+    expect(result).toEqual({ flagged: 0, issues: 0 });
+    expect(await getSkepticNotes(id)).toHaveLength(0);
+
+    const stages = await getStages(id);
+    const log = (stages.find((stage) => stage.stage === "skeptic")?.log[0] ?? {}) as {
+      detectors?: number;
+    };
+    expect(log.detectors).toBeGreaterThan(0);
+
+    // The report's audit path still surfaces the detector's contradiction.
+    const model = buildReportModel({
+      investigation: {
+        title: "Premature resolution",
+        escalationText: "",
+        createdAt: "2024-09-01T00:00:00.000Z",
+      },
+      events: await getEvents(id),
+      claims: await getClaims(id),
+      commitments: [],
+      gaps: [],
+      notes: [],
+      scope: null,
+      clientDomains: [],
+      clientActors: [],
+    });
+    expect(
+      model.contradictions.some(
+        (contradiction) => contradiction.detector === "premature_resolution",
+      ),
+    ).toBe(true);
+  });
+
+  it("runs one extra focused pass when the first pass returns nothing", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runSkeptic } = await import("../lib/agents/skeptic");
+    const { getSkepticNotes } = await import("../lib/store");
+
+    let calls = 0;
+    const prompts: string[] = [];
+    setLlmClientForTests({
+      chat: async (messages) => {
+        calls += 1;
+        prompts.push(messages.map((message) => message.content ?? "").join("\n"));
+        if (calls === 1) return { content: JSON.stringify({ issues: [] }) };
+        return {
+          content: JSON.stringify({
+            issues: [
+              { kind: "contradiction", text: "The focused pass found a conflict.", event_ids: [] },
+            ],
+          }),
+        };
+      },
+    });
+
+    const result = await runSkeptic(investigationId, 5);
+
+    expect(calls).toBe(2);
+    expect(result.issues).toBe(1);
+    expect(prompts[1]).toMatch(/focused/i);
+    expect(prompts[1]).toMatch(/top claims/i);
+    const notes = await getSkepticNotes(investigationId);
+    expect(notes.some((note) => note.text === "The focused pass found a conflict.")).toBe(true);
+  });
+
+  it("spends no second call when the first pass reports an issue and no detector fired", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runSkeptic } = await import("../lib/agents/skeptic");
+
+    let calls = 0;
+    setLlmClientForTests({
+      chat: async () => {
+        calls += 1;
+        return {
+          content: JSON.stringify({
+            issues: [{ kind: "silence", text: "A gap the skeptic found.", event_ids: [] }],
+          }),
+        };
+      },
+    });
+
+    await runSkeptic(investigationId, 6);
+    expect(calls).toBe(1);
+  });
 });
