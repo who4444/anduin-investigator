@@ -17,9 +17,20 @@ function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
 }
 
-function contentHash(files: IngestFile[], escalation: string, declaredClient: string): string {
+function contentHash(
+  files: IngestFile[],
+  escalation: string,
+  declaredClient: string,
+  cacheBust = "",
+): string {
   const hash = createHash("sha1");
   hash.update(runVersionKey());
+  hash.update("\0");
+  // Tooling freshness lives HERE, never in the escalation text: the report
+  // renders the client's message verbatim, so cache-busting markers put into
+  // the text would leak into it (the '[uuid]' leak this fixes). The bust
+  // value is hashed and discarded.
+  hash.update(cacheBust);
   hash.update("\0");
   hash.update(escalation);
   hash.update("\0");
@@ -76,7 +87,10 @@ export async function POST(request: NextRequest): Promise<Response> {
   const declaredClient = String(form.get("client") ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
   const rawOrigin = String(form.get("origin") ?? "upload");
   const origin = rawOrigin === "demo" || rawOrigin === "pull" ? rawOrigin : "upload";
-  const hash = contentHash(uploads, escalation, declaredClient);
+  // A per-submission nonce that only affects the cache key (smoke/tests use
+  // it; the upload page adds it under ?fresh=1). It is never stored.
+  const cacheBust = String(form.get("cacheBust") ?? "").slice(0, 64);
+  const hash = contentHash(uploads, escalation, declaredClient, cacheBust);
 
   try {
     const existing = await findInvestigationByHash(hash);

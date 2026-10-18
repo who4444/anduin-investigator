@@ -26,7 +26,10 @@ function demoForm(escalation: string, client = "Northwind Logistics"): FormData 
   for (const [name, mimeType] of DEMO_FILES) {
     form.append("files", new File([readFileSync(`public/demo/${name}`)], name, { type: mimeType }));
   }
-  form.append("escalation", `${escalation} [${randomUUID()}]`);
+  form.append("escalation", escalation);
+  // Freshness via the cache key only — never via the escalation text, which
+  // the report renders as "the client says".
+  form.append("cacheBust", randomUUID());
   if (client) form.append("client", client);
   form.append("origin", "demo");
   form.append("title", `Robustness ${escalation.slice(0, 24)}`);
@@ -89,15 +92,13 @@ test("a report opened mid-run says it is still being produced, then completes", 
   await expect(page.locator("#answer")).toBeVisible();
 });
 
-test("the section nav opens the collapsed timeline appendix", async ({ page, request }) => {
+test("the section nav links to the visible timeline board", async ({ page, request }) => {
   const id = await seed(request);
   await page.goto(`/investigations/${id}`);
 
-  const appendix = page.locator("#timeline-detail");
-  await expect(appendix).not.toHaveAttribute("open");
-
   await page.getByRole("link", { name: "Timeline detail" }).click();
-  await expect(appendix).toHaveAttribute("open");
+  await expect(page).toHaveURL(/#timeline-detail$/);
+  await expect(page.locator("#timeline-detail")).toBeVisible();
   await expect(page.locator(".swimlane-axis-track")).toBeVisible();
 });
 
@@ -165,11 +166,11 @@ test("a zip of the exports uploads and runs through the upload page", async ({ p
     { level: 6 },
   );
 
-  await page.goto("/upload");
-  // A run-unique escalation keeps this FRESH every time: the progress page
-  // then runs the real orchestrator with its parallel investigators, which is
-  // exactly the path that must share one lease.
-  await page.locator("textarea").first().fill(`Zip upload check run ${Date.now()}`);
+  await page.goto("/upload?fresh=1");
+  // ?fresh=1 keeps every run FRESH (cache key only, text stays clean): the
+  // progress page then runs the real orchestrator with its parallel
+  // investigators, which is exactly the path that must share one lease.
+  await page.locator("textarea").first().fill("Zip upload check run");
   await page
     .locator('input[type="file"]')
     .first()

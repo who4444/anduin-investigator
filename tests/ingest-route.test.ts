@@ -15,7 +15,7 @@ const jiraExport = JSON.stringify({
       key: "MER-101",
       self: "https://northwind.atlassian.net/rest/api/2/issue/MER-101",
       fields: {
-        summary: `Timezone totals wrong ${randomUUID()}`,
+        summary: "Timezone totals wrong",
         created: "2024-09-10T03:00:00.000+0000",
         reporter: { displayName: "Priya Nair" },
       },
@@ -43,8 +43,13 @@ const mbox = [
   "",
 ].join("\n");
 
+/* Unique per test RUN, identical within it: the cache key gets a nonce —
+   never the record text, which the report would render. */
+const RUN_NONCE = randomUUID();
+
 function buildForm(): FormData {
   const form = new FormData();
+  form.append("cacheBust", RUN_NONCE);
   form.append("files", new File([jiraExport], "search.json", { type: "application/json" }));
   form.append("files", new File([mbox], "thread.mbox", { type: "application/mbox" }));
   form.append("escalation", "Client says totals are wrong since 4.12.");
@@ -200,6 +205,30 @@ describeDb("POST /api/investigations", () => {
       if (originalModel === undefined) delete process.env.DEEPSEEK_MODEL;
       else process.env.DEEPSEEK_MODEL = originalModel;
     }
+  });
+
+  it("honours cacheBust: same uploads, a fresh run, and the nonce is never stored", async () => {
+    const { upsertStage, getInvestigation } = await import("../lib/store");
+
+    const firstForm = buildForm();
+    firstForm.set("cacheBust", "nonce-a");
+    const first = await POST(request(firstForm));
+    const firstBody = await first.json();
+    created.push(firstBody.investigationId);
+    await upsertStage(firstBody.investigationId, "assemble", 1, "done");
+
+    // Same files and escalation, a new nonce: a brand-new investigation.
+    const secondForm = buildForm();
+    secondForm.set("cacheBust", "nonce-b");
+    const second = await POST(request(secondForm));
+    const secondBody = await second.json();
+    created.push(secondBody.investigationId);
+
+    expect(second.status).toBe(201);
+    expect(secondBody.investigationId).not.toBe(firstBody.investigationId);
+    // The nonce only ever lived in the cache key — never in the record.
+    const stored = await getInvestigation(secondBody.investigationId);
+    expect(stored?.escalationText).not.toContain("nonce");
   });
 
   it("rejects an upload with no files", async () => {

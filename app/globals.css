@@ -753,6 +753,23 @@ select.input {
   padding: 0 14px 14px;
 }
 
+/* A short client message renders open: same card, no summary row. */
+.client-says-open {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.client-says-open .client-says-full {
+  padding: 0;
+}
+
+/* Once the message is expanded, the marker has nothing left to reveal. */
+.client-says[open] .see-more {
+  display: none;
+}
+
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1414,6 +1431,49 @@ table.data td {
 
 .drawer-close {
   align-self: flex-end;
+}
+
+.drawer-heading {
+  margin: 0 0 0.6rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.see-more {
+  margin-left: 0.45rem;
+  font-weight: 400;
+  font-size: 0.82em;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+/* A finding reference ("see f3") that opens the evidence drawer. */
+.see-id {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The Do-now action label opens the finding it names. */
+button.action-text {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.action-text:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---------- draft reply ---------- */
@@ -2368,4 +2428,301 @@ button.promise-card {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ---------- revision brief: one model, fewer duplicates ---------- */
+
+.client-resolution {
+  border-left: 4px solid var(--email);
+  background: var(--email-soft, var(--panel));
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+  margin: 20px auto 0;
+  max-width: 1180px;
+}
+
+.client-resolution-body h2 {
+  margin: 0 0 6px;
+  font-size: var(--fs-md);
+}
+
+.client-resolution-body p {
+  margin: 0 0 12px;
+  max-width: 78ch;
+}
+
+.client-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.client-confirm label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.client-confirm .input {
+  min-width: 190px;
+}
+
+.headline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.headline-lead {
+  font-size: var(--fs-lg);
+  line-height: 1.45;
+  font-weight: 700;
+  max-width: 72ch;
+}
+
+.headline-line {
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  max-width: 76ch;
+}
+
+.headline-stats {
+  margin-top: 2px;
+}
+
+.citation {
+  border: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.pill,
+.role-label,
+.count-chip,
+.failure-technical,
+.failure-process,
+.failure-communication {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-pill);
+  padding: 1px 8px;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+
+.pill-needs_check {
+  background: var(--email-soft, var(--fill));
+  color: var(--email);
+}
+
+.pill-conflict {
+  background: var(--broken-soft, var(--fill));
+  color: var(--broken);
+}
+
+.role-label {
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0;
+}
+
+.count-chip {
+  background: var(--fill);
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.failure-technical,
+.failure-process,
+.failure-communication {
+  background: var(--fill);
+  color: var(--text);
+}
+
+.pill-summary {
+  border-left: 3px solid var(--email);
+  background: var(--email-soft, var(--fill));
+  padding: 8px 10px;
+  font-size: var(--fs-sm);
+}
+
+.event-row-wrap {
+  scroll-margin-top: 140px;
+}
+
+.event-full {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.compact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.finding-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--link);
+  cursor: pointer;
+  text-align: left;
+}
+
+.question-groups .question-group {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 12px;
+}
+
+.action-warn {
+  border-left-color: var(--email);
+}
+
+.action-danger {
+  border-left-color: var(--broken);
+}
+
+.action-neutral {
+  border-left-color: var(--border);
+}
+
+.action-value {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.board-section {
+  padding-top: 24px;
+}
+
+.swimlane-body {
+  position: relative;
+}
+
+.silence-label {
+  margin: 2px 0 0 106px;
+}
+
+.marker {
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: currentColor;
+  border: 2px solid var(--panel);
+}
+
+.marker[data-pill="needs_check"] .marker-dot {
+  box-shadow: 0 0 0 2px var(--email);
+}
+
+.marker[data-pill="conflict"] .marker-dot {
+  box-shadow: 0 0 0 2px var(--broken);
+}
+
+.legend-needs-check {
+  background: var(--email);
+}
+
+.legend-conflict {
+  background: var(--broken);
+}
+
+/* sentence-case labels, no all-caps eyebrows */
+.now-label,
+.scoreboard-label,
+.section-title,
+.field-label,
+.scope-flag {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.now-label,
+.scoreboard-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+@media print {
+  #timeline-detail {
+    display: none;
+  }
+}
+
+.do-now h3 {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--fs-md);
+}
+.client-says-label {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--fs-sm);
+}
+.marker[data-importance="key"] {
+  width: 44px;
+  height: 44px;
+}
+
+.marker[data-importance="key"] .marker-dot {
+  width: 20px;
+  height: 20px;
+}
+.headline-next {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+.source-label,
+.stamp,
+.reply-label {
+  font-family: var(--font-ui);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.source-quote {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-evidence);
+  font-size: var(--fs-sm);
+  color: var(--muted);
 }

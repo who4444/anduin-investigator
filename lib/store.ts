@@ -386,6 +386,13 @@ export async function setScope(id: string, scope: InvestigationScope | null): Pr
   await sql`update investigations set scope = ${scope ? sql.json(scope as unknown as JSONValue) : null} where id = ${id}`;
 }
 
+/** G-12 follow-up: the manager confirms the client/project when the scope was
+    unresolved. Persisted so the next render computes roles from evidence. */
+export async function setDeclaredClient(id: string, client: string): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set declared_client = ${client} where id = ${id}`;
+}
+
 /* G-01 review: records the manager added back from the excluded list. The
    route validates ids against the registry before this is called. */
 export async function setScopeOverrides(id: string, eventIds: string[]): Promise<void> {

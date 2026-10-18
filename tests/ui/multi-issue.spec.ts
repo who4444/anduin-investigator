@@ -23,7 +23,7 @@ test("multi-issue escalation pauses for an editable issue review, then reports p
     ),
   );
 
-  await page.goto("/upload");
+  await page.goto("/upload?fresh=1");
   await page.locator("textarea").first().fill(ESCALATION);
   await page.locator('input[type="file"]').first().setInputFiles({
     name: "multi-issue.zip",

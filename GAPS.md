@@ -50,6 +50,24 @@ Each is mapped to a gap below.
 
 ---
 
+## 2b. Report consistency revision (implemented 2026-10-18)
+
+A real 3-record run exposed contradictions across sections, repeated findings, unreconciled counts and a statistics-shaped headline. The report is now rendered from one server-built `lib/report/model.ts`:
+
+- one deduplicated finding per cited record (all claim ids kept), rendered once in the story; promises, failures and the audit link back compactly;
+- one actor table with role + role source; ambiguous roles are "role unknown" (or "needs client confirmation" until the client is resolved);
+- state cards (status, owner, last client contact, last internal update, latest fix, next commitment) with finding-id basis or an explicit unknown reason;
+- four counts (`findings`, `verified`, `needs check`, `open questions`) asserted against their lists before the report is returned;
+- a 2–3 sentence headline with finding citations, a muted stats line, and a single next step; too-thin evidence says so;
+- a prominent unresolved-client notice with a roster-backed Confirm client action;
+- one exception vocabulary (`needs check`, `conflict`; verified has no pill), suppressed to a single line above 60%;
+- findings-only actions with a visible trigger; no draft-reply action;
+- five grouped open questions with next steps; top five expanded, the rest behind Show all;
+- one timeline board after the story, with padded axis, 44px marker hit targets, activity-only silence hatch and one band label;
+- cleaned titles/names, model/pipeline/frozen metadata under How this was produced, sentence-case UI labels and in-page nav anchors.
+
+Acceptance coverage: `tests/report-model.test.ts` and `tests/ui/model-report.spec.ts` (the 3-record Jira+email sample) plus the Vitest and Playwright suites.
+
 ## 3. P0 — trust and correctness
 
 ### G-01 — Scope must be a recall guard, not a silent subtraction

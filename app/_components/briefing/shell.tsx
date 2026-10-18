@@ -2,22 +2,29 @@
 
 import { useEffect, useState } from "react";
 
-import { AnswerSection } from "@/app/_components/briefing/answer";
-import { ChaptersList } from "@/app/_components/briefing/chapters";
-import { MomentsStrip } from "@/app/_components/briefing/story";
-import { CausesSection, GapsSection, PromisesSection, ReplySection } from "@/app/_components/briefing/sections";
-import { SwimlaneSection } from "@/app/_components/briefing/swimlane";
 import { EvidenceDrawer } from "@/app/_components/evidence";
+import {
+  ClientResolutionNotice,
+  ModelAnswer,
+  ModelFailures,
+  ModelOpenQuestions,
+  ModelPromises,
+  ModelStory,
+  ModelSwimlane,
+} from "@/app/_components/briefing/model-view";
+import { ReplySection } from "@/app/_components/briefing/sections";
 import type { ReportPayload } from "@/lib/report/build";
+import { fullFindingLabel } from "@/lib/report/model";
+import type { ReportFindingModel } from "@/lib/report/model";
 
 const SECTIONS = [
   { id: "answer", label: "The answer" },
   { id: "story", label: "What happened" },
-  { id: "promises", label: "What was promised?" },
-  { id: "causes", label: "What went wrong?" },
-  { id: "gaps", label: "What could not be determined?" },
-  { id: "reply", label: "Draft reply" },
   { id: "timeline-detail", label: "Timeline detail" },
+  { id: "promises", label: "Promises" },
+  { id: "causes", label: "Failures" },
+  { id: "gaps", label: "Open questions" },
+  { id: "reply", label: "Reply" },
 ];
 
 function useScrollSpy(): string {
@@ -59,18 +66,17 @@ export function BriefingShell({
   cached: boolean;
   live: boolean;
 }) {
-  const [drawer, setDrawer] = useState<{ eventId: string; claimId?: string } | null>(null);
+  const [drawer, setDrawer] = useState<{ eventId: string; claimId?: string; heading?: string } | null>(null);
   const [reply, setReply] = useState(report.reply);
   const [replyState, setReplyState] = useState<"idle" | "loading" | "error">("idle");
   const [replyError, setReplyError] = useState<string | null>(null);
-  const [appendixOpen, setAppendixOpen] = useState(false);
   const active = useScrollSpy();
 
-  const sources = [...new Set(report.events.map((event) => event.source))];
+  const model = report.model;
+  const sources = [...new Set(model.findings.map((finding) => finding.source))];
   const multi = report.issues.length > 1;
   const activeIssue = report.issues.find((issue) => issue.id === report.activeIssueId) ?? null;
 
-  // G-01: excluded client evidence outranks every other drafting restriction.
   const excludedClientRecords = report.scope?.excludedClientRecords ?? 0;
   const replyDisabledReason =
     excludedClientRecords > 0
@@ -91,17 +97,18 @@ export function BriefingShell({
     return `/investigations/${report.investigation.id}?${query.toString()}`;
   };
 
-  const openClaim = (claimId: string | undefined) => {
+  const openClaim = (claimId: string | undefined, heading?: string) => {
     if (!claimId) return;
     const claim = report.claims.find((candidate) => candidate.id === claimId);
-    if (claim) setDrawer({ eventId: claim.eventId, claimId });
+    if (claim) setDrawer({ eventId: claim.eventId, claimId, heading });
   };
-  const openEvent = (eventId: string) => setDrawer({ eventId });
+  const openFinding = (finding: ReportFindingModel) => {
+    const heading = fullFindingLabel(finding, report.model.actors);
+    if (finding.claimIds[0]) openClaim(finding.claimIds[0], heading);
+    else if (finding.eventIds[0]) setDrawer({ eventId: finding.eventIds[0], heading });
+  };
 
   async function approveReply(approved: boolean) {
-    // Optimistic: the checkbox must reflect the click immediately; the
-    // persisted state is the source of truth on reload, and a failed write
-    // reverts the UI.
     setReply((current) => (current ? { ...current, approved } : current));
     const response = await fetch(`/api/investigations/${report.investigation.id}/reply/approve`, {
       method: "POST",
@@ -148,7 +155,7 @@ export function BriefingShell({
       <div className="briefing-top">
         <div className="report-header-inner">
           <div className="spread">
-            <h1 className="report-title">{report.investigation.title}</h1>
+            <h1 className="report-title">{model.title}</h1>
             <span className="row">
               {synthetic && <span className="chip chip-broken">synthetic data</span>}
               {live && <span className="chip">pulled live</span>}
@@ -217,7 +224,6 @@ export function BriefingShell({
               href={`#${section.id}`}
               className={active === section.id ? "is-active" : undefined}
               aria-current={active === section.id ? "true" : undefined}
-              onClick={section.id === "timeline-detail" ? () => setAppendixOpen(true) : undefined}
             >
               {section.label}
             </a>
@@ -232,40 +238,24 @@ export function BriefingShell({
             <a href={watchHref}>Watch the run</a> and reload afterwards.
           </p>
         )}
-        {multi && !report.activeIssueId && (
-          <IssueOverview report={report} hrefFor={issueHref} />
-        )}
+        {multi && !report.activeIssueId && <IssueOverview report={report} hrefFor={issueHref} />}
         {multi && !report.activeIssueId && (
           <p className="alert alert-warn">
             Combined view: findings from {report.issues.length} independent issues are shown
             together below. Open an issue above for its own timeline, promises and reply.
           </p>
         )}
-        <AnswerSection report={report} onClaim={openClaim} onEvent={openEvent} />
-
-        <section className="briefing-section" id="story" aria-labelledby="story-title">
-          <h2 id="story-title">What happened</h2>
-          {report.caseState.asOf && (
-            <p className="small muted">
-              Current as of {report.caseState.asOf.slice(0, 10)} — the newest record in this
-              investigation.
-            </p>
-          )}
-          <div className="stack">
-            {report.briefing.keyMoments.length > 0 && (
-              <MomentsStrip
-                moments={report.briefing.keyMoments}
-                people={report.briefing.people}
-                onClaim={openClaim}
-              />
-            )}
-            <ChaptersList report={report} onClaim={openClaim} />
-          </div>
+        <ClientResolutionNotice report={report} />
+        <ModelAnswer report={report} onFinding={openFinding} />
+        <ModelStory report={report} onFinding={openFinding} />
+        <section className="briefing-section board-section" id="timeline-detail" aria-labelledby="board-title">
+          <h2 id="board-title">Timeline detail</h2>
+          <p className="small muted">One board for the whole report; the silent period is drawn here once.</p>
+          <ModelSwimlane report={report} onFinding={openFinding} />
         </section>
-
-        <PromisesSection report={report} onClaim={openClaim} onEvent={openEvent} />
-        <CausesSection report={report} onClaim={openClaim} />
-        <GapsSection report={report} onClaim={openClaim} onEvent={openEvent} rerunHref={rerunHref} />
+        <ModelPromises report={report} onFinding={openFinding} />
+        <ModelFailures report={report} onFinding={openFinding} />
+        <ModelOpenQuestions report={report} rerunHref={rerunHref} onFinding={openFinding} />
         <ReplySection
           reply={reply}
           state={replyState}
@@ -275,32 +265,13 @@ export function BriefingShell({
           onApprove={approveReply}
           disabledReason={replyDisabledReason}
         />
-
-        <details
-          className="briefing-section appendix"
-          id="timeline-detail"
-          open={appendixOpen}
-          onToggle={(toggleEvent) =>
-            setAppendixOpen((toggleEvent.target as HTMLDetailsElement).open)
-          }
-        >
-          <summary>
-            <span className="appendix-title">Timeline detail</span>
-            <span className="small muted">swimlane board with every finding, silence and lapse</span>
-          </summary>
-          <div className="stack">
-            <SwimlaneSection report={report} onClaim={openClaim} embedded />
-            <p className="small muted">
-              Person colors are a fixed palette for this briefing.
-            </p>
-          </div>
-        </details>
       </div>
 
       {drawer && (
         <EvidenceDrawer
           eventId={drawer.eventId}
           claimId={drawer.claimId}
+          heading={drawer.heading}
           events={report.events}
           claims={report.claims}
           onClose={() => setDrawer(null)}
@@ -327,23 +298,10 @@ function IssueOverview({
       <div className="issue-grid">
         {report.issues.map((issue) => (
           <a className="issue-card" key={issue.id} href={hrefFor(issue.id)}>
-            <span className="row">
-              <span className="small muted tabular">Issue {issue.seq}</span>
-              <span className="chip">
-                {issue.verified} verified · {issue.supported} check
-                {issue.flagged > 0 ? ` · ${issue.flagged} flagged` : ""}
-              </span>
-            </span>
+            <span className="small muted tabular">Issue {issue.seq}</span>
             <strong>{issue.title}</strong>
             {issue.ask && <span className="small">{issue.ask}</span>}
-            {issue.topFinding && (
-              <span className="small muted issue-card-finding">
-                Top finding: {issue.topFinding}
-              </span>
-            )}
-            <span className="small muted">
-              {issue.total} finding{issue.total === 1 ? "" : "s"} · open issue →
-            </span>
+            <span className="small muted">Open issue →</span>
           </a>
         ))}
       </div>

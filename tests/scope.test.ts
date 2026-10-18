@@ -301,6 +301,43 @@ describe("resolveScope", () => {
     expect(resolved?.anchors.some((anchor) => anchor.source === "linked")).toBe(true);
   });
 
+  it("links the resolved project name to its ticket prefix, not just the model's guesses", async () => {
+    const events = [
+      event({
+        id: "e-mer-status",
+        channel: "MER-101",
+        text: "Status: In Progress \u2192 Resolved",
+      }),
+      event({
+        id: "e-sup-mail",
+        source: "email",
+        channel: "email",
+        actor: "Priya Nair <priya@northwind.example>",
+        text: "Separately, can you confirm the SUP-2231 renewal paperwork status?",
+        refs: ["SUP-2231", "MER-101"],
+      }),
+    ];
+
+    // The model proposes the decoy SUP prefix and misses MER; the resolved
+    // project name "Meridian" must still link the MER- prefix deterministically.
+    const resolved = await resolveScope(
+      "As discussed on our call, Meridian carries a contractual SLA. Totals are still wrong.",
+      events,
+      scriptedClient({
+        client: "Northwind Logistics",
+        project: "Meridian",
+        ticketPrefixes: ["SUP"],
+        channels: [],
+        senderDomains: [],
+      }),
+      "Northwind Logistics",
+    );
+
+    expect(resolved?.ticketPrefixes).toContain("MER");
+    const { inScope } = splitEventsByScope(events, resolved);
+    expect(inScope.map((entry) => entry.id)).toContain("e-mer-status");
+  });
+
   it("does not link a declared token that only appears mid-feature-name", async () => {
     const events = [
       event({ id: "e-vertex", source: "slack", channel: "vertex-billing", text: "Vertex noise." }),

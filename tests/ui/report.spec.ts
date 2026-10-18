@@ -65,20 +65,18 @@ test("scoreboard cells open the evidence drawer with the quoted record", async (
   await expect(drawer).toHaveCount(0);
 });
 
-test("the timeline appendix stays collapsed until opened, then shows the board", async ({
-  page,
-}) => {
+test("the timeline board sits after the story and shows the axis", async ({ page }) => {
   await page.goto(reportUrl);
 
-  const appendix = page.locator("#timeline-detail");
-  await expect(appendix).not.toHaveAttribute("open");
-  // Closed <details> keeps its children in the DOM — they are merely hidden.
-  await expect(page.locator(".swimlane")).toBeHidden();
-
-  await appendix.locator("summary").click();
-  await expect(appendix).toHaveAttribute("open");
+  const board = page.locator("#timeline-detail");
+  await expect(board).toBeVisible();
+  await expect(page.locator(".swimlane")).toBeVisible();
   await expect(page.locator(".swimlane-axis-track")).toBeVisible();
   expect(await page.locator(".legend-item").count()).toBeGreaterThanOrEqual(3);
+
+  const story = await page.locator("#story").boundingBox();
+  const boardBox = await board.boundingBox();
+  expect(story && boardBox && boardBox.y > story.y).toBe(true);
 });
 
 test("draft reply cites verified findings and the draft survives reload", async ({
@@ -97,5 +95,6 @@ test("draft reply cites verified findings and the draft survives reload", async 
   // G-08: the stored draft survives, but the top answer is the frozen assembled
   // version and must be byte-for-byte unchanged after drafting.
   await expect(page.locator(".reply-sentence").first()).toBeVisible();
-  await expect(page.locator(".verdict")).toHaveText(verdictBefore);
+  const verdictAfter = await page.locator(".verdict").innerText();
+  expect(verdictAfter.replace(/\s+/g, " ")).toBe(verdictBefore.replace(/\s+/g, " "));
 });

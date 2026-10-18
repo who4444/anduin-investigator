@@ -369,17 +369,46 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
       case "get_slack_thread": {
         const channel = asString(args.channel);
         const ts = asString(args.ts);
-        if (!channel || !ts) return JSON.stringify({ error: "channel and ts are required." });
-        const threadId = `slack:${channel}:${ts}`;
+        if (!channel) return JSON.stringify({ error: "channel is required." });
         const slack = await sourceItems("slack");
-        let items = slack.filter((event) => event.threadId === threadId);
-        if (items.length === 0 && /^\d+(\.\d+)?$/.test(ts)) {
-          const day = new Date(Number(ts) * 1000).toISOString().slice(0, 10);
-          items = slack.filter(
-            (event) => event.channel.toLowerCase() === channel.toLowerCase() && event.ts.startsWith(day),
-          );
+        const channelItems = slack.filter(
+          (event) => event.channel.toLowerCase() === channel.toLowerCase(),
+        );
+        if (channelItems.length === 0) {
+          return JSON.stringify({ error: `No stored messages for channel ${channel}.` });
         }
-        if (items.length === 0) return JSON.stringify({ error: `No stored thread ${threadId}.` });
+        // Models reach this tool with whatever a record showed: a Slack epoch,
+        // an ISO timestamp, or an item id. Resolve all of them to a thread;
+        // never fail when the channel has stored messages.
+        const resolveThreadId = (): string | null => {
+          if (!ts) return null;
+          if (ts.startsWith("slack:")) return ts;
+          if (/^\d+(\.\d+)?$/.test(ts)) return `slack:${channel}:${ts}`;
+          const byId = channelItems.find((event) => event.id === ts);
+          if (byId?.threadId) return byId.threadId;
+          const byIso = channelItems.find((event) => event.ts === ts);
+          if (byIso?.threadId) return byIso.threadId;
+          return null;
+        };
+        const threadId = resolveThreadId();
+        let items = threadId ? slack.filter((event) => event.threadId === threadId) : [];
+        if (items.length === 0) {
+          const day = /^\d+(\.\d+)?$/.test(ts ?? "")
+            ? new Date(Number(ts) * 1000).toISOString().slice(0, 10)
+            : ts?.slice(0, 10).match(/^\d{4}-\d{2}-\d{2}$/)
+              ? ts.slice(0, 10)
+              : null;
+          if (day) items = channelItems.filter((event) => event.ts.startsWith(day));
+        }
+        if (items.length === 0) {
+          return JSON.stringify({
+            count: channelItems.length,
+            note: ts
+              ? `No stored thread matched ts "${ts}"; returning the stored messages for ${channel}.`
+              : `No thread ts was given; returning the stored messages for ${channel}.`,
+            ...readCapped(channelItems),
+          });
+        }
         return JSON.stringify({ count: items.length, ...readCapped(items) });
       }
 

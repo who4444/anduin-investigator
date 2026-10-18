@@ -116,11 +116,13 @@ async function realisticScenario(): Promise<void> {
   }
   const zip = zipSync(zipInput, { level: 6 });
 
-  await page.goto(`${BASE}/upload`);
+  await page.goto(`${BASE}/upload?fresh=1`);
   await page
     .locator("textarea")
     .first()
-    .fill(`Real smoke: Bright Market VAT totals still wrong since 5.3.0 (LUM-811). Explain what happened. [${Date.now()}]`);
+    .fill(
+      "Real smoke: Bright Market VAT totals still wrong since 5.3.0 (LUM-811). Explain what happened.",
+    );
   await page
     .locator('input[type="file"]')
     .first()
@@ -147,7 +149,11 @@ async function vagueScenario(): Promise<void> {
   for (const name of DEMO_FILES) {
     form.append("files", new File([readFileSync(`public/demo/${name}`)], name, { type: "application/octet-stream" }));
   }
-  form.append("escalation", "Everything about our billing module has been broken since the last update. Nobody replies. [real-smoke vague]");
+  form.append(
+    "escalation",
+    "Everything about our billing module has been broken since the last update. Nobody replies.",
+  );
+  form.append("cacheBust", `real-smoke-${Date.now()}`);
   form.append("origin", "upload");
   form.append("title", "Real smoke — vague escalation");
 

@@ -169,18 +169,22 @@ The demo is built for the Vercel Hobby plan (≤60s per function, small uploads)
    Skeptic review, Verify, Assemble) with a live log of each agent's tool calls
    and the records they returned, plus coverage as it stands. Errors say what
    failed and what to do next.
-3. **Report** — one scrolling internal briefing with a sticky section index:
-   **The story** (factual narrative, confidence, 3–5 key-moment cards, metrics
-   strip), **Board** (swimlane with a time axis, silent-period bands and owner
-   lapses), **Chapters** (4–7 collapsible phases with short-headline rows;
-   routine events collapse to a count), **Promises** (one card per promise with
-   a promised-vs-actual deadline bar and status stamp, plus the
-   what-was-communicated-vs-other-records audit), **Causes and ownership**
-   (owner periods with lapses, tagged causes), **Gaps and confidence** (what we
-   could not determine, safe-to-repeat vs check-with-human, rejected claims kept
-   visible), and **Draft reply** (client message built only from verified
-   findings, every sentence linked to its evidence and never sent from the app).
-   Every marker, card and row opens the shared evidence drawer with the stored
+3. **Report** — one scrolling internal briefing rendered from a single
+   server-built `ReportModel` (actors, deduplicated findings, state, counts,
+   headline, open questions, actions and the one silence). The first screen is
+   a **2–3 sentence story** with finding citations and a muted stats line,
+   followed by four counts (findings, verified, needs check, open questions),
+   the current-state cards, and **Do now** actions that name their trigger.
+   **What happened** renders each finding once; promises, failures and the
+   told-vs-other-records audit link back compactly instead of repeating it.
+   The **timeline board** sits directly after the story and draws the silent
+   period once, only on lanes with activity. **Open questions** are grouped by
+   theme with a next step (top five expanded, the rest behind Show all).
+   **Draft reply** is built only from safe verified findings, every sentence
+   linked to its evidence and never sent from the app. If the client or project
+   cannot be identified, a prominent notice offers a roster-backed **Confirm
+   client** action and role-dependent cards say so instead of guessing. Every
+   marker, card and row opens the shared evidence drawer with the stored
    original message and the cited quote highlighted. "How this was produced"
    reopens the full activity log and coverage.
    Uploaded exports remain available as the fallback path ("Use uploaded

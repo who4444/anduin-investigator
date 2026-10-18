@@ -543,12 +543,39 @@ describeDb("agent tools", () => {
     expect(result.items.map((item) => item.id)).toContain(issueId);
   });
 
-  it("does not throw on a non-numeric slack ts for thread fallback", async () => {
+  it("falls back to the channel when the model omits the thread ts", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const result = JSON.parse(
+      await tools.exec("get_slack_thread", { channel: "meridian-billing" }),
+    ) as { count: number; note?: string };
+
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.note).toContain("No thread ts was given");
+  });
+
+  it("resolves what the model actually passes: an item id or an ISO ts", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+
+    const byId = JSON.parse(
+      await tools.exec("get_slack_thread", { channel: "meridian-billing", ts: slackId }),
+    ) as { count: number; items: { id: string }[] };
+    expect(byId.items.map((item) => item.id)).toEqual([slackId, replyId]);
+
+    const byIso = JSON.parse(
+      await tools.exec("get_slack_thread", { channel: "meridian-billing", ts: "2024-09-24T16:00:00.000Z" }),
+    ) as { count: number; items: { id: string }[] };
+    expect(byIso.items.map((item) => item.id)).toEqual([slackId, replyId]);
+  });
+
+  it("falls back to the channel instead of failing on an unmatched ts", async () => {
     const tools = buildAgentTools(investigationId, "root_cause");
     const result = JSON.parse(
       await tools.exec("get_slack_thread", { channel: "meridian-billing", ts: "not-epoch" }),
-    ) as { error?: string };
-    expect(result.error).toMatch(/No stored thread/);
+    ) as { count: number; note?: string; error?: string; items?: { id: string }[] };
+    expect(result.error).toBeUndefined();
+    expect(result.count).toBeGreaterThanOrEqual(2);
+    expect(result.items?.map((item) => item.id)).toContain(slackId);
+    expect(result.note).toContain('No stored thread matched ts "not-epoch"');
   });
 
   it("rejects a submit_claim without a valid status", async () => {

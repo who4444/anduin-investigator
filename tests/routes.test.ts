@@ -143,7 +143,7 @@ describeDb("pipeline routes", () => {
       confidence: "partial",
       anchors: [
         { kind: "declared-client", value: routesClient, source: "declared" },
-        { kind: "ticket-prefix", value: "MER", source: "model" },
+        { kind: "ticket-prefix", value: "MER", source: "linked" },
       ],
     });
   });

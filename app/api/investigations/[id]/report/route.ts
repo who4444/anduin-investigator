@@ -6,6 +6,7 @@ import { clientActorsFor, clientDomainsFor } from "@/lib/pipeline/scope";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
 import { buildReportView } from "@/lib/report/build";
+import { buildReportModel } from "@/lib/report/model";
 import { pruneStaleReply } from "@/lib/agents/reply";
 import { getLatestReportVersion, getReportExtras } from "@/lib/store";
 
@@ -69,6 +70,22 @@ export async function GET(
         commitments: assembled.commitments,
         clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
         clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+      }),
+      model: buildReportModel({
+        investigation: {
+          title: assembled.investigation.title,
+          escalationText: assembled.investigation.escalationText,
+          createdAt: assembled.investigation.createdAt,
+        },
+        events: assembled.timeline,
+        claims: assembled.claims,
+        commitments: assembled.commitments,
+        gaps: assembled.gaps,
+        notes: assembled.skepticNotes,
+        scope: assembled.scope,
+        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
+        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+        coverage: assembled.coverage,
       }),
       scope: assembled.scope,
       complete: assembled.complete,

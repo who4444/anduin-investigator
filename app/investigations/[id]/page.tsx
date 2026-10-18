@@ -6,6 +6,7 @@ import { buildResult } from "@/lib/pipeline/assemble";
 import { clientActorsFor, clientDomainsFor } from "@/lib/pipeline/scope";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
+import { buildReportModel } from "@/lib/report/model";
 import {
   buildReportView,
   type IssueSummary,
@@ -51,6 +52,26 @@ export default async function ReportPage({
       : allClaims;
     const activeClaimIds = new Set(activeClaims.map((claim) => claim.id));
     const activeEventIds = new Set(activeClaims.map((claim) => claim.eventId));
+    const allEventsById = new Map(assembled.timeline.map((event) => [event.id, event]));
+    // Event-only findings (Jira changelog rows, status changes) carry no claim
+    // and therefore no issue id; link them to the issue by ticket key so a
+    // per-issue view keeps the ticket's own history. Channel-based on purpose:
+    // a cross-ticket reference must not leak another issue's timeline in.
+    const ticketKeyOf = (value: string | null | undefined): string | null =>
+      typeof value === "string" && /^[A-Z][A-Z0-9]{1,9}-\d+$/i.test(value)
+        ? value.toUpperCase()
+        : null;
+    if (filterIssue) {
+      const ticketKeys = new Set<string>();
+      for (const eventId of activeEventIds) {
+        const key = ticketKeyOf(allEventsById.get(eventId)?.channel);
+        if (key) ticketKeys.add(key);
+      }
+      for (const event of assembled.timeline) {
+        const key = ticketKeyOf(event.channel);
+        if (key && ticketKeys.has(key)) activeEventIds.add(event.id);
+      }
+    }
     const activeEvents = filterIssue
       ? assembled.timeline.filter((event) => activeEventIds.has(event.id))
       : assembled.timeline;
@@ -133,7 +154,9 @@ export default async function ReportPage({
       // The review list is for deciding, not reading: cap the preview text.
       excludedEvents: assembled.excludedEvents.map((event) => ({
         ...event,
-        text: event.text.slice(0, 240),
+        text: event.text
+          .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "")
+          .slice(0, 240),
       })),
       claims: activeClaims,
       commitments: assembled.commitments,
@@ -174,6 +197,22 @@ export default async function ReportPage({
         commitments: assembled.commitments,
         clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
         clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+      }),
+      model: buildReportModel({
+        investigation: {
+          title: assembled.investigation.title,
+          escalationText: assembled.investigation.escalationText,
+          createdAt: assembled.investigation.createdAt,
+        },
+        events: activeEvents,
+        claims: activeClaims,
+        commitments: assembled.commitments,
+        gaps: activeGaps,
+        notes: activeNotes,
+        scope: assembled.scope,
+        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
+        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+        coverage: assembled.coverage,
       }),
       scope: assembled.scope,
       issues: issueSummaries,

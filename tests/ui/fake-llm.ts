@@ -127,8 +127,6 @@ function investigatorTurn(
   const type =
     kind === "root_cause" ? "root_cause" : kind === "commitments" ? "commitment" : "process_failure";
   const status = kind === "commitments" ? "broken" : "n/a";
-  const label =
-    kind === "root_cause" ? "Root cause" : kind === "commitments" ? "Commitment" : "Ownership";
 
   // G-23 fixture: when the prompt names more than one issue, submit one finding
   // per issue so both report tabs have evidence.
@@ -147,7 +145,7 @@ function investigatorTurn(
           name: "submit_claim",
           args: {
             type,
-            text: `${label} finding: ${quote}`,
+            text: quote,
             quote,
             item_id: item.id,
             actor: item.actor,
@@ -166,7 +164,7 @@ function investigatorTurn(
       name: "submit_claim",
       args: {
         type,
-        text: `${label} finding: ${quote}`,
+        text: quote,
         quote,
         item_id: pick.id,
         actor: pick.actor,

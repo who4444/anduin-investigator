@@ -218,12 +218,14 @@ export function OutcomeChip({ outcome, judged = true }: { outcome: string; judge
 interface DrawerProps {
   eventId: string;
   claimId?: string;
+  /** The full finding label, shown bold as the drawer's first line. */
+  heading?: string;
   events: Event[];
   claims: Claim[];
   onClose: () => void;
 }
 
-export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: DrawerProps) {
+export function EvidenceDrawer({ eventId, claimId, heading, events, claims, onClose }: DrawerProps) {
   const [copied, setCopied] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -299,6 +301,7 @@ export function EvidenceDrawer({ eventId, claimId, events, claims, onClose }: Dr
         aria-label="Stored original message"
         onClick={(clickEvent) => clickEvent.stopPropagation()}
       >
+        {heading && <p className="drawer-heading">{heading}</p>}
         <div className="spread">
           <span className="small muted">
             {event.ts} · {event.actorResolved ?? event.actor} · {event.channel} · <SourceChip source={event.source} />

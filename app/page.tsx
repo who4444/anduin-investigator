@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { cleanReportTitle } from "@/lib/report/model";
+
 interface SourceInfo {
   id: string;
   label: string;
@@ -300,7 +302,7 @@ export default function StartPage() {
             {recent.map((entry) => (
               <li key={entry.id} className="row small">
                 <a href={`/investigations/${entry.id}`}>
-                  {entry.title || entry.id.slice(0, 8)}
+                  {entry.title.trim() ? cleanReportTitle(entry.title) : entry.id.slice(0, 8)}
                 </a>
                 <span className="muted tabular">{entry.createdAt.slice(0, 10)}</span>
                 {entry.origin === "demo" && <span className="chip chip-broken">synthetic</span>}

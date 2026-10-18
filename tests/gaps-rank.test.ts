@@ -36,6 +36,12 @@ describe("cleanGapText (G-11)", () => {
       "the source lookup calls failed for both channels.",
     );
     expect(
+      cleanGapText("get_slack_thread(meridian-billing) and the source lookup both FAILED."),
+    ).toBe("the source lookups both FAILED.");
+    expect(
+      cleanGapText("get_slack_thread(meridian-billing) and search_slack both FAILED."),
+    ).toBe("the source lookups both FAILED.");
+    expect(
       cleanGapText("The claim set substitutes Meridian (e.g., claims 26, 27, 39) for the client."),
     ).toBe("The claim set substitutes Meridian (e.g., stored findings) for the client.");
   });

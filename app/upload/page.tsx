@@ -61,6 +61,12 @@ export default function UploadPage() {
       }
       form.append("escalation", escalation);
       form.append("client", client);
+      // ?fresh=1 forces a brand-new investigation even for identical exports
+      // (smoke/test tooling). The nonce only affects the cache key; the
+      // escalation text — which the report renders verbatim — stays clean.
+      if (new URLSearchParams(window.location.search).get("fresh") === "1") {
+        form.append("cacheBust", crypto.randomUUID());
+      }
 
       const response = await fetch("/api/investigations", { method: "POST", body: form });
       const payload = (await response.json().catch(() => ({}))) as {

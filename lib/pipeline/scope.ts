@@ -545,6 +545,24 @@ function linkedToDeclared(declared: string, universe: ScopeUniverse): ScopeAncho
   return anchors;
 }
 
+/* The resolved project name links to ticket prefixes the same way the
+   declared client links to registry features: a prefix that spells the start
+   of a project-name token ("Meridian" -> MER) belongs to that project. The
+   model can miss it or propose a decoy (SUP-2231 is another project's ticket);
+   the actual project's records must still be reachable by scope. */
+function linkedToProject(project: string, universe: ScopeUniverse): ScopeAnchor[] {
+  const tokens = clientTokens(project);
+  if (tokens.length === 0) return [];
+  const anchors: ScopeAnchor[] = [];
+  for (const prefix of universe.ticketPrefixes) {
+    const lower = prefix.toLowerCase();
+    if (lower.length >= 2 && tokens.some((token) => token.startsWith(lower))) {
+      anchors.push({ kind: "ticket-prefix", value: prefix.toUpperCase(), source: "linked" });
+    }
+  }
+  return anchors;
+}
+
 /* Two anchors are bridged when their record sets share a record, or share an
    email thread — a reply that cites no ticket still ties its sender's domain
    to the ticket its root discusses. */
@@ -644,10 +662,13 @@ export async function resolveScope(
     : null;
 
   const linkedAnchors = declared ? linkedToDeclared(declared, universe) : [];
+  const projectName = proposal?.project ?? learned?.project ?? null;
+  const projectAnchors = projectName ? linkedToProject(projectName, universe) : [];
   const registryAnchors = dedupeAnchors([
     ...escalationAnchors,
     ...learnedAnchors,
     ...linkedAnchors,
+    ...projectAnchors,
     ...modelAnchors,
   ]);
 
@@ -694,7 +715,7 @@ export async function resolveScope(
 
   return {
     client: declared ?? proposal?.client ?? learned?.client ?? null,
-    project: proposal?.project ?? learned?.project ?? null,
+    project: projectName,
     ticketPrefixes,
     channels,
     senderDomains,

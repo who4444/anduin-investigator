@@ -6,6 +6,7 @@ import { buildCaseState, type CaseState } from "./case-state";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
+import type { ReportModel } from "./model";
 
 export type FindingTag = "technical" | "process" | "communication";
 
@@ -188,6 +189,8 @@ export interface ReportPayload extends ReportView {
   } | null;
   briefing: Briefing;
   bottomLine: BottomLine;
+  /** Revision brief: the single normalized model every section renders. */
+  model: ReportModel;
   scope: ReportScope | null;
   issues: IssueSummary[];
   activeIssueId: string | null;

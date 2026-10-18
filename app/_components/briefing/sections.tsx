@@ -278,7 +278,7 @@ export function CausesSection({
    saves the selection and re-runs the investigation over the enlarged scope
    (the re-run keeps everything already stored and redoes investigate →
    verify → assemble). */
-function ExcludedRecordsPanel({ report, rerunHref }: { report: ReportPayload; rerunHref: string }) {
+export function ExcludedRecordsPanel({ report, rerunHref }: { report: ReportPayload; rerunHref: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -343,7 +343,7 @@ function ExcludedRecordsPanel({ report, rerunHref }: { report: ReportPayload; re
                     <span className={`source-label source-${event.source}`}>{event.source}</span>
                     <span className="tabular">{event.ts.slice(0, 10)}</span>
                     <span>{event.channel}</span>
-                    <span>{event.actorResolved ?? event.actor}</span>
+                    <span>{(event.actorResolved ?? event.actor).replace(/<[^>]*>/g, "").trim() || "unknown"}</span>
                   </span>
                   <span className="excluded-text">{event.text.replace(/\s+/g, " ")}</span>
                 </span>

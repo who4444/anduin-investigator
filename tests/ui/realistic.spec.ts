@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
@@ -27,10 +28,11 @@ test.beforeAll(async ({ request }) => {
     const mime = name.endsWith(".eml") ? "message/rfc822" : name.endsWith(".mbox") ? "application/mbox" : "application/json";
     form.append("files", new File([readFileSync(`public/realistic/${name}`)], name, { type: mime }));
   }
-  // A run-unique escalation keeps the seed fresh so the pipeline re-runs after
-  // identity/scoping code changes (the old cached rows predate them).
-  const stamp = Number(process.env.REALISTIC_RUN ?? Date.now());
-  form.append("escalation", `Bright Market's VAT invoice exports have shown blank totals since the 5.3.0 upgrade four weeks ago (ticket LUM-811). We were promised the Sep 20 release; our chases went unanswered. Explain what happened and when this was actually fixed. [run ${stamp}]`);
+  // The cacheBust nonce keeps the seed fresh so the pipeline re-runs after
+  // identity/scoping code changes; it never touches the escalation text,
+  // which the report renders verbatim.
+  form.append("escalation", "Bright Market's VAT invoice exports have shown blank totals since the 5.3.0 upgrade four weeks ago (ticket LUM-811). We were promised the Sep 20 release; our chases went unanswered. Explain what happened and when this was actually fixed.");
+  form.append("cacheBust", randomUUID());
   form.append("client", "Bright Market");
   form.append("origin", "demo");
   form.append("title", "Realistic workspace — Bright Market / Lumen Ledger VAT exports");

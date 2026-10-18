@@ -38,6 +38,7 @@ export function cleanGapText(text: string): string {
   return text
     .replace(TOOL_CALL, "the source lookup")
     .replace(TOOL_NAME, "the source lookup")
+    .replace(/\bthe source lookup( and |, )the source lookup\b/gi, "the source lookups")
     .replace(/\bthe the\b/gi, "the")
     .replace(/\bclaims? \d+(?:\s*,\s*\d+)*/gi, "stored findings")
     .replace(/\b(?:e|ev|claim|event|item|note|g|gap)_[a-z0-9_]+/gi, "a stored record")
