@@ -109,7 +109,27 @@ function actorEmailDomain(event: Event): string | null {
    needs the same client identity to find the last client contact (G-06). */
 export function clientDomainsFor(events: Event[], scope: InvestigationScope | null): string[] {
   if (!scope) return [];
-  return [...computeClientDomains(events, scope)].sort();
+  // Only domains VERIFIED as the client's count: the anchor-listed ones plus
+  // registry domains token-matched to the declared/learned client name. The
+  // vendor's correspondence domain (the client's emails address it) is scope
+  // material but never client identity.
+  const anchorDomains = new Set(
+    scope.anchors
+      .filter((anchor) => anchor.kind === "sender-domain")
+      .map((anchor) => anchor.value.toLowerCase()),
+  );
+  const tokens = clientTokens(scope.client ?? "");
+  for (const event of events) {
+    const domain = actorEmailDomain(event);
+    if (domain && tokens.some((token) => domain.startsWith(token))) anchorDomains.add(domain);
+  }
+  for (const domain of anchorDomains) {
+    if (!tokens.length) continue;
+    if (scope.anchors.some((anchor) => anchor.kind === "sender-domain" && anchor.value.toLowerCase() === domain)) {
+      continue;
+    }
+  }
+  return [...anchorDomains].sort();
 }
 
 export function clientActorsFor(events: Event[], scope: InvestigationScope | null): string[] {

@@ -708,8 +708,34 @@ describe("G-01 client identity across tools", () => {
   });
 });
 
-describe("plan-assisted scope refinement (B3)", () => {
-  it("confirms plan-named identifiers that are already selected and skips distractors with a reason", async () => {
+describe("client domains exclude the vendor's correspondence domain (B1)", () => {
+  it("only anchor-verified or token-matched domains count as the client's", async () => {
+    const { clientDomainsFor } = await import("../lib/pipeline/scope");
+    const scope: InvestigationScope = {
+      client: "Bright Market",
+      project: "Lumen",
+      ticketPrefixes: ["LUM"],
+      channels: [],
+      // The vendor's domain arrived by correspondence expansion (the client's
+      // emails address it) — it is scope material, not client identity.
+      senderDomains: ["brightmarket.example", "lumen.example"],
+      confidence: "scoped",
+      anchors: [{ kind: "sender-domain", value: "brightmarket.example", source: "linked" }],
+    };
+    const events = [
+      event({
+        id: "e-vendor",
+        source: "email",
+        channel: "email",
+        actor: "Nadia Chen <nadia.chen@lumen.example>",
+        text: "Correct root found: the VAT rounding change in 5.3.0.",
+      }),
+    ];
+    expect(clientDomainsFor(events, scope)).toEqual(["brightmarket.example"]);
+  });
+});
+
+describe("plan-assisted scope refinement (B3)", () => {  it("confirms plan-named identifiers that are already selected and skips distractors with a reason", async () => {
     const { refineScopeWithPlan } = await import("../lib/pipeline/scope");
     const resolved = (await resolveScope(
       "Northwind Logistics reports wrong Meridian Billing invoices (MER-201).",
