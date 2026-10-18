@@ -512,6 +512,17 @@ export async function getCommitments(investigationId: string): Promise<Commitmen
   return rows.map(mapCommitment);
 }
 
+/** I5: compare people through the learned identity map — "L. Chen" and
+    "Lin Chen <l.chen@…>" are one actor, entities decoded, addresses kept
+    only as linking material (never in metrics). */
+async function canonicalPersonKey(investigationId: string, person: string | null): Promise<string> {
+  const key = normalizePerson(person);
+  if (!key) return "";
+  const identities = await getIdentities(investigationId);
+  const hit = identities.find((row) => row.applied && normalizePerson(row.alias) === key);
+  return hit ? normalizePerson(hit.canonical) : key;
+}
+
 export async function mergeCommitment(
   investigationId: string,
   record: CommitmentInput & {
@@ -540,8 +551,11 @@ export async function mergeCommitment(
         and issue_id is not distinct from ${record.issueId ?? null}::uuid
       order by created_at asc
     `;
-    const promisor = normalizePerson(record.promisor);
-    fuzzyRow = candidates.find((row) => normalizePerson(row.promisor) === promisor) ?? null;
+    const promisorKey = await canonicalPersonKey(investigationId, record.promisor);
+    const candidateKeys = await Promise.all(
+      candidates.map(async (row) => ({ row, key: await canonicalPersonKey(investigationId, row.promisor) })),
+    );
+    fuzzyRow = candidateKeys.find(({ key }) => key === promisorKey)?.row ?? null;
   }
   const existingRow = exactRow ?? fuzzyRow;
 

@@ -1,4 +1,5 @@
 import type { CommitmentStatus } from "../types";
+import { decodeEntities } from "../ingest/entities";
 
 /* G-05: promise identity and outcome rules live in code, not in the model.
    The agent supplies structure (promisor, object, deadline phrase, status);
@@ -14,9 +15,11 @@ const OBJECT_STOPWORDS = new Set([
   "fix", "fixed", "next", "again",
 ]);
 
-/** Strip dates and filler so the same promise keys the same in any wording. */
+/** Strip dates and filler so the same promise keys the same in any wording.
+    HTML entities are decoded first: Jira exports store "&lt;l.chen@…&gt;" and
+    the entity text must never split one promisor into two (I5). */
 export function normalizeObject(object: string): string {
-  return object
+  return decodeEntities(object)
     .toLowerCase()
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ")
     .replace(
@@ -33,10 +36,10 @@ export function normalizeObject(object: string): string {
 }
 
 /** Identity-normalised person key: email suffix, punctuation and word order
-    must not split one promisor into two people. */
+    must not split one promisor into two people. Entities decoded first (I5). */
 export function normalizePerson(person: string | null): string {
   if (!person) return "";
-  return person
+  return decodeEntities(person)
     .toLowerCase()
     .replace(/<[^>]*>/g, " ")
     .replace(/[^a-z\s]/g, " ")

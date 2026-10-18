@@ -3,6 +3,7 @@ import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
 import { buildCaseState, type CaseState } from "./case-state";
+import { decodeEntities } from "../ingest/entities";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
@@ -214,6 +215,18 @@ export interface ReportInput {
 }
 
 const DAY_MS = 86_400_000;
+
+/** I5/F3: manager-facing names are decoded and address-free. The underlying
+    event actor keeps its address (identity linking depends on it) — this is
+    display-only. */
+function cleanDisplayName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const decoded = decodeEntities(name)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return decoded || null;
+}
 const SILENCE_THRESHOLD_DAYS = 3;
 
 export function daysBetween(fromIso: string, toIso: string): number {
@@ -928,8 +941,11 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
           claimIds: [claim.id],
           eventId: claim.eventId,
           promise: claim.text,
-          who: commitment.promisor ?? claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
-          toWhom: commitment.promisee,
+          who:
+            cleanDisplayName(
+              commitment.promisor ?? claim.actor ?? event?.actorResolved ?? event?.actor ?? null,
+            ) ?? null,
+          toWhom: cleanDisplayName(commitment.promisee),
           madeAt: event?.ts ?? claim.ts ?? null,
           deadline: commitment.deadlinePhrase,
           deadlineInvalid,

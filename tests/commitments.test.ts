@@ -9,11 +9,26 @@ import {
   isPromiseLike,
   mergeStatuses,
   normalizeObject,
+  normalizePerson,
 } from "../lib/pipeline/commitments";
 
 loadEnv();
 
 const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+describe("promisor canonicalization (I5)", () => {
+  it("decodes HTML entities before identity matching", () => {
+    expect(normalizePerson("Lin Chen &lt;l.chen@northwind.example&gt;")).toBe(
+      normalizePerson("Lin Chen <l.chen@northwind.example>"),
+    );
+    expect(normalizePerson("Lin Chen &lt;l.chen@northwind.example&gt;")).toBe(
+      normalizePerson("Lin Chen"),
+    );
+    expect(normalizeObject("invoice totals &amp; VAT fixed")).toBe(
+      normalizeObject("invoice totals and VAT fixed"),
+    );
+  });
+});
 
 describe("commitment rules (G-05)", () => {
   it("normalizes the object so dates and filler stop splitting one promise", () => {
@@ -209,8 +224,7 @@ describeDb("commitments end to end (G-05)", () => {
     expect(promises).toMatchObject({ value: "1 of 1 broken", tone: "bad" });
   });
 
-  it("merges differently-worded promises with the same promisor, deadline and issue", async () => {
-    const { createInvestigation, deleteInvestigation, getCommitments, insertEvents } = await import(
+  it("merges differently-worded promises with the same promisor, deadline and issue", async () => {    const { createInvestigation, deleteInvestigation, getCommitments, insertEvents } = await import(
       "../lib/store"
     );
     const { buildAgentTools } = await import("../lib/agents/tools");
@@ -296,6 +310,89 @@ describeDb("commitments end to end (G-05)", () => {
     expect(commitments).toHaveLength(1);
     expect(commitments[0].sourceEventIds).toHaveLength(3);
     expect(commitments[0].status).toBe("broken");
+    await deleteInvestigation(id);
+    created.splice(created.indexOf(id), 1);
+  });
+
+  it("merges an entity-encoded promisor with its plain form and displays it decoded", async () => {
+    const { createInvestigation, deleteInvestigation, getCommitments, insertEvents } = await import(
+      "../lib/store"
+    );
+    const { buildAgentTools } = await import("../lib/agents/tools");
+    const { buildLedger } = await import("../lib/report/build");
+    const id = await createInvestigation({
+      title: `Commitments entities ${randomUUID()}`,
+      escalationText: "When will the invoice totals be fixed?",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+    await insertEvents(id, [
+      {
+        id: "e_entity_1",
+        source: "jira",
+        ts: "2024-09-20T10:00:00.000Z",
+        actor: "Lin Chen &lt;l.chen@northwind.example&gt;",
+        channel: "MER-101",
+        text: "We will ship the invoice totals fix in the Sep 24 release.",
+      },
+      {
+        id: "e_entity_2",
+        source: "email",
+        ts: "2024-09-21T10:00:00.000Z",
+        actor: "Lin Chen <l.chen@northwind.example>",
+        channel: "email",
+        text: "The invoice totals fix ships in the Sep 24 release as promised.",
+      },
+    ]);
+    const tools = buildAgentTools(id, "commitments");
+    for (const submission of [
+      {
+        text: "We will ship the invoice totals fix in the Sep 24 release.",
+        object: "invoice totals corrected",
+        deadline: "Sep 24",
+        quote: "We will ship the invoice totals fix in the Sep 24 release.",
+        item_id: "e_entity_1",
+        status: "broken",
+        rationale: "no delivery record",
+      },
+      {
+        text: "The invoice totals fix ships in the Sep 24 release as promised.",
+        object: "invoice totals corrected",
+        deadline: "Sep 24",
+        quote: "The invoice totals fix ships in the Sep 24 release as promised.",
+        item_id: "e_entity_2",
+        status: "broken",
+        rationale: null,
+      },
+    ]) {
+      const result = JSON.parse(
+        await tools.exec("submit_commitment", {
+          ...submission,
+          actor: "Lin Chen &lt;l.chen@northwind.example&gt;",
+          to: "Northwind",
+          confidence: 0.8,
+        }),
+      ) as { error?: string };
+      expect(result.error, JSON.stringify(result)).toBeUndefined();
+    }
+
+    const commitments = await getCommitments(id);
+    expect(commitments).toHaveLength(1);
+    // Display never shows entities or the raw address.
+    const store = await import("../lib/store");
+    for (const claim of await store.getClaims(id)) {
+      await store.setClaimVerification(claim.id, "verified", null, {
+        quote: { ok: true },
+        attribution: null,
+        entailment: null,
+      });
+    }
+    const events = await store.getEvents(id);
+    const claims = await store.getClaims(id);
+    const rows = buildLedger({ events, claims, notes: [], commitments });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].who).not.toMatch(/&lt;|&gt;|&amp;/);
+    expect(rows[0].who).toMatch(/Lin Chen/);
     await deleteInvestigation(id);
     created.splice(created.indexOf(id), 1);
   });
