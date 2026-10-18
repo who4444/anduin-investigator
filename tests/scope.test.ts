@@ -234,11 +234,10 @@ describe("resolveScope", () => {
       "declared",
       "escalation",
       "linked",
-      "model",
     ]);
   });
 
-  it("stays 'partial' with only two anchors", async () => {
+  it("does not scope from a model proposal alone (B1: models never seed)", async () => {
     const resolved = await resolveScope(
       "Something about billing is broken.",
       scopeEvents,
@@ -246,10 +245,12 @@ describe("resolveScope", () => {
       null,
     );
 
-    expect(resolved).toMatchObject({ confidence: "partial", ticketPrefixes: ["MER"] });
+    // The model's guess founds no anchors; without seeds the honest answer is
+    // an unscoped run, not a partial scope built on one model proposal.
+    expect(resolved).toBeNull();
   });
 
-  it("stays 'partial' on a single weak match instead of guessing", async () => {
+  it("does not scope from a single model channel guess", async () => {
     const resolved = await resolveScope(
       "Your billing module has been wrong since the last update.",
       scopeEvents,
@@ -257,7 +258,7 @@ describe("resolveScope", () => {
       null,
     );
 
-    expect(resolved).toMatchObject({ confidence: "partial", channels: ["meridian-billing"] });
+    expect(resolved).toBeNull();
   });
 
   it("keeps the declared client but reports 'none' when no records match", async () => {
@@ -426,8 +427,9 @@ describe("resolveScope", () => {
       "&&&",
     );
 
-    // Junk punctuation cannot be an anchor: 2 registry anchors stay partial.
-    expect(resolved).toMatchObject({ confidence: "partial", ticketPrefixes: ["MER"] });
+    // Junk punctuation cannot be an anchor, and a model proposal cannot
+    // replace it: nothing deterministic remains, so nothing scopes.
+    expect(resolved).toBeNull();
   });
 
   it("returns null when nothing at all is known", async () => {
@@ -435,7 +437,7 @@ describe("resolveScope", () => {
     expect(resolved).toBeNull();
   });
 
-  it("keeps the escalation-evidence component and downgrades on contradictions", async () => {
+  it("expands escalation evidence deterministically and never pulls distractor tenants", async () => {
     const resolved = await resolveScope(
       "Northwind says MER-201 is still wrong.",
       scopeEvents,
@@ -445,10 +447,13 @@ describe("resolveScope", () => {
 
     expect(resolved).toMatchObject({
       ticketPrefixes: ["MER"],
-      channels: [],
       confidence: "partial",
     });
+    // The scoped project's channel comes with it (a record in it names MER);
+    // the distractor tenant stays out even though the model proposed it.
+    expect(resolved?.channels).toEqual(["meridian-billing"]);
     expect(resolved?.channels).not.toContain("kestrel-eng");
+    expect(resolved?.ticketPrefixes).not.toContain("KST");
   });
 
   it("passes the declared client to the model prompt", async () => {

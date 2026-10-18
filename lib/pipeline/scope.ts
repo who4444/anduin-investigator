@@ -289,25 +289,6 @@ export function scopePromptLine(scope: InvestigationScope | null): string | null
   return `Scope: this escalation is from ${who} about ${what}. The evidence registry may contain records for other clients and projects; only findings about this client and project belong in this investigation, and the source tools already hide out-of-scope records.`;
 }
 
-function matchesAnchor(anchor: ScopeAnchor, event: Event): boolean {
-  if (anchor.kind === "ticket-prefix") {
-    const prefix = anchor.value.toUpperCase();
-    return (
-      event.channel.toUpperCase().startsWith(`${prefix}-`) ||
-      new RegExp(`\\b${prefix}-\\d+`, "i").test(event.text) ||
-      (event.refs ?? []).some((ref) => ref.toUpperCase().startsWith(`${prefix}-`))
-    );
-  }
-  if (anchor.kind === "channel") {
-    return event.channel.toLowerCase() === anchor.value.toLowerCase();
-  }
-  if (anchor.kind === "sender-domain") {
-    const domain = event.actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
-    return domain === anchor.value.toLowerCase();
-  }
-  return false;
-}
-
 function anchorKey(anchor: ScopeAnchor): string {
   return `${anchor.kind}|${anchor.value.toLowerCase()}`;
 }
@@ -563,47 +544,124 @@ function linkedToProject(project: string, universe: ScopeUniverse): ScopeAnchor[
   return anchors;
 }
 
-/* Two anchors are bridged when their record sets share a record, or share an
-   email thread — a reply that cites no ticket still ties its sender's domain
-   to the ticket its root discusses. */
-function anchorFootprint(anchor: ScopeAnchor, events: Event[]): Set<string> {
-  const footprint = new Set<string>();
-  for (const event of events) {
-    if (!matchesAnchor(anchor, event)) continue;
-    footprint.add(event.id);
-    if (event.threadId) footprint.add(`t:${event.threadId}`);
-  }
-  return footprint;
+/* Two records share evidence when they touch the same node — a ticket prefix,
+   a channel, a sender domain, an actor name or an email thread. The scope
+   graph is that adjacency (B1): seeds expand through it deterministically. */
+
+type ScopeNodeKind = "prefix" | "channel" | "domain" | "actor" | "thread";
+
+interface ScopeNode {
+  kind: ScopeNodeKind;
+  value: string;
 }
 
-function anchorComponents(anchors: ScopeAnchor[], events: Event[]): ScopeAnchor[][] {
-  const parent = anchors.map((_, index) => index);
-  const find = (index: number): number =>
-    parent[index] === index ? index : (parent[index] = find(parent[index]));
-  const union = (a: number, b: number) => {
-    parent[find(a)] = find(b);
-  };
+function scopeNodeKey(node: ScopeNode): string {
+  return `${node.kind}:${node.value}`;
+}
 
-  const footprints = anchors.map((anchor) => anchorFootprint(anchor, events));
-  for (let i = 0; i < anchors.length; i += 1) {
-    for (let j = i + 1; j < anchors.length; j += 1) {
-      let shared = false;
-      for (const entry of footprints[i]) {
-        if (footprints[j].has(entry)) {
-          shared = true;
-          break;
-        }
+function parsePrefixFromChannel(channel: string): string | null {
+  return channel.match(TICKET_KEY)?.[1]?.toUpperCase() ?? null;
+}
+
+function recordGraphNodes(event: Event): ScopeNode[] {
+  const nodes: ScopeNode[] = [];
+  if (event.source === "jira") {
+    const prefix = parsePrefixFromChannel(event.channel);
+    if (prefix) nodes.push({ kind: "prefix", value: prefix });
+  } else if (event.source === "slack") {
+    if (event.channel) nodes.push({ kind: "channel", value: event.channel.toLowerCase() });
+  } else if (event.source === "email") {
+    const domain = event.actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
+    if (domain) nodes.push({ kind: "domain", value: domain });
+  }
+  const actor = normalizeActorName(event.actorResolved ?? event.actor);
+  if (actor) nodes.push({ kind: "actor", value: actor });
+  for (const match of event.text.matchAll(TICKET_ANYWHERE)) {
+    nodes.push({ kind: "prefix", value: match[1].toUpperCase() });
+  }
+  for (const ref of event.refs ?? []) {
+    const prefix = ref.match(TICKET_KEY)?.[1]?.toUpperCase();
+    if (prefix) nodes.push({ kind: "prefix", value: prefix });
+  }
+  if (event.threadId) nodes.push({ kind: "thread", value: event.threadId });
+  const seen = new Set<string>();
+  return nodes.filter((node) => {
+    const key = scopeNodeKey(node);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Node-key adjacency: two nodes are joined when a record touches both. */
+function buildScopeGraph(events: Event[]): Map<string, Set<string>> {
+  const recordNodesList = events.map(recordGraphNodes);
+  const nodeRecords = new Map<string, Set<number>>();
+  recordNodesList.forEach((nodes, index) => {
+    for (const node of nodes) {
+      const key = scopeNodeKey(node);
+      if (!nodeRecords.has(key)) nodeRecords.set(key, new Set());
+      nodeRecords.get(key)!.add(index);
+    }
+  });
+  const neighbors = new Map<string, Set<string>>();
+  for (const [key, records] of nodeRecords) {
+    neighbors.set(key, new Set());
+    for (const recordIndex of records) {
+      for (const node of recordNodesList[recordIndex]) {
+        neighbors.get(key)!.add(scopeNodeKey(node));
       }
-      if (shared) union(i, j);
     }
   }
+  return neighbors;
+}
 
-  const groups = new Map<number, ScopeAnchor[]>();
-  anchors.forEach((anchor, index) => {
-    const root = find(index);
-    groups.set(root, [...(groups.get(root) ?? []), anchor]);
-  });
-  return [...groups.values()];
+/** B1 selection: expand every seed through the graph; several seed
+    components all join (never drop an anchor for disjointness). Reached
+    (non-seed) ACTOR nodes do not expand: one support engineer working many
+    tenants must not merge them — a vendor engineer posting in a shared room
+    cannot pull their other projects' tickets into this scope. Returns the
+    selected nodes and how many DISJOINT seed components were found (a
+    confidence cap, not a drop). */
+function selectScopeNodes(
+  events: Event[],
+  seeds: ScopeNode[],
+): { selected: Map<ScopeNodeKind, Set<string>>; seedComponents: number } {
+  const neighbors = buildScopeGraph(events);
+  const seedKeys = new Set(seeds.map(scopeNodeKey));
+  const visited = new Set<string>();
+  const selected = new Map<ScopeNodeKind, Set<string>>([
+    ["prefix", new Set()],
+    ["channel", new Set()],
+    ["domain", new Set()],
+    ["actor", new Set()],
+    ["thread", new Set()],
+  ]);
+  let seedComponents = 0;
+  for (const seed of seeds) {
+    const key = scopeNodeKey(seed);
+    if (visited.has(key) || !neighbors.has(key)) continue;
+    seedComponents += 1;
+    const queue = [key];
+    visited.add(key);
+    while (queue.length > 0) {
+      const current = queue.pop()!;
+      const [kind, ...rest] = current.split(":");
+      selected.get(kind as ScopeNodeKind)?.add(rest.join(":"));
+      for (const next of neighbors.get(current) ?? []) {
+        if (visited.has(next)) continue;
+        // Actor nodes join the component but only seed actors expand —
+        // their authorship is the bridge; a reached human is not.
+        if (next.startsWith("actor:") && !seedKeys.has(next)) {
+          visited.add(next);
+          continue;
+        }
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return { selected, seedComponents };
 }
 
 export async function resolveScope(
@@ -627,19 +685,11 @@ export async function resolveScope(
     ? null
     : await proposeFromModel(escalation, universe, declared, client);
 
-  const modelAnchors: ScopeAnchor[] = proposal
-    ? [
-        ...proposal.ticketPrefixes.map(
-          (value): ScopeAnchor => ({ kind: "ticket-prefix", value, source: "model" }),
-        ),
-        ...proposal.channels.map(
-          (value): ScopeAnchor => ({ kind: "channel", value, source: "model" }),
-        ),
-        ...proposal.senderDomains.map(
-          (value): ScopeAnchor => ({ kind: "sender-domain", value, source: "model" }),
-        ),
-      ]
-    : [];
+  // B1: model proposals resolve the client/project NAMES only. Concrete
+  // model anchors never drive selection — two plausible proposals must
+  // produce the same scope, so the graph expands deterministic seeds alone.
+  // (A model-spotted identifier the seeds miss comes back as a review
+  // suggestion, not as scope.)
 
   // Previously verified identifiers for a declared client count as evidence
   // again when they still exist in this registry; otherwise they are dropped.
@@ -656,27 +706,53 @@ export async function resolveScope(
           .map((value): ScopeAnchor => ({ kind: "sender-domain", value: value.toLowerCase(), source: "learned" })),
       ]
     : [];
+  const learnedProject = learned?.project ?? null;
+  const learnedProjectAnchors = learnedProject ? linkedToProject(learnedProject, universe) : [];
 
   const declaredAnchor: ScopeAnchor | null = declared
     ? { kind: "declared-client", value: declared, source: "declared" }
     : null;
 
   const linkedAnchors = declared ? linkedToDeclared(declared, universe) : [];
-  const projectName = proposal?.project ?? learned?.project ?? null;
-  const projectAnchors = projectName ? linkedToProject(projectName, universe) : [];
-  const registryAnchors = dedupeAnchors([
+
+  // The client's own evidence is a seed: actors writing from a client domain
+  // bridge into whatever they authored — including a ticket they created.
+  const clientSeedScope = {
+    client: declared ?? learned?.client ?? null,
+    project: learnedProject,
+    ticketPrefixes: learned?.ticketPrefixes ?? [],
+    channels: learned?.channels ?? [],
+    senderDomains: learned?.senderDomains ?? [],
+    confidence: "scoped",
+    anchors: [],
+  } satisfies InvestigationScope;
+  const clientEvidence = clientEvidenceFor(events, clientSeedScope);
+
+  const seedNodes: ScopeNode[] = [];
+  for (const anchor of [...escalationAnchors, ...learnedAnchors, ...learnedProjectAnchors, ...linkedAnchors]) {
+    const kind =
+      anchor.kind === "ticket-prefix" ? "prefix" : anchor.kind === "channel" ? "channel" : "domain";
+    // Case must match the graph's node keys: prefixes are uppercase.
+    seedNodes.push({
+      kind,
+      value: kind === "prefix" ? anchor.value.toUpperCase() : anchor.value.toLowerCase(),
+    });
+  }
+  for (const domain of clientEvidence.domains) seedNodes.push({ kind: "domain", value: domain });
+  for (const actor of clientEvidence.actors) seedNodes.push({ kind: "actor", value: actor });
+
+  const seedAnchors = dedupeAnchors([
     ...escalationAnchors,
     ...learnedAnchors,
+    ...learnedProjectAnchors,
     ...linkedAnchors,
-    ...projectAnchors,
-    ...modelAnchors,
   ]);
 
-  if (registryAnchors.length === 0) {
+  if (seedNodes.length === 0) {
     if (!declared) return null;
     return {
       client: declared,
-      project: proposal?.project ?? null,
+      project: proposal?.project ?? learnedProject,
       ticketPrefixes: [],
       channels: [],
       senderDomains: [],
@@ -685,37 +761,39 @@ export async function resolveScope(
     };
   }
 
-  // Contradicting anchors (disjoint record sets) cannot all describe one
-  // client. Anchors carrying escalation evidence — or previously verified
-  // identifiers for the declared client — are never dropped: when they span
-  // multiple components, they are all kept and confidence is capped, so a
-  // casual prose mention can never vote the real ticket out.
-  let contradiction = false;
-  let kept = registryAnchors;
-  const components = anchorComponents(registryAnchors, events);
-  if (components.length > 1) {
-    contradiction = true;
-    const evidenceComponents = components.filter((component) =>
-      component.some((anchor) => anchor.source === "escalation" || anchor.source === "learned"),
-    );
-    kept =
-      evidenceComponents.length > 0
-        ? evidenceComponents.flat()
-        : components.reduce((best, current) => (current.length > best.length ? current : best), components[0]);
+  const { selected, seedComponents } = selectScopeNodes(events, seedNodes);
+  // Disjoint seed components union here (everything selected) — they cap the
+  // confidence instead of voting each other out.
+  const contradiction = seedComponents > 1;
+
+  const picked = (kind: ScopeNodeKind): string[] => [...selected.get(kind) ?? []];
+  const ticketPrefixes = picked("prefix").sort();
+  const channels = picked("channel").sort();
+  const senderDomains = picked("domain").sort();
+
+  // Seeds that touch no records select nothing: an honest none, not an
+  // empty partial (the learned-identifiers-purged case).
+  if (ticketPrefixes.length === 0 && channels.length === 0 && senderDomains.length === 0) {
+    if (!declared) return null;
+    return {
+      client: declared,
+      project: proposal?.project ?? learnedProject,
+      ticketPrefixes: [],
+      channels: [],
+      senderDomains: [],
+      confidence: "none",
+      anchors: [declaredAnchor!],
+    };
   }
 
-  const anchors = dedupeAnchors([...(declaredAnchor ? [declaredAnchor] : []), ...kept]);
-  const ticketPrefixes = [...new Set(kept.filter((a) => a.kind === "ticket-prefix").map((a) => a.value))];
-  const channels = [...new Set(kept.filter((a) => a.kind === "channel").map((a) => a.value))];
-  const senderDomains = [...new Set(kept.filter((a) => a.kind === "sender-domain").map((a) => a.value))];
-
-  const total = kept.length + (declared ? 1 : 0);
+  const anchors = dedupeAnchors([...(declaredAnchor ? [declaredAnchor] : []), ...seedAnchors]);
+  const total = seedAnchors.length + (declared ? 1 : 0);
   const confidence: ScopeConfidence =
     !contradiction && total >= SCOPED_MIN_ANCHORS ? "scoped" : "partial";
 
   return {
     client: declared ?? proposal?.client ?? learned?.client ?? null,
-    project: projectName,
+    project: proposal?.project ?? learnedProject,
     ticketPrefixes,
     channels,
     senderDomains,

@@ -130,21 +130,20 @@ describeDb("pipeline routes", () => {
 
     // The structured plan is persisted alongside the rendered text, and the
     // identified scope is verified against the registry and persisted.
-    // Declared client + one verified identifier is 2 anchors: partial.
+    // B1: model proposals never seed scope — the random client name links no
+    // registry feature and the escalation names no ticket, so the honest
+    // grade is none; the project name stays what the model proposed.
     const investigation = await getInvestigation(investigationId);
     expect(investigation?.planData?.framing).toContain("Trace 4.12");
     expect(investigation?.planData?.hypotheses[0].statement).toContain("4.12 merge");
     expect(investigation?.scope).toEqual({
       client: routesClient,
       project: "Meridian Billing",
-      ticketPrefixes: ["MER"],
+      ticketPrefixes: [],
       channels: [],
       senderDomains: [],
-      confidence: "partial",
-      anchors: [
-        { kind: "declared-client", value: routesClient, source: "declared" },
-        { kind: "ticket-prefix", value: "MER", source: "linked" },
-      ],
+      confidence: "none",
+      anchors: [{ kind: "declared-client", value: routesClient, source: "declared" }],
     });
   });
 
@@ -366,6 +365,15 @@ describeDb("pipeline routes", () => {
         actor: "Marcus Webb",
         channel: "meridian-billing",
         text: "Northwind escalation (MER-101): fix is scheduled.",
+        refs: ["MER-101"],
+      },
+      {
+        id: "e_learn_client",
+        source: "email",
+        ts: "2024-09-20T10:00:00.000Z",
+        actor: "Dana Okoro <dana@northwind.example>",
+        channel: "email",
+        text: "Chasing the MER-101 fix for our escalation.",
         refs: ["MER-101"],
       },
     ]);
