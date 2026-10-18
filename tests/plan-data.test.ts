@@ -149,3 +149,40 @@ describe("deriveDateWindow", () => {
     expect(deriveDateWindow("totals are wrong", reference)).toEqual({ from: null, to: null });
   });
 });
+
+describe("date anchoring to the records (I5/F2)", () => {
+  const events2024 = [
+    { ts: "2024-09-05T08:00:00.000Z" },
+    { ts: "2024-09-28T17:30:00.000Z" },
+    { ts: "2024-09-15T00:00:00.000Z" },
+  ];
+
+  it("anchors the reference to the latest record", async () => {
+    const { latestEventTs } = await import("../lib/pipeline/plan");
+    expect(latestEventTs(events2024)).toBe("2024-09-28T17:30:00.000Z");
+    expect(latestEventTs([])).toBeNull();
+  });
+
+  it("derives a 2024 window from 2024 records, not the wall clock", async () => {
+    const { latestEventTs } = await import("../lib/pipeline/plan");
+    const reference = latestEventTs(events2024)!;
+    expect(deriveDateWindow("wrong for three weeks now", reference)).toEqual({
+      from: "2024-09-07",
+      to: null,
+    });
+  });
+
+  it("rejects a model window wholly outside the record range", async () => {
+    const { validateDateWindow } = await import("../lib/pipeline/plan");
+    expect(validateDateWindow({ from: "2026-09-18", to: "2026-09-28" }, events2024)).toEqual({
+      from: null,
+      to: null,
+    });
+    // A window that overlaps the records stands.
+    expect(validateDateWindow({ from: "2024-09-01", to: "2026-09-28" }, events2024)).toEqual({
+      from: "2024-09-01",
+      to: "2026-09-28",
+    });
+    expect(validateDateWindow({ from: null, to: null }, events2024)).toEqual({ from: null, to: null });
+  });
+});

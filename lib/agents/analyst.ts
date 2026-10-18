@@ -1,5 +1,5 @@
 import { getLlmClient } from "../llm";
-import { deriveDateWindow, parsePlanData, renderPlan } from "../pipeline/plan";
+import { deriveDateWindow, latestEventTs, parsePlanData, renderPlan, validateDateWindow } from "../pipeline/plan";
 import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
 import { buildVocabularyDigest, renderVocabularyDigest } from "../pipeline/vocabulary";
 import {
@@ -62,10 +62,10 @@ export async function runAnalyst(
   const { inScope } = splitEventsByScope(events, investigation?.scope ?? null);
 
   const digest = renderVocabularyDigest(buildVocabularyDigest(inScope));
-  const window = deriveDateWindow(
-    escalation,
-    investigation?.createdAt ?? new Date().toISOString(),
-  );
+  // I5: anchor relative phrases to the latest record, not the wall clock —
+  // a 2024 workspace must plan in 2024 even when the run happens in 2026.
+  const recordReference = latestEventTs(events) ?? investigation?.createdAt ?? new Date().toISOString();
+  const window = deriveDateWindow(escalation, recordReference);
 
   const user = [
     escalation.trim()
@@ -73,7 +73,9 @@ export async function runAnalyst(
       : "No escalation text was provided. Infer the likely escalation from the records themselves.",
     ...(scopeLine ? ["", scopeLine] : []),
     ...(digest ? ["", "Vocabulary observed in the records (use these exact terms):", digest] : []),
-    ...(window.from ? ["", `The escalation's own phrasing points at activity since ${window.from}.`] : []),
+    ...(window.from
+      ? [``, `The escalation's own phrasing points at activity since ${window.from} (relative to the latest record, ${recordReference.slice(0, 10)}).`]
+      : []),
     "",
     "Event store summary:",
     summarizeEvents(inScope),
@@ -94,7 +96,11 @@ export async function runAnalyst(
   );
 
   // Structured plans are preferred; anything unusable degrades to free text.
-  const planData = parsePlanData(response.content);
+  const parsed = parsePlanData(response.content);
+  // I5: a model window wholly outside the records is speculation; drop it.
+  const planData = parsed
+    ? { ...parsed, dateWindow: validateDateWindow(parsed.dateWindow, events) }
+    : null;
   const plan = planData ? renderPlan(planData) : response.content.trim() || DEFAULT_PLAN;
 
   // G-23: persist the independent issues. A free-text plan still gets one

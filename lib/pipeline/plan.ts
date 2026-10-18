@@ -221,3 +221,35 @@ export function deriveDateWindow(escalation: string, referenceIso: string): Plan
   const from = new Date(reference.getTime() - best * 86_400_000).toISOString().slice(0, 10);
   return { from, to: null };
 }
+
+/** I5/F2: relative phrases anchor to the latest record, not the wall clock. */
+export function latestEventTs(events: { ts: string }[]): string | null {
+  let latest: number | null = null;
+  let latestIso: string | null = null;
+  for (const event of events) {
+    const time = Date.parse(event.ts);
+    if (Number.isNaN(time)) continue;
+    if (latest === null || time > latest) {
+      latest = time;
+      latestIso = event.ts;
+    }
+  }
+  return latestIso;
+}
+
+/** I5/F2: a model-returned window wholly outside the record range is rejected;
+    anything that overlaps the records stands as the model wrote it. */
+export function validateDateWindow(
+  window: PlanDateWindow,
+  events: { ts: string }[],
+): PlanDateWindow {
+  if (!window.from && !window.to) return window;
+  const times = events.map((event) => Date.parse(event.ts)).filter((time) => !Number.isNaN(time));
+  if (times.length === 0) return window;
+  const min = Math.min(...times);
+  const max = Math.max(...times);
+  const whollyOutside =
+    (window.to !== null && Date.parse(window.to) < min) ||
+    (window.from !== null && Date.parse(window.from) > max);
+  return whollyOutside ? { from: null, to: null } : window;
+}
