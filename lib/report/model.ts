@@ -13,7 +13,7 @@ import { buildCaseState } from "./case-state";
 import { buildStory, type StoryInput, type StoryPromiseInput } from "./story";
 import { computeSilences, type Silences } from "./silence";
 import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
-import { rankGaps, type GapCategory, type GapTag } from "./gaps";
+import { cleanGapText, hasRawReference, rankGaps, type GapCategory, type GapTag } from "./gaps";
 
 /* A2: a quote that was judged to REFUTE its claim is not a soft "needs check"
    — the quote does not support the claim at all. */
@@ -148,6 +148,8 @@ export interface ReportActionModel {
   text: string;
   findingIds: string[];
   tone: "danger" | "neutral" | "warn";
+  /** G1: how urgent the action is; the UI may ellipsize the text, never the data. */
+  impact: "high" | "medium" | "low";
 }
 
 export interface ReportSilence {
@@ -172,9 +174,23 @@ export interface ReportClientModel {
 }
 
 export interface ReportAuditRow {
+  id: string;
+  /** G2: detector rows have two record sides; note rows cite one finding. */
+  origin: "detector" | "note";
   findingId: string;
   headline: string;
+  /** What one record says. */
+  left: string;
+  /** What the other record says, when the contradiction has two sides. */
+  right: string | null;
+  source: SourceKind | null;
+  date: string | null;
+  /** The manager-facing mismatch. */
   note: string;
+  /** One imperative next step. */
+  nextStep: string;
+  /** True when the client is unresolved and the row is for internal use only. */
+  internalOnly: boolean;
 }
 
 export interface ReportModel {
@@ -734,7 +750,25 @@ function buildClientModel(input: ReportModelInput): ReportClientModel {
   };
 }
 
-function buildAudit(
+/* G2/C4: manager next steps, one per deterministic detector. */
+const DETECTOR_NEXT_STEP: Record<Contradiction["detector"], string> = {
+  premature_resolution: "Get a QA or client confirmation before repeating that it is resolved.",
+  release_fix_claim: "Check the build against QA before telling the client the fix shipped.",
+  missed_promise: "Agree a new date with the owner and tell the client.",
+  unanswered_client: "Reply to the client with the verified status and the open question.",
+  closure_unverified: "Get QA or the client to verify the fix before treating the ticket as closed.",
+  handoff_missing: "Assign an owner and record the handoff.",
+  status_reversal: "Confirm which status is current before repeating either one.",
+};
+
+const MAX_AUDIT_ROWS = 12;
+const MAX_AUDIT_NOTES = 8;
+
+/* G2/C4: deterministic contradictions first, then sanitized skeptic notes.
+   A note maps to its representative finding by claim id (or cited record); a
+   note still carrying a raw id or claim number is dropped, never replaced by a
+   placeholder. Near-identical notes are deduped and the list is capped. */
+function buildAuditNoteRows(
   findings: ReportFindingModel[],
   notes: SkepticNote[],
   findingByEvent: Map<string, ReportFindingModel>,
@@ -742,18 +776,68 @@ function buildAudit(
 ): ReportAuditRow[] {
   if (!client.clientKnown) return [];
   const rows: ReportAuditRow[] = [];
+  const seen = new Set<string>();
   for (const note of notes) {
     if (note.kind !== "contradiction" && note.kind !== "unsupported") continue;
-    const eventId = note.eventIds[0];
-    const finding = eventId ? findingByEvent.get(eventId) : undefined;
+    const finding = note.claimId
+      ? findings.find((entry) => entry.claimIds.includes(note.claimId as string))
+      : note.eventIds[0]
+        ? findingByEvent.get(note.eventIds[0])
+        : undefined;
     if (!finding) continue;
+    if (hasRawReference(note.text)) continue;
+    const cleaned = cleanGapText(note.text).replace(EMAIL, "a participant");
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
     rows.push({
+      id: `note_${note.id}`,
+      origin: "note",
       findingId: finding.id,
       headline: finding.headline,
-      note: cleanHumanText(note.text).replace(EMAIL, "a participant"),
+      left: finding.text,
+      right: null,
+      source: finding.source,
+      date: dateOnly(finding.ts),
+      note: cleaned,
+      nextStep: "Check the cited finding before repeating it.",
+      internalOnly: false,
     });
   }
-  return rows.slice(0, 8);
+  return rows.slice(0, MAX_AUDIT_NOTES);
+}
+
+function buildAudit(
+  contradictions: Contradiction[],
+  findings: ReportFindingModel[],
+  notes: SkepticNote[],
+  findingByEvent: Map<string, ReportFindingModel>,
+  client: ReportClientModel,
+): ReportAuditRow[] {
+  const detectorRows: ReportAuditRow[] = contradictions.map((contradiction) => {
+    const sides = contradiction.basis
+      .map((id) => findingByEvent.get(id))
+      .filter((finding): finding is ReportFindingModel => Boolean(finding));
+    const primary = sides[0];
+    return {
+      id: contradiction.id,
+      origin: "detector" as const,
+      findingId: primary?.id ?? "",
+      headline: primary?.headline ?? contradiction.detector.replace(/_/g, " "),
+      left: primary?.text ?? "",
+      right: sides[1]?.text ?? null,
+      source: primary?.source ?? null,
+      date: primary ? dateOnly(primary.ts) : null,
+      note: contradiction.managerText,
+      nextStep: DETECTOR_NEXT_STEP[contradiction.detector],
+      internalOnly: !client.clientKnown,
+    };
+  });
+  return [
+    ...detectorRows,
+    ...buildAuditNoteRows(findings, notes, findingByEvent, client),
+  ].slice(0, MAX_AUDIT_ROWS);
 }
 
 /* C6: question grouping is by STRUCTURED category, never a text regex.
@@ -982,53 +1066,169 @@ function buildState(
   };
 }
 
-function buildActions(
-  findings: ReportFindingModel[],
-  state: ReportStateModel,
-  actors: ReportActorModel[],
-): ReportActionModel[] {
+/* G1: the client is waiting when a caller-determined chaser run exists (a
+   chasers metric that found a run) or the deterministic unanswered-client
+   detector fired. Client-authored records are identified by the same client
+   evidence the case state uses — never by a role guess. */
+function clientChaseCount(input: ReportModelInput, state: ReportStateModel): number | null {
+  const domains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
+  const actors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
+  if (domains.size === 0 && actors.size === 0) return null;
+  if (!state.lastClientContact.known) return null;
+  return input.events.filter((event) => {
+    const domain = emailDomain(event.actorResolved ?? event.actor);
+    if (domain && domains.has(domain)) return true;
+    return [event.actor, event.actorResolved ?? ""].some((value) => actors.has(normalizeName(value)));
+  }).length;
+}
+
+function actorNameForFinding(finding: ReportFindingModel, actors: ReportActorModel[]): string | null {
+  const direct = finding.eventActorId
+    ? actors.find((actor) => actor.id === finding.eventActorId)?.name ?? null
+    : null;
+  if (direct) return direct;
+  return actors.find((actor) => finding.actorIds.includes(actor.id))?.name ?? null;
+}
+
+/* The promise object when no structured commitment exists: drop the promisor's
+   own restatement and keep the full, untruncated phrase. */
+function derivedPromiseObject(finding: ReportFindingModel, promisor: string): string {
+  const { rest } = stripSelfReference(cleanHumanText(finding.text), promisor);
+  const trimmed = rest.replace(/[.;,\s]+$/, "").trim();
+  return trimmed || finding.text.replace(/[.;,\s]+$/, "").trim();
+}
+
+/* The first clause of a manager-facing contradiction: the specific claim,
+   never a finding label. */
+function firstClause(text: string): string {
+  const match = text.match(/^(.+?)(?:\s+—|\s+–|;\s|\.\s|,\s+but\b)/i);
+  return (match ? match[1] : text).replace(/[.;,\s]+$/, "").trim();
+}
+
+function buildActions(input: {
+  findings: ReportFindingModel[];
+  promises: ReportFindingModel[];
+  state: ReportStateModel;
+  actors: ReportActorModel[];
+  client: ReportClientModel;
+  contradictions: Contradiction[];
+  openQuestions: OpenQuestionGroup[];
+  commitmentForFinding: Map<string, Commitment>;
+  chases: number | null;
+}): ReportActionModel[] {
+  const { findings, promises, state, actors, client, contradictions, openQuestions, chases } = input;
   const actions: ReportActionModel[] = [];
-  const isBrokenPromise = (finding: ReportFindingModel): boolean =>
-    finding.kind === "promise" && finding.promiseStatus === "broken";
-  // The client-facing obligation outranks internal review: a broken promise is
-  // the first thing to act on, ahead of conflicts on older findings.
-  for (const finding of findings) {
-    if (isBrokenPromise(finding)) {
-      actions.push({
-        id: `act_${actions.length + 1}`,
-        text: `Close out the broken promise: ${shortFindingLabel(finding, actors)}.`,
-        findingIds: [finding.id],
-        tone: "danger",
-      });
-    }
-  }
-  for (const finding of findings) {
-    if (finding.pill === "conflict" && !isBrokenPromise(finding)) {
-      actions.push({
-        id: `act_${actions.length + 1}`,
-        text: `Resolve the conflict around ${shortFindingLabel(finding, actors)}.`,
-        findingIds: [finding.id],
-        tone: "danger",
-      });
-    }
-  }
-  if (actions.length === 0 && !state.owner.known && state.currentStatus.basis.length > 0) {
+  const push = (
+    text: string,
+    findingIds: string[],
+    tone: ReportActionModel["tone"],
+    impact: ReportActionModel["impact"],
+  ) => {
     actions.push({
-      id: "act_owner",
-      text: "Assign an owner: the latest status change names nobody.",
-      findingIds: state.currentStatus.basis,
-      tone: "warn",
+      id: `act_${actions.length + 1}`,
+      text,
+      findingIds: [...new Set(findingIds.filter(Boolean))],
+      tone,
+      impact,
     });
+  };
+
+  // 1. The client is waiting or a chase went unanswered.
+  const unanswered = contradictions.some((entry) => entry.detector === "unanswered_client");
+  const chasersDetermined = chases !== null && chases >= 2;
+  const clientWaiting = unanswered || chasersDetermined;
+  if (clientWaiting) {
+    if (client.clientKnown && client.client) {
+      push(
+        `Reply to ${client.client} with the verified status and the open question.`,
+        state.lastClientContact.basis,
+        "warn",
+        "high",
+      );
+    } else {
+      const contradiction = contradictions.find((entry) => entry.detector === "unanswered_client");
+      push(
+        `Reply with the verified status and the open question: ${
+          contradiction ? firstClause(contradiction.managerText) : "the client is waiting"
+        }.`,
+        contradiction?.basis ?? [],
+        "warn",
+        "high",
+      );
+    }
   }
+
+  // 2. A broken promise needs a new date; never invent one.
+  const broken = promises.filter((finding) => finding.promiseStatus === "broken");
+  for (const finding of broken) {
+    const commitment = input.commitmentForFinding.get(finding.id);
+    const promisor = commitment?.promisor?.trim() || actorNameForFinding(finding, actors) || "the owner";
+    const object = commitment?.object?.trim() || derivedPromiseObject(finding, promisor);
+    const promisee = commitment?.promisee?.trim() || null;
+    push(
+      `Agree a new date with ${promisor} for ${object}${promisee ? ` and tell ${promisee}` : ""}.`,
+      [finding.id],
+      "danger",
+      "high",
+    );
+  }
+
+  // 3. A deterministic contradiction: resolve the specific claim before
+  // repeating the resolution. The promise/unanswered detectors are already
+  // covered by the actions above, so they do not repeat here.
+  const covered = new Set<string>();
+  if (clientWaiting) covered.add("unanswered_client");
+  if (broken.length > 0) covered.add("missed_promise");
+  for (const contradiction of contradictions) {
+    if (covered.has(contradiction.detector)) continue;
+    push(
+      `Resolve before repeating the resolution: ${firstClause(contradiction.managerText)}.`,
+      contradiction.basis,
+      contradiction.severity === "high" ? "danger" : "warn",
+      contradiction.severity === "high" ? "high" : "medium",
+    );
+  }
+
+  // 4. No owner recorded.
+  if (!state.owner.known) {
+    const channel =
+      findings.find((finding) => state.currentStatus.basis.includes(finding.id))?.channel ??
+      findings.find((finding) => finding.kind === "status_change")?.channel ??
+      null;
+    push(
+      channel ? `Assign an owner for ${channel}.` : "Assign an owner for the open work.",
+      state.currentStatus.basis,
+      "warn",
+      "medium",
+    );
+  }
+
+  // 5. "No urgent next step" only when the case is genuinely closed off:
+  // resolved status, no contradiction, the client was contacted and nothing is
+  // still open.
+  const resolved = state.currentStatus.known && /\b(?:resolved|closed)\b/i.test(String(state.currentStatus.value));
+  const clientContacted = state.lastClientContact.known;
   if (actions.length === 0) {
-    actions.push({
-      id: "act_none",
-      text: "No urgent action found.",
-      findingIds: [],
-      tone: "neutral",
-    });
+    if (resolved && contradictions.length === 0 && clientContacted && openQuestions.length === 0) {
+      actions.push({
+        id: "act_none",
+        text: "No urgent next step.",
+        findingIds: [],
+        tone: "neutral",
+        impact: "low",
+      });
+    } else if (openQuestions[0]) {
+      push(
+        openQuestions[0].nextStep,
+        openQuestions[0].findingIds,
+        "warn",
+        openQuestions[0].impact >= 4 ? "medium" : "low",
+      );
+    } else {
+      push("Confirm the current case state before acting.", state.currentStatus.basis, "warn", "medium");
+    }
   }
-  return actions.slice(0, 3);
+  return actions.slice(0, 4);
 }
 
 /* D1-D3: the headline IS the answer-first story. buildStory computes the
@@ -1041,6 +1241,7 @@ function buildHeadline(
   openQuestions: OpenQuestionGroup[],
   counts: ReportCounts,
   actions: ReportActionModel[],
+  chases: number | null,
 ): ReportHeadline {
   const visibleClaimIds = new Set(
     input.claims
@@ -1080,19 +1281,6 @@ function buildHeadline(
         findingIds: [causeFinding.id],
       }
     : null;
-
-  const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
-  const clientActors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
-  const isClientAuthored = (event: Event): boolean => {
-    const domain = emailDomain(event.actorResolved ?? event.actor);
-    if (domain && clientDomains.has(domain)) return true;
-    return [event.actor, event.actorResolved ?? ""].some((value) => clientActors.has(normalizeName(value)));
-  };
-  const hasClientIdentity = clientDomains.size > 0 || clientActors.size > 0;
-  const chases =
-    state.lastClientContact.known && hasClientIdentity
-      ? input.events.filter(isClientAuthored).length
-      : null;
 
   const open = openQuestions[0];
   const story = buildStory({
@@ -1405,12 +1593,6 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     throw new Error("Report model count mismatch: open questions");
   }
 
-  const actions = buildActions(sorted, state, actorInfo.actors);
-  const headline = buildHeadline(input, sorted, state, openQuestions, counts, actions);
-  const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
-  const pillSummary = suppressPills
-    ? `Needs check: ${flagged.length} of ${sorted.length}${flagged.some((finding) => finding.pill === "conflict") ? " (including conflicts)" : ""} — the supporting records are thin.`
-    : null;
   const clientEvidence: ClientEvidenceInput = {
     domains: (input.clientDomains ?? []).map((domain) => domain.toLowerCase()),
     actors: input.clientActors ?? [],
@@ -1425,14 +1607,31 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     asOf: state.asOf,
     clientEvidence: client.clientKnown ? clientEvidence : undefined,
   });
-  const audit = [
-    ...contradictions.map((contradiction) => ({
-      findingId: contradiction.basis[0] ? findingByEvent.get(contradiction.basis[0])?.id ?? contradiction.basis[0] : "",
-      headline: contradiction.detector.replace(/_/g, " "),
-      note: contradiction.managerText,
-    })),
-    ...buildAudit(sorted, input.notes, findingByEvent, client),
-  ].slice(0, 12);
+  const commitmentForFinding = new Map<string, Commitment>();
+  for (const finding of sorted) {
+    const commitment =
+      finding.claimIds.map((claimId) => commitmentByClaim.get(claimId)).find(Boolean) ??
+      finding.eventIds.map((eventId) => commitmentByEvent.get(eventId)).find(Boolean);
+    if (commitment) commitmentForFinding.set(finding.id, commitment);
+  }
+  const chases = clientChaseCount(input, state);
+  const actions = buildActions({
+    findings: sorted,
+    promises,
+    state,
+    actors: actorInfo.actors,
+    client,
+    contradictions,
+    openQuestions,
+    commitmentForFinding,
+    chases,
+  });
+  const headline = buildHeadline(input, sorted, state, openQuestions, counts, actions, chases);
+  const audit = buildAudit(contradictions, sorted, input.notes, findingByEvent, client);
+  const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
+  const pillSummary = suppressPills
+    ? `Needs check: ${flagged.length} of ${sorted.length}${flagged.some((finding) => finding.pill === "conflict") ? " (including conflicts)" : ""} — the supporting records are thin.`
+    : null;
   const processFailures = failures.filter((finding) => finding.failureTag === "process").length;
   const processNormsNote =
     processFailures > 0

@@ -606,19 +606,40 @@ function ModelAudit({ report, onFinding }: { report: ReportPayload; onFinding: (
   return (
     <div className="stack stack-xs audit">
       <h3 className="section-title">What we told the client vs what the records show</h3>
-      {!model.client.clientKnown ? (
-        <p className="empty">Needs client confirmation — actor roles are unresolved.</p>
-      ) : model.audit.length === 0 ? (
-        <p className="empty">No communicated update was contradicted by another record.</p>
+      {model.audit.length === 0 ? (
+        <p className="empty">
+          {model.client.clientKnown
+            ? "No communicated update was contradicted by another record."
+            : "Needs client confirmation — actor roles are unresolved."}
+        </p>
       ) : (
         <ul className="compact-list">
           {model.audit.map((row) => {
             const finding = model.findings.find((entry) => entry.id === row.findingId);
             return (
-              <li key={row.findingId} className="compact-row">
-                <span className="small muted">{row.findingId}</span>
-                {finding && <FindingButton finding={finding} actors={model.actors} onFinding={onFinding} />}
-                <span className="small muted">{row.note}</span>
+              <li key={row.id} className="compact-row">
+                <span className="stack stack-xs">
+                  <span className="row">
+                    {finding ? (
+                      <FindingButton finding={finding} actors={model.actors} onFinding={onFinding} />
+                    ) : (
+                      <span className="strong">{row.headline}</span>
+                    )}
+                    {row.internalOnly && <span className="chip">internal only</span>}
+                    {row.source && (
+                      <span className="small muted">
+                        {row.source}
+                        {row.date ? ` · ${row.date}` : ""}
+                      </span>
+                    )}
+                  </span>
+                  <span className="small">
+                    {row.left}
+                    {row.right ? <span className="muted"> — versus — {row.right}</span> : null}
+                  </span>
+                  <span className="small">{row.note}</span>
+                  <span className="small muted">Next: {row.nextStep}</span>
+                </span>
               </li>
             );
           })}

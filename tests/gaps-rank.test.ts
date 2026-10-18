@@ -9,11 +9,12 @@ const gap = (over: Partial<Gap> & { id: string; question: string; note: string }
   ...over,
 });
 
-describe("cleanGapText (G-11)", () => {
-  it("strips internal record ids", () => {
+describe("cleanGapText (G-11/C4)", () => {
+  it("removes internal record ids without leaving a placeholder", () => {
     expect(cleanGapText("See e_verify_slack_1 for the note.")).not.toContain("e_verify_slack_1");
+    expect(cleanGapText("See e_verify_slack_1 for the note.")).not.toContain("stored record");
     expect(cleanGapText("Record 8d1a3d0e-1111-2222-3333-444455556666 says so.")).toBe(
-      "Record a stored record says so.",
+      "Record says so.",
     );
   });
 
@@ -28,22 +29,27 @@ describe("cleanGapText (G-11)", () => {
     expect(cleanGapText("I searched all channels.")).toBe("we searched all channels.");
   });
 
-  it("removes tool-call voice and internal claim numbers", () => {
+  it("replaces tool calls with concrete source labels, never a generic lookup", () => {
     expect(cleanGapText("get_issue(SUP-2231) failed and the Jira angle was not searched.")).toBe(
-      "the source lookup failed and the Jira angle was not searched.",
+      "the Jira search for SUP-2231 failed and the Jira angle was not searched.",
     );
     expect(cleanGapText("the get_slack_thread calls failed for both channels.")).toBe(
-      "the source lookup calls failed for both channels.",
+      "the Slack search calls failed for both channels.",
     );
-    expect(
-      cleanGapText("get_slack_thread(meridian-billing) and the source lookup both FAILED."),
-    ).toBe("the source lookups both FAILED.");
-    expect(
-      cleanGapText("get_slack_thread(meridian-billing) and search_slack both FAILED."),
-    ).toBe("the source lookups both FAILED.");
-    expect(
-      cleanGapText("The claim set substitutes Meridian (e.g., claims 26, 27, 39) for the client."),
-    ).toBe("The claim set substitutes Meridian (e.g., stored findings) for the client.");
+    expect(cleanGapText("I was unable to search_email(support) for the reply.")).toBe(
+      "the email search for support could not be completed for the reply.",
+    );
+    expect(cleanGapText("get_slack_thread(meridian-billing) and search_slack both FAILED.")).toBe(
+      "the Slack search for meridian-billing and the Slack search both FAILED.",
+    );
+  });
+
+  it("removes internal claim numbers without inventing a replacement", () => {
+    const cleaned = cleanGapText(
+      "The claim set substitutes Meridian (e.g., claims 26, 27, 39) for the client.",
+    );
+    expect(cleaned).not.toMatch(/claims?\s+\d/i);
+    expect(cleaned).not.toContain("stored findings");
   });
 });
 
@@ -100,6 +106,19 @@ describe("rankGaps (G-11)", () => {
       { sources: [], neverSearched: [] },
     );
     expect(a[0].rank).toBeGreaterThan(b[0].rank);
+  });
+
+  it("drops gaps that reference raw records or internal claim numbers", () => {
+    const ranked = rankGaps([
+      gap({ id: "raw", question: "See e_58b4 for the details.", note: "" }),
+      gap({
+        id: "claims",
+        question: "Which finding overstates the fix?",
+        note: "Claim 4 (and 9, 26) overstates the fix.",
+      }),
+      gap({ id: "ok", question: "Who approved the release?", note: "" }),
+    ]);
+    expect(ranked.map((entry) => entry.id)).toEqual(["ok"]);
   });
 
   it("promotes a generic umbrella question to the actual unknown", () => {

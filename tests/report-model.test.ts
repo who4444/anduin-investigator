@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildReportModel, fullFindingLabel, shortFindingLabel, type ReportModelInput } from "../lib/report/model";
-import type { Claim, Event, InvestigationScope } from "../lib/types";
+import type { Claim, Commitment, Event, InvestigationScope } from "../lib/types";
 
 const event = (over: Partial<Event> & { id: string; ts: string; text: string }): Event => ({
   investigationId: "inv",
@@ -627,8 +627,8 @@ describe("ReportModel revision brief", () => {
       }),
     );
 
-    expect(model.actions[0].text).toContain("Close out the broken promise");
-    expect(model.actions.some((action) => action.text.includes("Resolve the conflict"))).toBe(true);
+    expect(model.actions[0].text).toMatch(/^Agree a new date with Ravi Menon for /);
+    expect(model.actions.some((action) => action.text.includes("Resolve the conflict around"))).toBe(false);
   });
 
   it("a client's own fix wording never grounds the latest-fix card", () => {
@@ -667,4 +667,147 @@ describe("ReportModel revision brief", () => {
     expect(model.state.latestFix.value?.text).not.toContain("promised for Sep 20");
   });
 
+});
+
+describe("action policy and audit (G1/G2/C4)", () => {
+  const promiseClaimId = "rc_promise";
+  const realisticEvents: Event[] = [
+    event({
+      id: "rp1",
+      ts: "2024-09-10T03:00:00.000Z",
+      channel: "LUM-811",
+      text: "Issue created: VAT invoice totals blank after 5.3.0",
+    }),
+    event({
+      id: "rp2",
+      ts: "2024-09-20T10:00:00.000Z",
+      actor: "Ravi Menon",
+      channel: "LUM-811",
+      text: "Status: In Progress → Resolved",
+    }),
+    event({
+      id: "rp3",
+      ts: "2024-09-20T12:00:00.000Z",
+      actor: "Sam Rivera",
+      source: "slack",
+      channel: "qa-room",
+      text: "QA re-run failed on 5.3.3 — totals still blank.",
+    }),
+    event({
+      id: "rp4",
+      ts: "2024-09-21T09:00:00.000Z",
+      actor: "Ravi Menon",
+      channel: "LUM-811",
+      text: "Ravi Menon committed the VAT fix to the Sep 25 release.",
+    }),
+  ];
+  const realisticClaims: Claim[] = [
+    claim({
+      id: promiseClaimId,
+      eventId: "rp4",
+      type: "commitment",
+      actor: "Ravi Menon",
+      text: "Ravi Menon committed the VAT fix to the Sep 25 release.",
+      status: "broken",
+    }),
+  ];
+  const realisticCommitments: Commitment[] = [
+    {
+      id: "cm1",
+      investigationId: "inv",
+      claimId: promiseClaimId,
+      promisor: "Ravi Menon",
+      promisee: "Dana Okafor",
+      object: "VAT fix",
+      conditions: null,
+      deadlinePhrase: "Sep 25",
+      deadlineIso: null,
+      rationale: null,
+      fulfilmentEventIds: [],
+      status: "broken",
+      contested: false,
+      sourceEventIds: ["rp4"],
+      dedupeKey: "ravi menon|vat|no-deadline",
+      createdAt: "2024-09-21T09:00:00.000Z",
+    },
+  ];
+  const realisticScope: InvestigationScope = {
+    client: "Bright Market",
+    project: "Lumen",
+    ticketPrefixes: ["LUM"],
+    channels: ["lumen-billing"],
+    senderDomains: ["brightmarket.example"],
+    confidence: "scoped",
+    anchors: [{ kind: "declared-client", value: "Bright Market", source: "declared" }],
+  };
+  const realistic = (over: Partial<ReportModelInput> = {}): ReportModelInput =>
+    input({
+      events: realisticEvents,
+      claims: realisticClaims,
+      commitments: realisticCommitments,
+      scope: realisticScope,
+      clientDomains: ["brightmarket.example"],
+      ...over,
+    });
+
+  it("builds decision-model actions for a resolution conflict, a broken promise and an unknown owner", () => {
+    const model = buildReportModel(realistic());
+    const texts = model.actions.map((action) => action.text);
+
+    expect(texts).toContain("Agree a new date with Ravi Menon for VAT fix and tell Dana Okafor.");
+    expect(texts.some((text) => text.startsWith("Resolve before repeating the resolution:"))).toBe(true);
+    expect(texts).toContain("Assign an owner for LUM-811.");
+    expect(texts.some((text) => text.includes("Resolve the conflict around"))).toBe(false);
+    for (const action of model.actions) expect(action.impact).toBeTruthy();
+  });
+
+  it("renders audit rows with both sides, a source and a manager next step", () => {
+    const model = buildReportModel(realistic());
+    const row = model.audit.find((entry) => entry.origin === "detector");
+    expect(row).toBeDefined();
+    expect(row?.headline.length).toBeGreaterThan(0);
+    expect(row?.left).toContain("moved from In Progress to Resolved");
+    expect(row?.right).toContain("totals still blank");
+    expect(row?.source).toBe("jira");
+    expect(row?.date).toBe("2024-09-20");
+    expect(row?.note).not.toMatch(/a stored record|stored findings|Claim \d|\be_[a-z0-9_]+/i);
+    expect(row?.nextStep.length).toBeGreaterThan(0);
+    expect(row?.internalOnly).toBe(false);
+  });
+
+  it("lists internal contradictions as internal only when the client is unresolved", () => {
+    const model = buildReportModel(realistic({ scope: null, clientDomains: [] }));
+    expect(model.client.clientKnown).toBe(false);
+    const row = model.audit.find((entry) => entry.origin === "detector");
+    expect(row?.internalOnly).toBe(true);
+    expect(model.actions.some((action) => /No urgent next step/i.test(action.text))).toBe(false);
+  });
+
+  it("maps a skeptic note to its finding and drops notes with raw ids or claim numbers", () => {
+    const model = buildReportModel(
+      realistic({
+        notes: [
+          {
+            id: "n1",
+            investigationId: "inv",
+            claimId: promiseClaimId,
+            kind: "unsupported",
+            text: "The promise is not backed by a delivery record.",
+            eventIds: [],
+          },
+          {
+            id: "n2",
+            investigationId: "inv",
+            kind: "unsupported",
+            text: "Claim 4 (and 9, 26) overstates the fix; see e_58b4.",
+            eventIds: [],
+          },
+        ],
+      }),
+    );
+    const noteRows = model.audit.filter((entry) => entry.origin === "note");
+    expect(noteRows).toHaveLength(1);
+    expect(noteRows[0].headline).toBe(model.promises[0].headline);
+    expect(model.audit.every((entry) => !/a stored record|stored findings/i.test(entry.note))).toBe(true);
+  });
 });

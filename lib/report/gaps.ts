@@ -43,25 +43,56 @@ export const GAP_TAG_LABEL: Record<GapTag, string> = {
 const CLIENT_TALK = /\b(client|customer|reply|respond|fix|release|promise|escalat|credit|refund|deadline|owner|handoff)\b/i;
 
 const NOT_SEARCHED_TALK =
-  /\bnot[- ]searched|never[- ]searched|excluded|outside the (?:scope|search)\b|\bsource lookup\b.*\bfailed\b|\bfailed\b.*\bsource lookup\b/i;
+  /\bnot[- ]searched|never[- ]searched|excluded|outside the (?:scope|search)\b|\b(?:source lookup|search)\b[^.]*\bfailed\b|\bfailed\b[^.]*\b(?:source lookup|search)\b/i;
 const CONFLICT_TALK = /\bconflict|contradict|disagree|mismatch\b/i;
 const ABSENT_TALK = /\bno record|no evidence|absent|nothing (?:was|is) (?:found|recorded)|not found|no trace\b/i;
-const TOOL_CALL = /\b(?:get|search|verify|list|find|read)_[a-z0-9_]+\([^)]*\)/gi;
-const TOOL_NAME = /\b(?:get|search|verify|list|find|read)_[a-z0-9_]+\b/gi;
+const TOOL_CALL = /\b(get|search|verify|list|find|read)_([a-z0-9_]+)\(([^)]*)\)/gi;
+const TOOL_NAME = /\b(get|search|verify|list|find|read)_([a-z0-9_]+)\b/gi;
+const UNABLE_TOOL =
+  /\b(?:I was unable to|I could not|I cannot|I can't|we could not)\s+(get|search|verify|list|find|read)_([a-z0-9_]+)\(([^)]*)\)/gi;
+const RAW_ID = /\b(?:e|ev|claim|event|item|note|gap|g)_[a-z0-9_]+\b|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const RAW_ID_TEST =
+  /\b(?:e|ev|claim|event|item|note|gap|g)_[a-z0-9_]+\b|\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
+const CLAIM_NUMBER = /\bclaims?\s+\d+(?:\s*,\s*\d+|\s*\(and\s+\d+(?:\s*,\s*\d+)*\))?/gi;
+const CLAIM_NUMBER_TEST = /\bclaims?\s+\d+(?:\s*,\s*\d+|\s*\(and\s+\d+(?:\s*,\s*\d+)*\))?/i;
 const GENERIC_QUESTION = /^(?:could not determine|unknown|not determined)\b|\(decisions and ownership\)\s*$/i;
+const PLACEHOLDER_ARG = /^(?:query|text|jql_or_text|channel|ts|id|key|date|from|to)$/i;
+
+/* C4: a note that still carries an internal record id or a claim number has no
+   manager-facing reading — the caller drops it instead of substituting a
+   "stored record" placeholder. */
+export function hasRawReference(text: string): boolean {
+  return RAW_ID_TEST.test(text) || CLAIM_NUMBER_TEST.test(text);
+}
+
+function toolLabel(tool: string, arg: string): string {
+  const detail = arg.trim().replace(/^['"]|['"]$/g, "");
+  const suffix = detail && detail.length <= 48 && !PLACEHOLDER_ARG.test(detail) ? ` for ${detail}` : "";
+  if (tool.startsWith("verify")) return `the quote check${suffix}`;
+  if (/jira|issue/.test(tool)) return `the Jira search${suffix}`;
+  if (/slack|thread/.test(tool)) return `the Slack search${suffix}`;
+  if (/email|gmail|mail/.test(tool)) return `the email search${suffix}`;
+  return `the source search${suffix}`;
+}
 
 export function cleanGapText(text: string): string {
   return text
-    .replace(TOOL_CALL, "the source lookup")
-    .replace(TOOL_NAME, "the source lookup")
-    .replace(/\bthe source lookup( and |, )the source lookup\b/gi, "the source lookups")
+    .replace(UNABLE_TOOL, (_match, tool: string, rest: string, arg: string) =>
+      `${toolLabel(`${tool}_${rest}`, arg)} could not be completed`,
+    )
+    .replace(TOOL_CALL, (_match, tool: string, rest: string, arg: string) =>
+      toolLabel(`${tool}_${rest}`, arg),
+    )
+    .replace(TOOL_NAME, (_match, tool: string, rest: string) => toolLabel(`${tool}_${rest}`, ""))
     .replace(/\bthe the\b/gi, "the")
-    .replace(/\bclaims? \d+(?:\s*,\s*\d+)*/gi, "stored findings")
-    .replace(/\b(?:e|ev|claim|event|item|note|g|gap)_[a-z0-9_]+/gi, "a stored record")
-    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "a stored record")
     .replace(/\bI was unable to\b/gi, "we could not")
     .replace(/\bI (?:could not|cannot|can't)\b/gi, "we could not")
     .replace(/\bI (?:searched|checked)\b/gi, "we searched")
+    .replace(/\bthe source lookups?\b/gi, "the search")
+    .replace(CLAIM_NUMBER, " ")
+    .replace(RAW_ID, " ")
+    .replace(/\s*\(\s*\)/g, "")
+    .replace(/\s+([,.;:])/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -78,8 +109,12 @@ export function rankGaps(gaps: Gap[], coverage?: CoverageReport): RankedGap[] {
   const ranked: RankedGap[] = [];
 
   for (const gap of gaps) {
+    // C4: a gap whose text still carries an internal id or claim number has no
+    // manager-facing reading; drop it rather than print a placeholder.
+    if (hasRawReference(`${gap.question} ${gap.note}`)) continue;
     let question = cleanGapText(gap.question);
     let note = cleanGapText(gap.note);
+    if (!question && !note) continue;
     // Skeptic notes often reuse an umbrella question ("Could not determine
     // (decisions and ownership)") and put the actual unknown in the note.
     // Promote that note so the manager reads nine distinct questions, not the
