@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { runPipeline } from "../lib/orchestrator";
+import { deriveRetryPlan } from "../lib/pipeline/retry";
+import type { Claim, Investigation } from "../lib/types";
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return {
@@ -15,6 +17,8 @@ interface FakeStage {
   pass: number;
   kind?: string;
   resume?: boolean;
+  queries?: string[];
+  reasons?: string[];
 }
 
 function fakeFetch(
@@ -24,11 +28,25 @@ function fakeFetch(
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     const body = init?.body
-      ? (JSON.parse(String(init.body)) as { pass?: number; kind?: string; resume?: boolean })
+      ? (JSON.parse(String(init.body)) as {
+          pass?: number;
+          kind?: string;
+          resume?: boolean;
+          queries?: string[];
+          reasons?: string[];
+        })
       : {};
     const segments = url.split("/");
     const stage = segments[segments.length - 1];
-    const call = { url, stage, pass: body.pass ?? 1, kind: body.kind, resume: body.resume };
+    const call = {
+      url,
+      stage,
+      pass: body.pass ?? 1,
+      kind: body.kind,
+      resume: body.resume,
+      queries: body.queries,
+      reasons: body.reasons,
+    };
     calls.push(call);
     return handler(call);
   }) as unknown as typeof fetch;
@@ -92,6 +110,88 @@ describe("runPipeline", () => {
     expect(retryInvestigators).toHaveLength(1);
     expect(retryInvestigators[0].kind).toBe("ownership");
     expect(calls.find((call) => call.stage === "verify" && call.pass === 2)).toBeDefined();
+  });
+
+  it("gap-driven retry runs only the targeted kinds once with explicit queries and reasons (I3)", async () => {
+    let assembled = 0;
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") {
+        assembled += 1;
+        if (assembled === 1) {
+          return jsonResponse({
+            needsRetry: true,
+            missing: [],
+            retryKinds: ["root_cause"],
+            retryReasons: [
+              {
+                kind: "unsearched_source",
+                kinds: ["root_cause"],
+                reason: "jira was available but never searched",
+                query: "search_jira(all)",
+                basis: [],
+              },
+              {
+                kind: "hypothesis",
+                kinds: ["root_cause"],
+                reason: "a plan hypothesis has no supporting finding",
+                query: "get_issue(LINK-1)",
+                basis: [],
+              },
+            ],
+          });
+        }
+        return jsonResponse({ needsRetry: false, missing: [], retryKinds: [], retryReasons: [] });
+      }
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl });
+
+    expect(outcome).toEqual({ ok: true, retries: 1 });
+    const retryInvestigators = calls.filter((call) => call.stage === "investigate" && call.pass === 2);
+    expect(retryInvestigators).toHaveLength(1);
+    expect(retryInvestigators[0].kind).toBe("root_cause");
+    expect(retryInvestigators[0].queries).toEqual(["search_jira(all)", "get_issue(LINK-1)"]);
+    expect(retryInvestigators[0].reasons).toContain("jira was available but never searched");
+    // Completed kinds that no reason targets are not rerun.
+    expect(retryInvestigators.map((call) => call.kind)).not.toContain("commitments");
+    expect(retryInvestigators.map((call) => call.kind)).not.toContain("ownership");
+  });
+
+  it("retries a question-group reason once without rerunning unrelated investigators", async () => {
+    let assembled = 0;
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") {
+        assembled += 1;
+        if (assembled === 1) {
+          return jsonResponse({
+            needsRetry: true,
+            missing: [],
+            retryKinds: ["ownership"],
+            retryReasons: [
+              {
+                kind: "question_group",
+                kinds: ["ownership"],
+                reason: "the ownership question group has no supporting finding",
+                query: "Who owned the ticket after the handoff?",
+                basis: [],
+              },
+            ],
+          });
+        }
+        return jsonResponse({ needsRetry: false, missing: [], retryKinds: [], retryReasons: [] });
+      }
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", { fetchImpl });
+
+    expect(outcome).toEqual({ ok: true, retries: 1 });
+    const pass1 = calls.filter((call) => call.stage === "investigate" && call.pass === 1);
+    const pass2 = calls.filter((call) => call.stage === "investigate" && call.pass === 2);
+    expect(pass1).toHaveLength(3);
+    expect(pass2.map((call) => call.kind)).toEqual(["ownership"]);
+    expect(pass2[0].queries).toEqual(["Who owned the ticket after the handoff?"]);
   });
 
   it("stops retrying after the retry budget is spent", async () => {
@@ -462,5 +562,221 @@ describe("resumePointFromStages (G-13)", () => {
         stage("verify"),
       ]),
     ).toBe("assemble");
+  });
+});
+
+describe("deriveRetryPlan (I3)", () => {
+  const claim = (over: {
+    agent: string;
+    eventId: string;
+    text: string;
+  }): Claim =>
+    ({
+      id: `${over.agent}-${over.eventId}`,
+      investigationId: "inv",
+      agent: over.agent,
+      type: "finding",
+      text: over.text,
+      quote: over.text,
+      eventId: over.eventId,
+      status: "n/a",
+      confidence: 0.8,
+      verifyStatus: "verified",
+      skepticFlag: false,
+    }) as Claim;
+
+  const investigation = (
+    hypotheses: { statement: string; test: string; falsify: string }[] = [],
+  ): Investigation =>
+    ({
+      id: "inv",
+      title: "t",
+      escalationText: "",
+      status: "running",
+      contentHash: "h",
+      plan: null,
+      createdAt: "2024-09-01T00:00:00.000Z",
+      scope: null,
+      declaredClient: null,
+      scopeOverrides: [],
+      scopeReviewedAt: null,
+      planData: {
+        framing: "",
+        hypotheses,
+        sources: [],
+        searchTerms: [],
+        people: [],
+        dateWindow: { from: null, to: null },
+        unknowns: [],
+        issues: [],
+        issueOverflow: 0,
+      },
+      ingestWarnings: [],
+      origin: "upload",
+    }) as unknown as Investigation;
+
+  const coverage = (neverSearched: ("jira" | "email" | "slack")[]) => ({
+    sources: neverSearched.map((source) => ({
+      source,
+      available: 1,
+      excluded: 0,
+      excludedEventIds: [],
+      searched: false,
+      queries: [],
+      resultCount: 0,
+      failedQueries: [],
+      state: "available-not-searched" as const,
+    })),
+    neverSearched,
+  });
+
+  const emptyCoverage = { sources: [], neverSearched: [] as ("jira" | "email" | "slack")[] };
+
+  it("targets one retry pass from a missing linked ticket and an unsearched source", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation([
+        {
+          statement: "The linked ticket LINK-1 holds the root cause of the totals defect",
+          test: "Read LINK-1",
+          falsify: "LINK-1 is unrelated",
+        },
+      ]),
+      claims: [claim({ agent: "root_cause", eventId: "e1", text: "Release 4.12 merged the timezone change" })],
+      coverage: coverage(["jira"]),
+      notes: [],
+      gaps: [],
+      registryIds: new Set(["e1"]),
+      missing: [],
+      pass: 1,
+    });
+
+    expect(plan.needsRetry).toBe(true);
+    expect(plan.kinds).toEqual(["root_cause"]);
+    expect(plan.reasons.map((reason) => reason.kind).sort()).toEqual([
+      "hypothesis",
+      "unsearched_source",
+    ]);
+    expect(plan.reasons.find((reason) => reason.kind === "hypothesis")?.query).toContain("LINK-1");
+    expect(plan.reasons.find((reason) => reason.kind === "unsearched_source")?.query).toBe(
+      "search_jira(all)",
+    );
+  });
+
+  it("does not retry a fully covered run", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation([
+        {
+          statement: "The timezone change caused the wrong totals",
+          test: "read the merge",
+          falsify: "no merge",
+        },
+      ]),
+      claims: [
+        claim({
+          agent: "root_cause",
+          eventId: "e1",
+          text: "The timezone change caused the wrong totals after 4.12",
+        }),
+      ],
+      coverage: emptyCoverage,
+      notes: [],
+      gaps: [],
+      registryIds: new Set(["e1"]),
+      missing: [],
+      pass: 1,
+    });
+    expect(plan.needsRetry).toBe(false);
+    expect(plan.kinds).toEqual([]);
+  });
+
+  it("derives a listing query from an unsearched source and the question from an unanswered note", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [claim({ agent: "root_cause", eventId: "e1", text: "The build shipped" })],
+      coverage: coverage(["slack"]),
+      notes: [
+        {
+          id: "n1",
+          investigationId: "inv",
+          kind: "unanswered",
+          text: "Which owner took the ticket after the handoff?",
+          eventIds: ["e1"],
+        },
+      ],
+      gaps: [],
+      registryIds: new Set(["e1"]),
+      missing: [],
+      pass: 1,
+    });
+    expect(plan.kinds).toEqual(["ownership"]);
+    expect(plan.reasons.find((reason) => reason.kind === "unsearched_source")?.query).toBe(
+      "search_slack(all)",
+    );
+    expect(plan.reasons.find((reason) => reason.kind === "unanswered")?.query).toBe(
+      "Which owner took the ticket after the handoff?",
+    );
+  });
+
+  it("ignores an unanswered note that cites no stored record", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [claim({ agent: "root_cause", eventId: "e1", text: "The build shipped" })],
+      coverage: emptyCoverage,
+      notes: [
+        {
+          id: "n1",
+          investigationId: "inv",
+          kind: "unanswered",
+          text: "Which owner took the ticket after the handoff?",
+          eventIds: ["e_missing"],
+        },
+      ],
+      gaps: [],
+      registryIds: new Set(["e1"]),
+      missing: [],
+      pass: 1,
+    });
+    expect(plan.needsRetry).toBe(false);
+  });
+
+  it("fires on a question group whose cited records produced no visible fact", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [claim({ agent: "root_cause", eventId: "e1", text: "The build shipped" })],
+      coverage: emptyCoverage,
+      notes: [],
+      gaps: [
+        {
+          id: "g1",
+          investigationId: "inv",
+          question: "Who owned the ticket?",
+          note: "",
+          eventIds: ["e2"],
+          category: "ownership",
+        },
+      ],
+      registryIds: new Set(["e1", "e2"]),
+      missing: [],
+      pass: 1,
+    });
+    expect(plan.needsRetry).toBe(true);
+    expect(plan.kinds).toEqual(["ownership"]);
+    expect(plan.reasons[0].kind).toBe("question_group");
+    expect(plan.reasons[0].query).toBe("Who owned the ticket?");
+  });
+
+  it("does not retry once the retry budget is spent", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [],
+      coverage: coverage(["jira"]),
+      notes: [],
+      gaps: [],
+      registryIds: new Set(),
+      missing: ["root_cause", "commitments", "ownership"],
+      pass: 2,
+    });
+    expect(plan.needsRetry).toBe(false);
+    expect(plan.reasons.length).toBeGreaterThan(0);
   });
 });

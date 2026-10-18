@@ -1,7 +1,32 @@
+import type { RetryReason } from "./pipeline/retry";
 import type { Issue, Stage, StageName, StageStatus } from "./types";
 
 export const INVESTIGATOR_KINDS = ["root_cause", "commitments", "ownership"] as const;
 export type InvestigatorKindName = (typeof INVESTIGATOR_KINDS)[number];
+
+export interface RetryDirective {
+  queries: string[];
+  reasons: string[];
+}
+
+/** I3: turn the assemble reasons into the per-kind directives the retry pass
+    records in the stage log and feeds to the investigator prompt. */
+export function retryDirectives(
+  reasons: RetryReason[],
+): Map<InvestigatorKindName, RetryDirective> {
+  const directives = new Map<InvestigatorKindName, RetryDirective>();
+  for (const reason of reasons) {
+    for (const kind of reason.kinds) {
+      if (!(INVESTIGATOR_KINDS as readonly string[]).includes(kind)) continue;
+      const typed = kind as InvestigatorKindName;
+      const entry = directives.get(typed) ?? { queries: [], reasons: [] };
+      if (reason.query && !entry.queries.includes(reason.query)) entry.queries.push(reason.query);
+      if (reason.reason && !entry.reasons.includes(reason.reason)) entry.reasons.push(reason.reason);
+      directives.set(typed, entry);
+    }
+  }
+  return directives;
+}
 
 export interface StageUpdate {
   stage: StageName;
@@ -187,9 +212,20 @@ export async function runPipeline(
     }
   };
 
-  const runInvestigators = async (kinds: readonly InvestigatorKindName[], pass: number) => {
+  const runInvestigators = async (
+    kinds: readonly InvestigatorKindName[],
+    pass: number,
+    directives?: Map<InvestigatorKindName, RetryDirective>,
+  ) => {
     const results = await Promise.allSettled(
-      kinds.map((kind) => callStage("investigate", pass, { kind }, kind)),
+      kinds.map((kind) =>
+        callStage(
+          "investigate",
+          pass,
+          { kind, ...(directives?.get(kind) ?? {}) },
+          kind,
+        ),
+      ),
     );
     const failures = results.filter(
       (result): result is PromiseRejectedResult => result.status === "rejected",
@@ -256,25 +292,29 @@ export async function runPipeline(
 
       const assembled = (await callStage("assemble", pass)) as {
         needsRetry?: boolean;
-        missing?: string[];
+        missing?: unknown;
+        retryKinds?: unknown;
+        retryReasons?: unknown;
       };
-      const missing = Array.isArray(assembled.missing) ? assembled.missing : [];
+      const isKind = (kind: unknown): kind is InvestigatorKindName =>
+        typeof kind === "string" && (INVESTIGATOR_KINDS as readonly string[]).includes(kind);
+      const missing = Array.isArray(assembled.missing) ? assembled.missing.filter(isKind) : [];
+      // I3: the assemble plan names the targeted kinds; older responses (or
+      // tests) without retryKinds fall back to the zero-claim kinds.
+      const named = Array.isArray(assembled.retryKinds) ? assembled.retryKinds : missing;
+      const retryKinds = named.filter(isKind);
+      const retryReasons = Array.isArray(assembled.retryReasons)
+        ? (assembled.retryReasons as RetryReason[])
+        : [];
 
-      if (!assembled.needsRetry || missing.length === 0 || retries >= maxRetryPasses) {
-        return { ok: true, retries };
-      }
-
-      const retryKinds = missing.filter((kind): kind is InvestigatorKindName =>
-        (INVESTIGATOR_KINDS as readonly string[]).includes(kind),
-      );
-      if (retryKinds.length === 0) {
+      if (!assembled.needsRetry || retryKinds.length === 0 || retries >= maxRetryPasses) {
         return { ok: true, retries };
       }
 
       retries += 1;
       const retryPass = basePass + retries;
-      options.onMissingRetry?.(missing, retryPass);
-      await runInvestigators(retryKinds, retryPass);
+      options.onMissingRetry?.(retryKinds, retryPass);
+      await runInvestigators(retryKinds, retryPass, retryDirectives(retryReasons));
     }
   } catch (error) {
     reportError(error);

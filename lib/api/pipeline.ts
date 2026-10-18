@@ -44,6 +44,19 @@ export function readPass(body: unknown, fallback = 1): number {
   return Number.isInteger(value) && value >= 1 && value <= 3 ? value : fallback;
 }
 
+/** I3: a bounded list of strings from a request body (retry queries/reasons). */
+export function readStringList(value: unknown, max = 20): string[] {
+  if (!Array.isArray(value)) return [];
+  const out: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const text = entry.trim();
+    if (text) out.push(text.slice(0, 300));
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** The orchestrator sends one worker id per pipeline run so its parallel
     stages share a lease; direct callers get an anonymous one-shot holder. */
 export function readWorker(body: unknown): string {

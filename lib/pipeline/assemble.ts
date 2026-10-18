@@ -24,6 +24,7 @@ import type {
 } from "../types";
 import type { InvestigatorKind } from "../agents/investigator";
 import { buildCoverage, type CoverageReport } from "./coverage";
+import { deriveRetryPlan, type RetryReason } from "./retry";
 import { excludedClientEvidence, splitEventsByScope, type ReportScope } from "./scope";
 import { buildBriefing } from "../report/briefing";
 import { PIPELINE_VERSION, modelVersion } from "./version";
@@ -78,6 +79,10 @@ export interface AssembledIdentity {
 export interface AssembleOutcome extends AssembledResult {
   needsRetry: boolean;
   missing: string[];
+  /** I3: the investigator kinds the gap-driven retry targets (union of reasons). */
+  retryKinds: InvestigatorKind[];
+  /** I3: the deterministic reasons and explicit queries behind the retry. */
+  retryReasons: RetryReason[];
   pass: number;
 }
 
@@ -161,8 +166,21 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
   });
 
   const pass = currentPass(stages);
-  const needsRetry = missing.length > 0 && pass < MAX_RETRY_PASS;
   const coverage = buildCoverage(events, stages, timeline);
+  // I3: retry is gap-driven, not just "a kind had zero claims". The reasons and
+  // their explicit queries are deterministic; no LLM call is made here.
+  const retry = deriveRetryPlan({
+    investigation,
+    claims,
+    coverage,
+    notes: skepticNotes,
+    gaps,
+    registryIds,
+    missing,
+    pass,
+    maxPass: MAX_RETRY_PASS,
+  });
+  const needsRetry = retry.needsRetry;
   const complete = stages.some((stage) => stage.stage === "assemble" && stage.status === "done");
 
   const scope: ReportScope | null = investigation.scope
@@ -212,6 +230,8 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     complete,
     needsRetry,
     missing,
+    retryKinds: retry.kinds,
+    retryReasons: retry.reasons,
     pass,
   };
 }
@@ -222,6 +242,16 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
   await appendStageLog(investigationId, "assemble", result.pass, {
     needsRetry: result.needsRetry,
     missing: result.missing,
+    ...(result.retryReasons.length > 0
+      ? {
+          retryReasons: result.retryReasons.map((reason) => ({
+            kind: reason.kind,
+            kinds: reason.kinds,
+            reason: reason.reason,
+            query: reason.query,
+          })),
+        }
+      : {}),
     stats: result.stats,
     issues: result.issues.length,
   });

@@ -28,6 +28,12 @@ export async function POST(
 
   return runStage(id, "assemble", pass, async () => {
     const result = await assemble(id);
-    return { needsRetry: result.needsRetry, missing: result.missing, stats: result.stats };
+    return {
+      needsRetry: result.needsRetry,
+      missing: result.missing,
+      retryKinds: result.retryKinds,
+      retryReasons: result.retryReasons,
+      stats: result.stats,
+    };
   }, worker, resume);
 }

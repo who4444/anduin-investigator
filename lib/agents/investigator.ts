@@ -67,6 +67,12 @@ export interface InvestigatorResult {
   log: { round: number; name: string }[];
 }
 
+/** I3: the explicit queries and reasons a gap-driven retry pass carries. */
+export interface InvestigatorDirective {
+  queries?: string[];
+  reasons?: string[];
+}
+
 function claimKey(eventId: string, text: string): string {
   return `${eventId}|${text.toLowerCase().replace(/\s+/g, " ").trim()}`;
 }
@@ -150,10 +156,13 @@ export async function runInvestigator(
   kind: InvestigatorKind,
   plan: string,
   pass = 1,
+  directive: InvestigatorDirective = {},
 ): Promise<InvestigatorResult> {
   if (!INVESTIGATOR_KINDS.includes(kind)) {
     throw new Error(`Unknown investigator kind: ${kind}`);
   }
+  const retryQueries = (directive.queries ?? []).map((query) => query.trim()).filter(Boolean);
+  const retryReasons = (directive.reasons ?? []).map((reason) => reason.trim()).filter(Boolean);
 
   const tools = buildAgentTools(investigationId, kind);
   const events = await getEvents(investigationId);
@@ -189,6 +198,12 @@ export async function runInvestigator(
     ...(scopeLine ? ["", scopeLine] : []),
     ...(digest ? ["", "Vocabulary observed in the records (use these exact terms when searching):", digest] : []),
     ...(issueBlock ? ["", issueBlock] : []),
+    ...(retryReasons.length > 0
+      ? ["", "This is a targeted retry pass. It runs because:", ...retryReasons.map((reason) => `- ${reason}`)]
+      : []),
+    ...(retryQueries.length > 0
+      ? ["", "Run these queries explicitly before you submit anything:", ...retryQueries.map((query) => `- ${query}`)]
+      : []),
     "",
     "Evidence Registry summary:",
     summarizeEvents(inScope),
@@ -319,6 +334,9 @@ export async function runInvestigator(
     toolCalls: toolLog,
     notes: notes.length,
     issues: issues.length,
+    ...(retryReasons.length > 0
+      ? { retry: { reasons: retryReasons, queries: retryQueries } }
+      : {}),
     unassigned: (await getClaims(investigationId)).filter(
       (claim) => claim.agent === kind && !claim.issueId,
     ).length,

@@ -128,10 +128,27 @@ describeDb("verify + assemble", () => {
     expect(result.missing).toEqual(["ownership"]);
     expect(result.pass).toBe(1);
     expect(result.needsRetry).toBe(true);
+    // I3: the gap-driven plan names the target kinds and the reason each retry runs.
+    expect(result.retryKinds).toContain("ownership");
+    expect(result.retryKinds).toContain("root_cause");
+    expect(result.retryReasons.some((reason) => reason.kind === "unsearched_source")).toBe(true);
+    expect(result.retryReasons.some((reason) => reason.query !== null)).toBe(true);
     expect(result.investigation.id).toBe(investigationId);
     expect(result.stages.some((stage) => stage.stage === "root_cause")).toBe(true);
     expect(result.coverage.sources).toHaveLength(3);
     expect(result.coverage.neverSearched).toEqual(["jira", "slack"]);
+
+    // The reasons and their explicit queries are in the stage log the review
+    // screen reads, so "How this was produced" can say "retried for …".
+    const { getStages } = await import("../lib/store");
+    const assembleLog = (await getStages(investigationId)).find(
+      (stage) => stage.stage === "assemble" && stage.pass === 1,
+    )?.log;
+    const entry = (assembleLog?.[assembleLog.length - 1] ?? {}) as {
+      retryReasons?: { kind: string; reason: string; query: string | null }[];
+    };
+    expect(entry.retryReasons?.some((reason) => reason.kind === "unsearched_source")).toBe(true);
+    expect(entry.retryReasons?.some((reason) => reason.query === "search_jira(all)")).toBe(true);
   });
 
   it("stops retrying after one retry pass (max 2 iterations)", async () => {

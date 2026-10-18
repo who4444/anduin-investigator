@@ -441,4 +441,52 @@ describeDb("runInvestigator", () => {
       runInvestigator(investigationId, "vibes", "plan"),
     ).rejects.toThrow(/unknown investigator kind/i);
   });
+
+  it("records a retry directive's reasons and explicit queries in the stage log and prompt", async () => {
+    const { createInvestigation, insertEvents, getStages } = await import("../lib/store");
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+
+    const id = await createInvestigation({
+      title: `Retry ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+    await insertEvents(id, [
+      {
+        id: "e_retry_0000001",
+        source: "jira",
+        ts: "2024-09-10T03:00:00.000Z",
+        actor: "Lin Chen",
+        channel: "MER-101",
+        text: "Timezone change for release 4.12 shipped on Sep 10.",
+      },
+    ]);
+
+    const prompts: string[] = [];
+    setLlmClientForTests({
+      chat: async (messages) => {
+        prompts.push(messages.map((message) => message.content ?? "").join("\n"));
+        return { content: JSON.stringify({ claims: [], notes: [] }) };
+      },
+    });
+
+    await runInvestigator(id, "root_cause", "plan", 2, {
+      queries: ["search_jira(all)"],
+      reasons: ["the jira source was available but never searched"],
+    });
+
+    expect(prompts.some((prompt) => prompt.includes("Run these queries explicitly"))).toBe(true);
+    expect(prompts.some((prompt) => prompt.includes("search_jira(all)"))).toBe(true);
+
+    const stage = (await getStages(id)).find(
+      (entry) => entry.stage === "root_cause" && entry.pass === 2,
+    );
+    const entry = (stage?.log[stage.log.length - 1] ?? {}) as {
+      retry?: { reasons?: string[]; queries?: string[] };
+    };
+    expect(entry.retry?.queries).toEqual(["search_jira(all)"]);
+    expect(entry.retry?.reasons).toEqual(["the jira source was available but never searched"]);
+  });
 });

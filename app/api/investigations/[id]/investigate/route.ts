@@ -8,6 +8,7 @@ import {
   readJsonBody,
   readPass,
   readResume,
+  readStringList,
   readWorker,
   runStage,
 } from "@/lib/api/pipeline";
@@ -34,9 +35,15 @@ export async function POST(
   const worker = readWorker(body);
   const resume = readResume(body);
   const plan = found.investigation.plan ?? "";
+  // I3: the orchestrator's targeted retry sends the explicit queries and the
+  // reasons ("retried for …") this pass must record.
+  const directives = {
+    queries: readStringList(body.queries),
+    reasons: readStringList(body.reasons),
+  };
 
   return runStage(id, kind as InvestigatorKind, pass, async () => {
-    const result = await runInvestigator(id, kind as InvestigatorKind, plan, pass);
+    const result = await runInvestigator(id, kind as InvestigatorKind, plan, pass, directives);
     return {
       kind,
       pass,
