@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import type { IngestFile } from "@/lib/ingest/detect";
 import { ingestFiles } from "@/lib/ingest/run";
 import { getSource } from "@/lib/sources";
+import { runVersionKey } from "@/lib/pipeline/version";
 
 export const maxDuration = 60;
 
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     files,
     escalation,
     title: title || undefined,
-    contentHash: `pull:${[declaredClient, ...hashParts].filter(Boolean).join("|")}`,
+    contentHash: `pull:${runVersionKey()}:${[declaredClient, ...hashParts].filter(Boolean).join("|")}`,
     warnings,
     declaredClient,
     origin: "pull",

@@ -9,6 +9,7 @@ import {
   getIssues,
   getSkepticNotes,
   getStages,
+  recordReportVersion,
 } from "../store";
 import type {
   Claim,
@@ -23,6 +24,8 @@ import type {
 import type { InvestigatorKind } from "../agents/investigator";
 import { buildCoverage, type CoverageReport } from "./coverage";
 import { excludedClientEvidence, splitEventsByScope, type ReportScope } from "./scope";
+import { buildBriefing } from "../report/briefing";
+import { PIPELINE_VERSION, modelVersion } from "./version";
 
 const INVESTIGATOR_KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
 const LEDGER_TYPES = new Set(["commitment", "decision"]);
@@ -210,6 +213,39 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
     stats: result.stats,
     issues: result.issues.length,
   });
+
+  // G-08: freeze the top answer now. The report page reads the latest version;
+  // drafting a reply or re-rendering the page cannot rewrite this narrative.
+  const caseBriefing = buildBriefing({
+    events: result.timeline,
+    claims: result.claims,
+    commitments: result.commitments,
+  });
+  await recordReportVersion({
+    investigationId,
+    issueId: null,
+    narrative: caseBriefing.narrative,
+    stats: result.stats,
+    model: modelVersion(),
+    promptVersion: PIPELINE_VERSION,
+  });
+  for (const issue of result.issues) {
+    const issueClaims = result.claims.filter((claim) => claim.issueId === issue.id);
+    if (issueClaims.length === 0) continue;
+    const issueBriefing = buildBriefing({
+      events: result.timeline,
+      claims: issueClaims,
+      commitments: result.commitments.filter((commitment) => commitment.issueId === issue.id),
+    });
+    await recordReportVersion({
+      investigationId,
+      issueId: issue.id,
+      narrative: issueBriefing.narrative,
+      stats: result.stats,
+      model: modelVersion(),
+      promptVersion: PIPELINE_VERSION,
+    });
+  }
 
   return result;
 }

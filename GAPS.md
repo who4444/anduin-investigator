@@ -1,6 +1,6 @@
 # Current gaps — Anduin Investigator
 
-**Status:** working document for implementation agents. Last updated 2026-10-17.
+**Status:** working document for implementation agents. Last updated 2026-10-18.
 **Read first:** `AGENTS.md` (architecture, invariants, test rules). This file is the prioritised gap list; it does not replace `AGENTS.md`.
 
 **Purpose.** The system already proves the hard part — an evidence registry, exact-quote verification, actor/time checks, and a readable client narrative on real, scattered data. The gaps below are about **making that evidence trustworthy at the decision layer**: scope/recall, commitments, derived numbers, current state, client-safe language, and the report/UX around them.
@@ -54,8 +54,8 @@ Each is mapped to a gap below.
 
 ### G-01 — Scope must be a recall guard, not a silent subtraction
 
-**Status:** **implemented — 2026-10-17.** Recall guard: client-domain authorship, client channels (shared `general` rooms), client email threads, and manager overrides all survive the split; unrelated tenants still exclude. Client-evidence invariant: report banner, draft block, `POST /reply` 409; excluded list on the report with add-back + re-run (`PUT /scope`, `scope_overrides`, `includedByReview` disclosure). Covered by unit ratchets, tools-level chase retrieval, an assemble-level chase→report→chasers test, a route PUT test, and a Playwright review→re-run test.
-**Known caveat:** client identification needs a name-token or scope-domain match; a client mailbox on an unrelated domain (e.g. a free mailbox) is only kept when the scope carries that domain. Identity-resolution-based participant detection is future work.
+**Status:** **implemented (recall guard + participant identity) — 2026-10-18.** Client-domain authorship, email threads, client channels (including a shared `general` room), and manager overrides all survive the split. Slack actors are linked to client email senders by resolved display name, so a client Slack account without an address still makes its channel client evidence. Client-evidence invariant: report banner, draft block, `POST /reply` 409; excluded list with add-back + re-run. Verified by unit ratchets, a cross-tool Slack-identity fixture, a tools-level chase retrieval, an assemble-level chase→report→chasers test, a route PUT test, and a Playwright review→re-run test.
+**Known caveat:** a client mailbox on a free-mail domain with no scope domain still needs the scope to carry that domain; a truly Slack-only client with no email sender and no client-name mention has no identity signal. The excluded-records review remains post-run (add-back + re-run), not a pre-run pause.
 
 **Type:** scope, recall, safety.
 **Problem:** scoping runs before anyone checks whether the client's own evidence is in the excluded set. A declared client, project name, or channel list can drop the client's mailbox, a shared channel (`general`), or a thread. Exclusion is visible only as a count, never as a list, and the report can still produce a client reply.
@@ -96,7 +96,7 @@ Each is mapped to a gap below.
 
 ### G-03 — Negative claims require completeness
 
-**Status:** **implemented (core) — 2026-10-17.** Classifier + case-level completeness proof (every available source searched, no failed queries, no excluded client evidence). Incomplete negatives cap at `supported`/`evidence_incomplete` — never verified, never safe-to-repeat, out of causes, chip reads "coverage incomplete", the proof is in the drawer; complete negatives cap at `negative_inference` — still never verified. Drafts use verified-only, so no negative can be asserted. Remaining: per-question source relevance (proofs are case-level) and synthesized gap rows for incomplete negatives.
+**Status:** **implemented (core) — 2026-10-18.** Classifier + case-level completeness proof (every available source searched, no failed queries, no excluded client evidence; client evidence now includes Slack participants). Incomplete negatives cap at `supported`/`evidence_incomplete` — never verified, never safe-to-repeat, out of causes, chip reads "coverage incomplete", the proof is in the drawer; complete negatives cap at `negative_inference` — still never verified. Drafts use verified-only, and reply sentences that assert an absence are labelled `needs-check` for the approval gate. Remaining: per-question source relevance (proofs are case-level) and synthesized gap rows for incomplete negatives.
 
 **Type:** inference policy, verification, safety.
 **Problem:** "no reply", "no handoff", "never shipped", "no confirmation" are rendered as findings from missing records. With an excluded mailbox or failed thread lookup, the negative is unsafe.
@@ -113,7 +113,7 @@ Each is mapped to a gap below.
 
 ### G-04 — Derived facts need the same trust as quotes
 
-**Status:** **implemented (dates + lateness) — 2026-10-17.** The deadline regex that matched bare month tokens ("Mar" inside "Marching") is gone: full month names, word boundaries, no invented years, next-occurrence rollover — the whole date table is green. The ledger fails closed: a lateness larger than the evidence window renders "the date does not fit the record window", never a number. Remaining metric items (client-only chasers preference, per-source/functional silences, first-response definition) go with the G-05 metrics pass.
+**Status:** **implemented (dates + metrics) — 2026-10-18.** The bare-month deadline regex is gone; dates fail closed. `unanswered chases` now counts only client actors and requires an interleaved reply to break the run; longest silence is computed from the cited record, not uncited noise; the commitments metric, promises section, bottom line and briefing all read the canonical ledger. Remaining: per-source/functional silence breakdown and the first-response definition are still single-case metrics.
 
 **Type:** metric correctness, provenance, tests.
 **Problem:** quotes are verified; numbers are not. "Days late", "longest silence", "unanswered chases", "first response", "findings", promise counts are computed in code and shown as fact. A partial date token can produce "185 days late" inside a 26-day incident.
@@ -138,7 +138,7 @@ Each is mapped to a gap below.
 
 ### G-05 — A promise is a first-class entity, not a claim
 
-**Status:** **implemented (core) — 2026-10-18.** `commitments` table (014) backed by one verified claim each; the commitments investigator submits via `submit_commitment` (promisor, promisee, date-less object, stated deadline, status + rationale, fulfilment records). CODE keys and merges restatements across sources into one row (`source_event_ids`), applies the rules (kept needs a delivering record, else unclear; broken outweighs kept; disagreement → `contested` with rationale), and resolves the deadline via the hardened parser. The ledger, the bottom line and the briefing narrative all read the same canonical set; per-issue views inherit filtering via the backing claims. UI shows the contested chip and the status rationale. Acceptance test: same promise in three tools → one contested row, `1 of 1 broken` everywhere. Remaining: a code guard against non-promise objects (QA/leave) beyond the tool's structured object requirement, and commitments-native verification (they currently ride their backing claim's verification).
+**Status:** **implemented (canonical) — 2026-10-18.** `commitments` table (014) backed by one verified claim each. `submit_commitment` now rejects completed-fix/QA/status objects as non-promises (the backing claim remains a finding, not a ledger row); restatements with the same promisor + deadline + issue merge even when the object is phrased differently. The metric, promises section, bottom line and briefing read the same ledger; UI shows the contested chip and status rationale. Remaining: commitments-native verification (they ride the backing claim) and a cross-issue commitment bucket.
 
 **Type:** data model, commitments, client-facing correctness.
 **Problem:** promises are claims with a sentence. There is no explicit promisor/promisee/object/condition/deadline; near-duplicates across email/Jira/Slack are not merged; non-promises (QA reports, leave notices, merge notes) are counted; one promise can appear with contradictory statuses.
@@ -162,7 +162,7 @@ Each is mapped to a gap below.
 
 ### G-06 — Current state, owner, and next action
 
-**Status:** **implemented (core) — 2026-10-18.** `buildCaseState` computes the "now" from stored records only: current status (latest transition wins — a reopen beats a premature resolve), latest version-bearing fix + QA check, owner (latest assignee transition; an unassignment reads as no-owner), next commitment (earliest open dated promise beyond the record horizon), last client contact (by confirmed client domain) and last internal update — each evidence-linked or explicitly unknown with a reason, with `asOf` = the record horizon. Rendered as the "now" strip under the answer; a missing owner renders in the critical tone. The draft-reply validator now drops sentences asserting a status or owner the case state and cited findings do not carry. Remaining: role labels for owners (needs identity data), and folding CaseState into the action list (that is G-09/G-11 territory).
+**Status:** **implemented (core) — 2026-10-18.** `buildCaseState` computes the "now" from stored records only: current status (latest transition wins), latest **internal** version-bearing fix (client-authored escalation emails are excluded) + QA check, owner, next commitment, last client contact (email or linked Slack identity) and last internal update, with `asOf`. Rendered as the "now" strip; a missing owner renders critical. The draft-reply validator drops status/owner assertions the case state and cited findings do not carry. Remaining: role labels for owners, and folding CaseState into the action list (G-09/G-11).
 
 **Type:** decision layer, missing model.
 **Problem:** the report is historical. The client asks "when is this fixed?"; the manager asks "who acts now?" There is no current status, current owner, latest fix, latest verification, next commitment, or named client-comms owner.
@@ -184,6 +184,8 @@ Each is mapped to a gap below.
 **Likely touchpoints:** `lib/report/build.ts`, `lib/report/briefing.ts`, `app/_components/briefing/*`, `lib/agents/reply.ts`.
 
 ### G-07 — Client-safe mode and a real reply gate
+
+**Status:** **implemented (core) — 2026-10-18.** The draft is now an explicit client-safe object: greeting/sign-off, per-sentence `safe / needs-check / do-not-send`, an approval checkbox persisted in `report_extras`/`issue_report_extras`, and copying gated on approval. Absence assertions and new commitments are labelled needs-check; verified, unflagged findings are the only input. The "What was communicated" audit table is renamed as internal review. Remaining: a separate client-pack page/PDF and a server-side per-sentence gate for future non-verified inputs.
 
 **Type:** safety, separation of internal/external, reply quality.
 **Problem:** internal audit notes, agent voice, and raw ids appear in the same report as "safe to repeat externally"; the draft can invent a follow-up date, state an inference as fact, and lacks greeting/sign-off. "Safe" is not an approval state.
@@ -207,6 +209,8 @@ Each is mapped to a gap below.
 **Likely touchpoints:** `lib/agents/reply.ts`, `lib/report/build.ts` (`safeToRepeat`), `report_extras`, `app/_components/briefing/sections.tsx`, `app/api/investigations/[id]/reply`.
 
 ### G-08 — Immutable report version; no mutating top answer
+
+**Status:** **implemented (core) — 2026-10-18.** Migration 015 `report_versions`; assemble freezes a case-level and per-issue narrative with stats/model/prompt version. The report reads the latest version for the selected issue and shows `Report vN · frozen date · model`; the reply's verdict no longer replaces the top answer. The content hash includes pipeline + model versions, so a different model cannot serve a cached run. Remaining: a version diff/refresh action and a per-sentence server gate before copy for future editable drafts.
 
 **Type:** reproducibility, trust.
 **Problem:** the top answer/verdict can change after another action (e.g., drafting), and cached vs live runs diverge. The manager cannot tell whether the story changed or the model did.

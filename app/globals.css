@@ -1401,6 +1401,54 @@ table.data td {
   background: var(--fill);
 }
 
+.reply-greeting,
+.reply-signoff {
+  font-family: var(--font-evidence);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.reply-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.reply-label {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.reply-label-safe {
+  color: var(--verified);
+  background: var(--verified-soft);
+}
+
+.reply-label-needs-check {
+  color: var(--unclear);
+  background: var(--unclear-soft);
+}
+
+.reply-label-do-not-send {
+  color: var(--broken);
+  background: var(--broken-soft);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+
 /* ---------- alerts ---------- */
 
 .alert {

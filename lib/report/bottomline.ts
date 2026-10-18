@@ -24,6 +24,8 @@ export interface BottomLineInput {
   notes: SkepticNote[];
   gaps: Gap[];
   commitments?: Commitment[];
+  clientDomains?: string[];
+  clientActors?: string[];
 }
 
 function shorten(text: string, maxWords = 9): string {
@@ -41,7 +43,14 @@ function visibleClaims(claims: Claim[]): Claim[] {
 
 export function buildBottomLine(input: BottomLineInput): BottomLine {
   const { events, claims, notes, gaps } = input;
-  const metrics = buildMetrics({ events, claims, notes });
+  const metrics = buildMetrics({
+    events,
+    claims,
+    notes,
+    commitments: input.commitments,
+    clientDomains: input.clientDomains,
+    clientActors: input.clientActors,
+  });
   const byMetric = new Map(metrics.map((metric) => [metric.id, metric]));
   const eventsById = new Map(events.map((event) => [event.id, event]));
 

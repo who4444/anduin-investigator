@@ -1,7 +1,7 @@
 import { asNumber, asString } from "../json";
 import { toUtcIso } from "../ingest/normalize";
 import type { ToolSpec } from "../llm";
-import { applyStatusRules, commitmentDedupeKey } from "../pipeline/commitments";
+import { applyStatusRules, commitmentDedupeKey, isPromiseLike } from "../pipeline/commitments";
 import { splitEventsByScope } from "../pipeline/scope";
 import { resolveIssueId } from "../pipeline/issues";
 import { extractDeadline } from "../report/build";
@@ -479,6 +479,17 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const stored =
           duplicate ?? (await insertClaims(investigationId, [{ ...claim, agent: agentName, issueId }]))[0];
         if (!stored) return JSON.stringify({ error: "commitment claim could not be stored." });
+
+        // A completed-fix statement or a QA result is a finding, not a promise.
+        // Keep the backing claim (it is still evidence) but do not put it in
+        // the commitments ledger.
+        if (!isPromiseLike(object, claim.text)) {
+          return JSON.stringify({
+            claimId: stored.id,
+            error:
+              "not a promise: the object has no forward-looking commitment (will/scheduled/targeted/by <release>). Submit it with submit_claim instead; the claim is stored.",
+          });
+        }
 
         // The deadline is resolved by code from the stated phrase and the
         // record's timestamp; the made-date never becomes the deadline (G-04).

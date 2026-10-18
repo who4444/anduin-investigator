@@ -25,6 +25,8 @@ import type {
   IssueInput,
   NewInvestigation,
   PlanData,
+  ReplyPayload,
+  ReplySentence,
   ScopeAnchor,
   SkepticNote,
   SkepticNoteInput,
@@ -455,11 +457,27 @@ export async function mergeCommitment(
   },
 ): Promise<Commitment> {
   const sql = getPool();
-  const [existingRow] = await sql<CommitmentRow[]>`
+  const [exactRow] = await sql<CommitmentRow[]>`
     select * from commitments
     where investigation_id = ${investigationId} and dedupe_key = ${record.dedupeKey}
     limit 1
   `;
+  // Restatements rarely phrase the object the same way ("ship the VAT export
+  // fix in the Sep 20 release" vs "fix scheduled for the Sep 20 release").
+  // Same promisor + deadline + issue is the same promise in practice; merge it
+  // rather than showing the manager two rows for one commitment.
+  const [fuzzyRow] = exactRow
+    ? [null]
+    : await sql<CommitmentRow[]>`
+        select * from commitments
+        where investigation_id = ${investigationId}
+          and lower(coalesce(promisor, '')) = lower(${record.promisor ?? ""})
+          and deadline_iso is not distinct from ${record.deadlineIso}::timestamptz
+          and issue_id is not distinct from ${record.issueId ?? null}::uuid
+        order by created_at asc
+        limit 1
+      `;
+  const existingRow = exactRow ?? fuzzyRow;
 
   if (existingRow) {
     const existing = mapCommitment(existingRow);
@@ -998,19 +1016,47 @@ export async function getIdentities(investigationId: string): Promise<IdentityRe
   return rows.map(mapIdentity);
 }
 
-export interface ReplySentence {
-  text: string;
-  claimIds: string[];
-}
-
 export interface ReportExtras {
   verdict: string | null;
-  reply: { sentences: ReplySentence[] } | null;
+  reply: ReplyPayload | null;
+}
+
+function mapReplyPayload(value: unknown): ReplyPayload | null {
+  if (typeof value !== "object" || value === null) return null;
+  const reply = value as {
+    greeting?: unknown;
+    sentences?: unknown;
+    signOff?: unknown;
+    approved?: unknown;
+  };
+  if (!Array.isArray(reply.sentences)) return null;
+  const sentences: ReplySentence[] = reply.sentences
+    .filter(
+      (entry): entry is Record<string, unknown> =>
+        typeof entry === "object" && entry !== null && typeof (entry as { text?: unknown }).text === "string",
+    )
+    .map((entry) => ({
+      text: String(entry.text),
+      claimIds: Array.isArray(entry.claimIds)
+        ? entry.claimIds.filter((id): id is string => typeof id === "string")
+        : [],
+      label: (entry.label === "needs-check" || entry.label === "do-not-send"
+        ? entry.label
+        : "safe") as ReplySentence["label"],
+    }))
+    .filter((sentence) => sentence.claimIds.length > 0);
+  if (sentences.length === 0) return null;
+  return {
+    greeting: typeof reply.greeting === "string" ? reply.greeting : undefined,
+    sentences,
+    signOff: typeof reply.signOff === "string" ? reply.signOff : undefined,
+    approved: reply.approved === true,
+  };
 }
 
 export async function upsertReportExtras(
   investigationId: string,
-  extras: { verdict: string; reply: { sentences: ReplySentence[] } },
+  extras: { verdict: string; reply: ReplyPayload },
 ): Promise<void> {
   const sql = getPool();
   await sql`
@@ -1024,24 +1070,17 @@ export async function upsertReportExtras(
 
 export async function getReportExtras(investigationId: string): Promise<ReportExtras | null> {
   const sql = getPool();
-  const rows = await sql<{ verdict: string | null; reply: { sentences?: ReplySentence[] } | null }[]>`
+  const rows = await sql<{ verdict: string | null; reply: unknown }[]>`
     select verdict, reply from report_extras where investigation_id = ${investigationId} limit 1
   `;
   if (rows.length === 0) return null;
-  const reply = rows[0].reply;
-  return {
-    verdict: rows[0].verdict,
-    reply:
-      reply && Array.isArray(reply.sentences)
-        ? { sentences: reply.sentences.filter((s) => typeof s?.text === "string") }
-        : null,
-  };
+  return { verdict: rows[0].verdict, reply: mapReplyPayload(rows[0].reply) };
 }
 
 export async function upsertIssueReportExtras(
   investigationId: string,
   issueId: string,
-  extras: { verdict: string; reply: { sentences: ReplySentence[] } },
+  extras: { verdict: string; reply: ReplyPayload },
 ): Promise<void> {
   const sql = getPool();
   await sql`
@@ -1058,18 +1097,134 @@ export async function getIssueReportExtras(
   issueId: string,
 ): Promise<ReportExtras | null> {
   const sql = getPool();
-  const rows = await sql<{ verdict: string | null; reply: { sentences?: ReplySentence[] } | null }[]>`
+  const rows = await sql<{ verdict: string | null; reply: unknown }[]>`
     select verdict, reply from issue_report_extras
     where investigation_id = ${investigationId} and issue_id = ${issueId}
     limit 1
   `;
   if (rows.length === 0) return null;
-  const reply = rows[0].reply;
+  return { verdict: rows[0].verdict, reply: mapReplyPayload(rows[0].reply) };
+}
+
+export async function setReplyApproved(
+  investigationId: string,
+  issueId: string | null,
+  approved: boolean,
+): Promise<boolean> {
+  const sql = getPool();
+  if (issueId) {
+    const rows = await sql<{ id: string }[]>`
+      update issue_report_extras
+      set reply = coalesce(reply, '{}'::jsonb) || ${sql.json({ approved })}
+      where investigation_id = ${investigationId} and issue_id = ${issueId}
+      returning issue_id as id
+    `;
+    return rows.length > 0;
+  }
+  const rows = await sql<{ id: string }[]>`
+    update report_extras
+    set reply = coalesce(reply, '{}'::jsonb) || ${sql.json({ approved })}
+    where investigation_id = ${investigationId}
+    returning investigation_id as id
+  `;
+  return rows.length > 0;
+}
+
+export interface ReportVersion {
+  id: string;
+  investigationId: string;
+  issueId: string | null;
+  version: number;
+  narrative: string;
+  stats: unknown;
+  model: string | null;
+  promptVersion: string | null;
+  createdAt: string;
+}
+
+/* G-08: freeze the assembled top answer. The narrative is computed once from
+   the claims at assemble time; a later draft cannot rewrite it. */
+export async function recordReportVersion(input: {
+  investigationId: string;
+  issueId: string | null;
+  narrative: string;
+  stats: unknown;
+  model: string | null;
+  promptVersion: string;
+}): Promise<ReportVersion> {
+  const sql = getPool();
+  const [latest] = await sql<{ next: number }[]>`
+    select coalesce(max(version), 0) + 1 as next
+    from report_versions
+    where investigation_id = ${input.investigationId}
+      and issue_id is not distinct from ${input.issueId ?? null}::uuid
+  `;
+  const [row] = await sql<{
+    id: string;
+    investigation_id: string;
+    issue_id: string | null;
+    version: number;
+    narrative: string;
+    stats: unknown;
+    model: string | null;
+    prompt_version: string | null;
+    created_at: Date | string;
+  }[]>`
+    insert into report_versions (
+      investigation_id, issue_id, version, narrative, stats, model, prompt_version
+    ) values (
+      ${input.investigationId}, ${input.issueId ?? null}::uuid, ${latest?.next ?? 1},
+      ${input.narrative}, ${sql.json(input.stats as unknown as JSONValue)},
+      ${input.model}, ${input.promptVersion}
+    )
+    returning *
+  `;
   return {
-    verdict: rows[0].verdict,
-    reply:
-      reply && Array.isArray(reply.sentences)
-        ? { sentences: reply.sentences.filter((s) => typeof s?.text === "string") }
-        : null,
+    id: row.id,
+    investigationId: row.investigation_id,
+    issueId: row.issue_id,
+    version: row.version,
+    narrative: row.narrative,
+    stats: row.stats,
+    model: row.model,
+    promptVersion: row.prompt_version,
+    createdAt: toIso(row.created_at) as string,
+  };
+}
+
+export async function getLatestReportVersion(
+  investigationId: string,
+  issueId: string | null = null,
+): Promise<ReportVersion | null> {
+  const sql = getPool();
+  const rows = await sql<{
+    id: string;
+    investigation_id: string;
+    issue_id: string | null;
+    version: number;
+    narrative: string;
+    stats: unknown;
+    model: string | null;
+    prompt_version: string | null;
+    created_at: Date | string;
+  }[]>`
+    select * from report_versions
+    where investigation_id = ${investigationId}
+      and issue_id is not distinct from ${issueId ?? null}::uuid
+    order by version desc
+    limit 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    investigationId: row.investigation_id,
+    issueId: row.issue_id,
+    version: row.version,
+    narrative: row.narrative,
+    stats: row.stats,
+    model: row.model,
+    promptVersion: row.prompt_version,
+    createdAt: toIso(row.created_at) as string,
   };
 }

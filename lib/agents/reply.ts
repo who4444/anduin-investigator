@@ -9,18 +9,12 @@ import {
   upsertIssueReportExtras,
   upsertReportExtras,
 } from "../store";
-import { clientDomainsFor } from "../pipeline/scope";
+import { clientDomainsFor, clientEvidenceFor } from "../pipeline/scope";
 import { buildCaseState, type CaseState } from "../report/case-state";
-import type { Claim, Issue } from "../types";
+import type { Claim, Issue, ReplyLabel, ReplyPayload, ReplySentence } from "../types";
 
-export interface ReplySentence {
-  text: string;
-  claimIds: string[];
-}
-
-export interface ReplyDraft {
+export interface ReplyDraft extends ReplyPayload {
   verdict: string;
-  sentences: ReplySentence[];
 }
 
 const MAX_SENTENCES = 8;
@@ -115,9 +109,9 @@ export function validateReplyPayload(
    Re-check every sentence against the CURRENT verification state: a sentence
    survives only when every claim it cites is still verified and unflagged. */
 export function pruneStaleReply(
-  reply: { sentences: ReplySentence[] } | null | undefined,
+  reply: ReplyPayload | null | undefined,
   claims: Claim[],
-): { sentences: ReplySentence[] } | null {
+): ReplyPayload | null {
   if (!reply) return null;
   const state = new Map(claims.map((claim) => [claim.id, claim]));
   const sentences = reply.sentences.filter((sentence) =>
@@ -126,7 +120,51 @@ export function pruneStaleReply(
       return claim?.verifyStatus === "verified" && !claim.skepticFlag;
     }),
   );
-  return sentences.length > 0 ? { sentences } : null;
+  return sentences.length > 0 ? { ...reply, sentences } : null;
+}
+
+function firstClientName(
+  events: Awaited<ReturnType<typeof getEvents>>,
+  investigation: Awaited<ReturnType<typeof getInvestigation>>,
+): string | null {
+  const evidence = clientEvidenceFor(events, investigation?.scope ?? null);
+  if (evidence.actors.length === 0 && evidence.domains.length === 0) return null;
+  const names = new Set(evidence.actors);
+  const domains = new Set(evidence.domains);
+  const isClient = (event: (typeof events)[number]) => {
+    const actor = event.actorResolved ?? event.actor;
+    const domain = actor.match(/@([A-Za-z0-9.-]+)/)?.[1]?.toLowerCase();
+    if (domain && domains.has(domain)) return true;
+    const normalized = actor
+      .replace(/<[^>]*>/g, " ")
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+    return names.has(normalized);
+  };
+  const clientEvents = events.filter(isClient);
+  const last = clientEvents[clientEvents.length - 1];
+  if (!last) return null;
+  const display = (last.actorResolved ?? last.actor).replace(/<[^>]*>/g, "").trim();
+  return display.split(/\s+/)[0] || null;
+}
+
+function sentenceLabel(text: string, claimText: string): ReplyLabel {
+  const addsCommitment =
+    /\b(will|shall|promise|commit|scheduled|by (?:the )?[\w.-]+|next (?:week|month)|tomorrow|we are treating|plan to)\b/i.test(
+      text,
+    );
+  if (addsCommitment && !/\b(will|shall|promise|commit|scheduled|tomorrow|next (?:week|month))\b/i.test(claimText)) {
+    return "needs-check";
+  }
+  // G-03: a negative cannot enter the client pack as plain safe copy unless
+  // the sentence is not an absence assertion; label it for a human check.
+  if (/\b(?:not resolved|did not|does not|no (?:reply|response|confirmation)|unanswered|never|absent|missing)\b/i.test(text)) {
+    return "needs-check";
+  }
+  return "safe";
 }
 
 export async function generateReply(
@@ -161,11 +199,13 @@ export async function generateReply(
     getInvestigation(investigationId),
     getCommitments(investigationId),
   ]);
+  const clientEvidence = clientEvidenceFor(events, investigation?.scope ?? null);
   const caseState = buildCaseState({
     events,
     claims: allClaims,
     commitments,
     clientDomains: clientDomainsFor(events, investigation?.scope ?? null),
+    clientActors: clientEvidence.actors,
   });
 
   const payload = verified.map((claim) => ({
@@ -222,11 +262,21 @@ export async function generateReply(
   }.`;
 
   const verdict = validated.verdict || fallbackVerdict;
-  const reply = { sentences: validated.sentences };
+  const verifiedById = new Map(verified.map((claim) => [claim.id, claim]));
+  const sentences: ReplySentence[] = validated.sentences.map((sentence) => {
+    const citedText = sentence.claimIds
+      .map((id) => verifiedById.get(id)?.text ?? "")
+      .join(" ");
+    return { ...sentence, label: sentenceLabel(sentence.text, citedText) };
+  });
+  const contact = firstClientName(events, investigation);
+  const greeting = contact ? `Hi ${contact},` : "Hello,";
+  const signOff = "Best regards,\nAnduin Support";
+  const reply: ReplyPayload = { greeting, sentences, signOff, approved: false };
   if (issue) {
     await upsertIssueReportExtras(investigationId, issue.id, { verdict, reply });
   } else {
     await upsertReportExtras(investigationId, { verdict, reply });
   }
-  return { verdict, sentences: validated.sentences };
+  return { verdict, ...reply };
 }

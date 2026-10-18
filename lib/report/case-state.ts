@@ -40,7 +40,7 @@ export interface CaseState {
 const STATUS_TRANSITION = /^\s*Status:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const ASSIGNEE_TRANSITION = /^\s*Assignee:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const VERSION_TOKEN = /\b\d+\.\d+(?:\.\d+)?\b/;
-const FIX_EVENT = /\b(release|build|deploy(?:ed|ment)?|hotfix|patch|shipped|is live|rolled out)\b/i;
+const FIX_EVENT = /\b(release|build|deploy(?:ed|ment)?|hotfix|patch|fix(?:ed)?|shipped|is live|rolled out)\b/i;
 const QA_EVENT = /\bQA\b/i;
 const QA_OUTCOME = /\bfail(?:ed|ing|s)?\b|\bpass(?:ed|es|ing)?\b|\bgreen\b|\bred\b/i;
 const EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
@@ -60,10 +60,27 @@ export function buildCaseState(input: {
   claims: Claim[];
   commitments?: Commitment[];
   clientDomains?: string[];
+  clientActors?: string[];
 }): CaseState {
   const ordered = [...input.events].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
   const asOf = ordered.length > 0 ? ordered[ordered.length - 1].ts : "";
   const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
+  const normalizeName = (value: string | null | undefined): string =>
+    (value ?? "")
+      .replace(/<[^>]*>/g, " ")
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+  const clientActors = new Set((input.clientActors ?? []).map(normalizeName).filter(Boolean));
+  const isClientEvent = (event: Event): boolean => {
+    const domain = actorDomain(event);
+    if (domain && clientDomains.has(domain)) return true;
+    return [event.actor, event.actorResolved ?? ""].some((value) =>
+      clientActors.has(normalizeName(value)),
+    );
+  };
   const unknown = (reason: string): CaseStateUnknown => ({ known: false, value: null, reason });
 
   // Jira changelog transitions are the canonical status/assignee record; the
@@ -86,7 +103,7 @@ export function buildCaseState(input: {
         ? unknown(`the latest assignee change unassigned the ticket (${event.ts.slice(0, 10)})`)
         : { known: true, value: name, since: event.ts, eventId: event.id };
     }
-    if (VERSION_TOKEN.test(event.text) && FIX_EVENT.test(event.text)) {
+    if (!isClientEvent(event) && VERSION_TOKEN.test(event.text) && FIX_EVENT.test(event.text)) {
       latestFix = {
         known: true,
         value: { text: shorten(event.text), ts: event.ts },
@@ -125,10 +142,7 @@ export function buildCaseState(input: {
         }
       : unknown("no open promise carries a date");
 
-  const clientEvents = ordered.filter((event) => {
-    const domain = actorDomain(event);
-    return domain !== null && clientDomains.has(domain);
-  });
+  const clientEvents = ordered.filter(isClientEvent);
   const lastClient: CaseStateField<{ actor: string; ts: string }> =
     clientEvents.length > 0
       ? {
@@ -146,10 +160,7 @@ export function buildCaseState(input: {
             : "no client-authored record in scope",
         );
 
-  const internal = ordered.filter((event) => {
-    const domain = actorDomain(event);
-    return domain === null || !clientDomains.has(domain);
-  });
+  const internal = ordered.filter((event) => !isClientEvent(event));
   const lastInternal: CaseStateField<{ actor: string; ts: string }> =
     internal.length > 0
       ? {

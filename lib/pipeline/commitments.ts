@@ -60,6 +60,25 @@ export function commitmentDedupeKey(input: {
   ].join("|");
 }
 
+/* G-05: a QA report, a "resolved" assertion or a client confirmation is not a
+   promise. The object must carry a forward-looking cue; a completed-fix
+   statement without one is a finding, not a commitment. */
+const PROMISE_CUE =
+  /\b(will|shall|commit(?:ted|s|ment)?|promis(?:e|ed|es)|schedul(?:ed|e|ing)?|target(?:ed|s|ing)?|keep .* open|ship|deliver|due|by (?:the )?[\w.-]+ release|tomorrow|next release|plan(?:ned|s)?|intend(?:ed|s)?|should)\b/i;
+const COMPLETED_CUE =
+  /\b(?:was|were|is|are|has been|have been)\s+(?:fixed|resolved|completed|verified|corrected|closed|delivered)\b|\b(?:fixed|resolved|completed|verified|corrected|closed|delivered)\s+(?:by|in|with)\b/i;
+const FUTURE_CUE =
+  /\b(will|shall|commit|promis|schedul|target|keep .* open|tomorrow|next release|plan|intend)\b/i;
+
+export function isPromiseLike(object: string, claimText = ""): boolean {
+  const combined = `${object} ${claimText}`;
+  if (!PROMISE_CUE.test(combined)) return false;
+  // A past-tense completion statement is not a promise unless it also says
+  // when the still-pending work will happen.
+  if (COMPLETED_CUE.test(object) && !FUTURE_CUE.test(object)) return false;
+  return true;
+}
+
 const OUTCOME_WEIGHT: Record<CommitmentStatus, number> = {
   broken: 0,
   withdrawn: 1,

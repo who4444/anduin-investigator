@@ -96,6 +96,21 @@ export function BriefingShell({
   };
   const openEvent = (eventId: string) => setDrawer({ eventId });
 
+  async function approveReply(approved: boolean) {
+    // Optimistic: the checkbox must reflect the click immediately; the
+    // persisted state is the source of truth on reload, and a failed write
+    // reverts the UI.
+    setReply((current) => (current ? { ...current, approved } : current));
+    const response = await fetch(`/api/investigations/${report.investigation.id}/reply/approve`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ issueId: report.activeIssueId, approved }),
+    });
+    if (!response.ok) {
+      setReply((current) => (current ? { ...current, approved: !approved } : current));
+    }
+  }
+
   async function draftReply() {
     setReplyState("loading");
     setReplyError(null);
@@ -106,11 +121,19 @@ export function BriefingShell({
         body: JSON.stringify({ issueId: report.activeIssueId }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
-        sentences?: { text: string; claimIds: string[] }[];
+        greeting?: string;
+        sentences?: { text: string; claimIds: string[]; label?: "safe" | "needs-check" | "do-not-send" }[];
+        signOff?: string;
+        approved?: boolean;
         error?: string;
       };
       if (!response.ok || !payload.sentences) throw new Error(payload.error ?? "Could not draft the reply.");
-      setReply({ sentences: payload.sentences });
+      setReply({
+        greeting: payload.greeting,
+        sentences: payload.sentences,
+        signOff: payload.signOff,
+        approved: payload.approved === true,
+      });
       setReplyState("idle");
     } catch (error) {
       setReplyState("error");
@@ -236,11 +259,12 @@ export function BriefingShell({
         <CausesSection report={report} onClaim={openClaim} />
         <GapsSection report={report} onClaim={openClaim} onEvent={openEvent} rerunHref={rerunHref} />
         <ReplySection
-          sentences={reply?.sentences ?? null}
+          reply={reply}
           state={replyState}
           error={replyError}
           onDraft={draftReply}
           onClaim={openClaim}
+          onApprove={approveReply}
           disabledReason={replyDisabledReason}
         />
 

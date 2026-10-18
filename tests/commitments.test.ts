@@ -6,6 +6,7 @@ import { loadEnv } from "../lib/db/env";
 import {
   applyStatusRules,
   commitmentDedupeKey,
+  isPromiseLike,
   mergeStatuses,
   normalizeObject,
 } from "../lib/pipeline/commitments";
@@ -48,6 +49,13 @@ describe("commitment rules (G-05)", () => {
       contested: false,
       rationale: "release cut",
     });
+  });
+
+  it("does not turn a completed fix or a QA status into a promise", () => {
+    expect(isPromiseLike("VAT export totals fixed by the 5.3.3 rollout")).toBe(false);
+    expect(isPromiseLike("VAT rounding path corrected and exports verified with finance")).toBe(false);
+    expect(isPromiseLike("fix scheduled for the Sep 20 release")).toBe(true);
+    expect(isPromiseLike("ship the VAT export fix in the Sep 20 release")).toBe(true);
   });
 
   it("kept requires evidence of delivery", () => {
@@ -183,5 +191,75 @@ describeDb("commitments end to end (G-05)", () => {
     const bottom = buildBottomLine({ events, claims, notes: [], gaps: [], commitments });
     const promises = bottom.cells.find((cell) => cell.id === "promises");
     expect(promises).toMatchObject({ value: "1 of 1 broken", tone: "bad" });
+  });
+
+  it("merges differently-worded promises with the same promisor, deadline and issue", async () => {
+    const { createInvestigation, deleteInvestigation, getCommitments, insertEvents } = await import(
+      "../lib/store"
+    );
+    const { buildAgentTools } = await import("../lib/agents/tools");
+    const id = await createInvestigation({
+      title: `Commitments fuzzy ${randomUUID()}`,
+      escalationText: "When will the VAT fix ship?",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+    await insertEvents(id, [
+      {
+        id: "e_fuzzy_1",
+        source: "jira",
+        ts: "2024-09-05T09:00:00.000Z",
+        actor: "Ravi Menon",
+        channel: "ORB-101",
+        text: "We will ship the VAT export fix in the Sep 20 release.",
+      },
+      {
+        id: "e_fuzzy_2",
+        source: "slack",
+        ts: "2024-09-05T09:05:00.000Z",
+        actor: "Ravi Menon",
+        channel: "orbit-support",
+        text: "The VAT fix is scheduled for the Sep 20 release.",
+      },
+    ]);
+    const tools = buildAgentTools(id, "commitments");
+    const submissions = [
+      {
+        text: "Ravi Menon will ship the VAT export fix in the Sep 20 release.",
+        object: "ship the VAT export fix in the Sep 20 release",
+        deadline: "Sep 20",
+        quote: "We will ship the VAT export fix in the Sep 20 release.",
+        item_id: "e_fuzzy_1",
+        status: "broken",
+        rationale: "Sep 20 passed without a fix",
+      },
+      {
+        text: "Ravi Menon scheduled the VAT fix for the Sep 20 release.",
+        object: "fix scheduled for the Sep 20 release",
+        deadline: "Sep 20",
+        quote: "The VAT fix is scheduled for the Sep 20 release.",
+        item_id: "e_fuzzy_2",
+        status: "kept",
+        rationale: "the release was announced",
+      },
+    ];
+    for (const submission of submissions) {
+      const result = JSON.parse(
+        await tools.exec("submit_commitment", {
+          ...submission,
+          actor: "Ravi Menon",
+          to: "Bright Market",
+          confidence: 0.8,
+        }),
+      ) as { error?: string };
+      expect(result.error, JSON.stringify(result)).toBeUndefined();
+    }
+
+    const commitments = await getCommitments(id);
+    expect(commitments).toHaveLength(1);
+    expect(commitments[0].sourceEventIds).toHaveLength(2);
+    expect(commitments[0].status).toBe("broken");
+    await deleteInvestigation(id);
+    created.splice(created.indexOf(id), 1);
   });
 });

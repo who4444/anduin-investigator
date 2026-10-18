@@ -72,6 +72,43 @@ describe("buildCaseState (G-06)", () => {
     expect(state.fixCheck.value).toContain("QA passed");
   });
 
+  it("prefers the latest version-bearing fix over an earlier release note", () => {
+    const state = buildCaseState({
+      events: [
+        ...baseEvents,
+        event({
+          id: "e-fix-534",
+          ts: "2024-10-04T10:00:00.000Z",
+          actor: "Nadia Chen",
+          text: "Root cause confirmed; 5.3.4 fixed the VAT rounding and exports verified.",
+        }),
+      ],
+      claims: [],
+      clientDomains: [],
+    });
+    expect(state.latestFix.value?.text).toContain("5.3.4 fixed");
+  });
+
+  it("does not treat the client's escalation email as the latest fix", () => {
+    const state = buildCaseState({
+      events: [
+        ...baseEvents,
+        event({
+          id: "e-client-version",
+          ts: "2024-10-05T10:00:00.000Z",
+          source: "email",
+          channel: "email",
+          actor: "Dana Okoro <dana.okafor@northwind.example>",
+          text: "Your 5.3.4 release is still broken; this escalation is about the missing fix.",
+        }),
+      ],
+      claims: [],
+      clientDomains: ["northwind.example"],
+    });
+    expect(state.latestFix.value?.text).toContain("5.3.3 is live");
+    expect(state.latestFix.value?.text).not.toContain("escalation");
+  });
+
   it("keeps the last assignment, and reads an unassignment as no owner", () => {
     const assigned = buildCaseState({
       events: [

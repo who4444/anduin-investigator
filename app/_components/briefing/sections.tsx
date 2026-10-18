@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Avatar, colorFor } from "@/app/_components/briefing/people";
 import { VerificationChip } from "@/app/_components/evidence";
 import type { ReportPayload } from "@/lib/report/build";
+import type { ReplyPayload } from "@/lib/types";
 
 const STAMP_CLASS: Record<string, string> = {
   broken: "stamp stamp-broken",
@@ -115,7 +116,7 @@ export function PromisesSection({
           </div>
         )}
 
-        <h3 className="section-title">What was communicated versus other records</h3>
+        <h3 className="section-title">Internal review: what was communicated vs other records (not client communications)</h3>
         {audit.length === 0 ? (
           <p className="empty">No communicated update was contradicted by another record.</p>
         ) : (
@@ -372,6 +373,15 @@ export function GapsSection({
   rerunHref: string;
 }) {
   const neverSearched = report.coverage.neverSearched;
+  const chasers = report.metrics.find((metric) => metric.id === "chasers");
+  // An agent note can say a chase "could not be confirmed" while the code's
+  // chaser metric has already found the client records. Keep the honest SLA
+  // unknown, but do not present a determined chaser count as absent.
+  const displayGapNote = (note: string): string => {
+    if (!chasers?.determined || chasers.value === "none found" || !/chase/i.test(note)) return note;
+    if (!/could not|unconfirmed|unanswered|no (?:reply|response|confirmation)/i.test(note)) return note;
+    return `${note} Code-level chaser check: ${chasers.value}; the chaser records are in the report.`;
+  };
 
   return (
     <section className="briefing-section" id="gaps" aria-labelledby="gaps-title">
@@ -407,7 +417,7 @@ export function GapsSection({
             {report.gaps.map((gap) => (
               <li key={gap.id} className="finding">
                 <span className="finding-text">{gap.question}</span>
-                <span className="small muted">{gap.note}</span>
+                <span className="small muted">{displayGapNote(gap.note)}</span>
                 {gap.eventIds.length > 0 && (
                   <span className="row">
                     {gap.eventIds.map((eventId) => (
@@ -422,7 +432,8 @@ export function GapsSection({
           </ul>
         )}
 
-        <h3 className="section-title">Safe to repeat externally</h3>
+        <h3 className="section-title">Client-safe facts (verified)</h3>
+        <p className="small muted">The draft may only use these verified facts; the draft itself requires approval before copying.</p>
         {report.safeToRepeat.length === 0 ? (
           <p className="empty">No finding is safe to repeat without checking first.</p>
         ) : (
@@ -496,26 +507,35 @@ export function GapsSection({
 }
 
 export function ReplySection({
-  sentences,
+  reply,
   state,
   error,
   onDraft,
   onClaim,
+  onApprove,
   disabledReason,
 }: {
-  sentences: { text: string; claimIds: string[] }[] | null;
+  reply: ReplyPayload | null;
   state: "idle" | "loading" | "error";
   error: string | null;
   onDraft: () => void;
   onClaim: (claimId: string) => void;
+  onApprove: (approved: boolean) => void;
   disabledReason?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
 
   const copyAll = async () => {
-    if (!sentences) return;
+    if (!reply) return;
+    const text = [
+      reply.greeting ?? "",
+      ...reply.sentences.map((sentence) => sentence.text),
+      reply.signOff ?? "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     try {
-      await navigator.clipboard.writeText(sentences.map((sentence) => sentence.text).join(" "));
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -528,11 +548,12 @@ export function ReplySection({
       <h2 id="reply-title">Draft reply</h2>
       <div className="stack">
         <p className="draft-banner">
-          Draft for human review. Built only from verified findings. Nothing is sent from this app.
+          Client-safe draft. Built only from verified, unflagged findings. Approval is required
+          before copying; nothing is sent from this app.
         </p>
         {disabledReason ? (
           <p className="empty">{disabledReason}</p>
-        ) : !sentences ? (
+        ) : !reply ? (
           <div className="panel stack">
             <p>No reply has been drafted for this investigation yet.</p>
             <div className="row">
@@ -544,21 +565,47 @@ export function ReplySection({
           </div>
         ) : (
           <div className="panel stack">
+            {reply.greeting && <p className="reply-greeting">{reply.greeting}</p>}
             <div className="evidence">
-              {sentences.map((sentence) => (
-                <button
-                  key={sentence.text}
-                  type="button"
-                  className="reply-sentence"
-                  onClick={() => onClaim(sentence.claimIds[0])}
-                  title="Open the supporting evidence"
-                >
-                  {sentence.text}
-                </button>
+              {reply.sentences.map((sentence) => (
+                <div key={sentence.text} className="reply-line">
+                  <button
+                    type="button"
+                    className="reply-sentence"
+                    onClick={() => onClaim(sentence.claimIds[0])}
+                    title="Open the supporting evidence"
+                  >
+                    {sentence.text}
+                  </button>
+                  <span className={`reply-label reply-label-${sentence.label ?? "safe"}`}>
+                    {sentence.label === "needs-check"
+                      ? "needs check"
+                      : sentence.label === "do-not-send"
+                        ? "do not send"
+                        : "safe"}
+                  </span>
+                </div>
               ))}
             </div>
+            {reply.signOff && <p className="reply-signoff">{reply.signOff}</p>}
             <div className="row">
-              <button type="button" className="btn" onClick={copyAll}>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={reply.approved === true}
+                  onChange={(event) => onApprove(event.target.checked)}
+                />
+                Approve for client use
+              </label>
+            </div>
+            <div className="row">
+              <button
+                type="button"
+                className="btn"
+                onClick={copyAll}
+                disabled={reply.approved !== true}
+                title={reply.approved ? "Copy the approved client reply" : "Approve the draft before copying"}
+              >
                 {copied ? "Copied" : "Copy reply"}
               </button>
               <button type="button" className="btn" onClick={onDraft} disabled={state === "loading"}>

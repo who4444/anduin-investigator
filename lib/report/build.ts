@@ -1,4 +1,4 @@
-import type { Claim, Event, Gap, SkepticNote, SourceKind, Stage } from "../types";
+import type { Claim, Event, Gap, ReplyPayload, SkepticNote, SourceKind, Stage } from "../types";
 import type { CoverageReport } from "../pipeline/coverage";
 import type { ReportScope } from "../pipeline/scope";
 import { NEGATIVE_VERIFY_ERRORS } from "../pipeline/negative";
@@ -175,7 +175,17 @@ export interface ReportPayload extends ReportView {
   gaps: Gap[];
   skepticNotes: SkepticNote[];
   verdict: string | null;
-  reply: { sentences: { text: string; claimIds: string[] }[] } | null;
+  reply: ReplyPayload | null;
+  /** G-05: the canonical promise rows used by the ledger. */
+  commitments?: Commitment[];
+  /** G-08: the frozen top answer from this report version. */
+  version: {
+    number: number;
+    narrative: string;
+    createdAt: string;
+    model: string | null;
+    promptVersion: string | null;
+  } | null;
   briefing: Briefing;
   bottomLine: BottomLine;
   scope: ReportScope | null;
@@ -196,6 +206,8 @@ export interface ReportInput {
   commitments?: Commitment[];
   /** G-06: the client's domains, for "last client contact". */
   clientDomains?: string[];
+  /** G-01/G-04: the client's resolved actor names (email ↔ Slack identity). */
+  clientActors?: string[];
 }
 
 const DAY_MS = 86_400_000;
@@ -326,8 +338,37 @@ export function clusterCommitments(claims: Claim[], threshold = 0.45): Commitmen
 /* metrics                                                             */
 /* ------------------------------------------------------------------ */
 
-export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
+const ACTOR_EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
+
+function normalizedActor(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function isClientReportEvent(
+  event: Event,
+  clientDomains: Set<string>,
+  clientActors: Set<string>,
+): boolean {
+  const actor = event.actorResolved ?? event.actor;
+  const domain = actor.match(ACTOR_EMAIL_DOMAIN)?.[1]?.toLowerCase();
+  if (domain && clientDomains.has(domain)) return true;
+  return [event.actor, event.actorResolved ?? ""].some((value) =>
+    clientActors.has(normalizedActor(value)),
+  );
+}
+
+export function buildMetrics(input: ReportInput): Metric[] {
+  const { events, claims, notes } = input;
   const eventsById = eventMap(events);
+  const clientDomains = new Set((input.clientDomains ?? []).map((domain) => domain.toLowerCase()));
+  const clientActors = new Set((input.clientActors ?? []).map(normalizedActor).filter(Boolean));
   const kept = visibleClaims(claims);
   const keptWithEvents = kept.filter((claim) => cited(claim, eventsById));
   const citedEvents = keptWithEvents
@@ -395,25 +436,44 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     });
   }
 
-  // 3. commitments kept / total (deduplicated: one promise is one row)
-  const clusters = clusterCommitments(claims);
-  const keptClusters = clusters.filter((cluster) => cluster.representative.status === "kept");
+  // 3. commitments — one canonical ledger, shared with the promises section
+  // and the bottom line. Structured commitments win; legacy runs fall back to
+  // claim clusters inside buildLedger.
+  const promiseLedger = buildLedger(input);
+  const promiseTotal = promiseLedger.length;
+  const keptPromises = promiseLedger.filter((row) => row.outcome === "kept").length;
+  const brokenPromises = promiseLedger.filter((row) => row.outcome === "broken").length;
+  const unclearPromises = promiseTotal - keptPromises - brokenPromises;
+  const promiseClaimIds = new Set(promiseLedger.map((row) => row.claimId));
+  const promiseEventIds = [
+    ...new Set([
+      ...claims.filter((claim) => promiseClaimIds.has(claim.id)).map((claim) => claim.eventId),
+      ...((input.commitments ?? []).flatMap((commitment) => commitment.sourceEventIds)),
+    ]),
+  ];
   metrics.push({
     id: "commitments",
-    label: "Commitments kept",
-    value: clusters.length > 0 ? `${keptClusters.length} of ${clusters.length}` : "none found",
+    label: "Commitments",
+    value:
+      promiseTotal === 0
+        ? "none found"
+        : brokenPromises > 0
+          ? `${brokenPromises} of ${promiseTotal} broken`
+          : keptPromises > 0
+            ? `${keptPromises} of ${promiseTotal} kept`
+            : `${unclearPromises} of ${promiseTotal} unclear`,
     detail:
-      clusters.length > 0
-        ? `Counted from ${clusters.length} distinct source-backed promise${clusters.length === 1 ? "" : "s"} (near-duplicates merged; a broken reading outweighs a kept one).`
+      promiseTotal > 0
+        ? `${keptPromises} kept · ${unclearPromises} unclear${brokenPromises > 0 ? ` · ${brokenPromises} broken` : ""} — same ledger as the promises section.`
         : undefined,
     judgment: false,
-    determined: clusters.length > 0,
-    claimIds: clusters.flatMap((cluster) => cluster.members.map((member) => member.id)),
-    eventIds: clusters.flatMap((cluster) => cluster.members.map((member) => member.eventId)),
+    determined: promiseTotal > 0,
+    claimIds: [...promiseClaimIds],
+    eventIds: promiseEventIds,
   });
 
-  // 4. longest silence
-  const orderedEvents = sortedByTs(events);
+  // 4. longest silence in the cited record (noise events must not set it)
+  const orderedEvents = sortedByTs(citedEvents.map((entry) => entry.event));
   let longest: { from: Event; to: Event; days: number } | null = null;
   for (let index = 1; index < orderedEvents.length; index += 1) {
     const from = orderedEvents[index - 1];
@@ -424,7 +484,7 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
   if (longest && longest.days >= SILENCE_THRESHOLD_DAYS) {
     metrics.push({
       id: "longestSilence",
-      label: "Longest silence across all sources",
+      label: "Longest silence in the cited record",
       value: formatDays(longest.days),
       detail: `after ${longest.from.actor}'s ${longest.from.source} record`,
       judgment: false,
@@ -435,9 +495,9 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
   } else {
     metrics.push({
       id: "longestSilence",
-      label: "Longest silence across all sources",
+      label: "Longest silence in the cited record",
       value: longest ? formatDays(longest.days) : "not determined",
-      detail: "No gap of three days or more between stored records.",
+      detail: "No gap of three days or more between cited records.",
       judgment: false,
       determined: Boolean(longest),
       claimIds: [],
@@ -445,23 +505,46 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
     });
   }
 
-  // 5. unanswered run of consecutive records by one person. Computed over ALL
-  // stored records: an interleaved reply that no claim cites still breaks the run.
-  let longestRun: { actor: string; count: number; events: Event[] } = { actor: "", count: 0, events: [] };
-  let run: { actor: string; count: number; events: Event[] } = { actor: "", count: 0, events: [] };
+  // 5. unanswered chases: only the client can chase us. Internal runs are not
+  // chases, and a non-client record between two client messages breaks the run.
+  let longestRun: { actor: string; normalized: string; count: number; events: Event[] } = {
+    actor: "",
+    normalized: "",
+    count: 0,
+    events: [],
+  };
+  let run: { actor: string; normalized: string; count: number; events: Event[] } = {
+    actor: "",
+    normalized: "",
+    count: 0,
+    events: [],
+  };
+  const useClientIdentity = input.clientActors !== undefined || input.clientDomains !== undefined;
   for (const event of sortedByTs(events)) {
-    if (run.actor === event.actor) {
+    const normalized = normalizedActor(event.actorResolved ?? event.actor);
+    if (useClientIdentity && !isClientReportEvent(event, clientDomains, clientActors)) {
+      run = { actor: "", normalized: "", count: 0, events: [] };
+      continue;
+    }
+    if (run.normalized === normalized) {
       run.count += 1;
       run.events.push(event);
     } else {
-      run = { actor: event.actor, count: 1, events: [event] };
+      run = {
+        actor: event.actorResolved ?? event.actor,
+        normalized,
+        count: 1,
+        events: [event],
+      };
     }
-    if (run.count > longestRun.count) longestRun = { ...run, events: [...run.events] };
+    if (run.count > longestRun.count) {
+      longestRun = { ...run, events: [...run.events] };
+    }
   }
   if (longestRun.count >= 2) {
     metrics.push({
       id: "chasers",
-      label: "Consecutive records from one person with no reply",
+      label: "Unanswered chases from the client",
       value: `${longestRun.count} from ${longestRun.actor}`,
       detail: `${longestRun.events[0].ts.slice(0, 10)} → ${longestRun.events[longestRun.events.length - 1].ts.slice(0, 10)}`,
       judgment: false,
@@ -474,9 +557,9 @@ export function buildMetrics({ events, claims, notes }: ReportInput): Metric[] {
   } else {
     metrics.push({
       id: "chasers",
-      label: "Consecutive records from one person with no reply",
+      label: "Unanswered chases from the client",
       value: "none found",
-      detail: "No cited person has two or more consecutive cited records without an interleaved reply.",
+      detail: "No run of consecutive client records without an interleaved reply.",
       judgment: false,
       determined: false,
       claimIds: [],

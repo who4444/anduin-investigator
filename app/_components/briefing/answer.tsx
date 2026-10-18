@@ -122,7 +122,7 @@ export function AnswerSection({
   onClaim: (claimId: string) => void;
   onEvent: (eventId: string) => void;
 }) {
-  const verdict = report.verdict ?? report.briefing.narrative;
+  const verdict = report.version?.narrative ?? report.verdict ?? report.briefing.narrative;
   const quietMetrics = report.metrics.filter((metric: Metric) => !QUIET_METRIC_IDS.has(metric.id));
   const { immediate, followUp } = report.actions;
   const scope = report.scope;
@@ -205,6 +205,13 @@ export function AnswerSection({
       )}
 
       {verdict && <p className="verdict">{verdict}</p>}
+      {report.version && (
+        <p className="small muted version-line">
+          Report v{report.version.number} · frozen {report.version.createdAt.slice(0, 10)}
+          {report.version.model ? ` · ${report.version.model}` : ""}
+          {report.version.promptVersion ? ` · pipeline ${report.version.promptVersion}` : ""}
+        </p>
+      )}
 
       <p className="small muted">
         Verification: {report.stats.verified} of {report.stats.total} claims verified end-to-end

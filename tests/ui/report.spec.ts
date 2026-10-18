@@ -81,10 +81,11 @@ test("the timeline appendix stays collapsed until opened, then shows the board",
   expect(await page.locator(".legend-item").count()).toBeGreaterThanOrEqual(3);
 });
 
-test("draft reply cites verified findings and the verdict surfaces after reload", async ({
+test("draft reply cites verified findings and the draft survives reload", async ({
   page,
 }) => {
   await page.goto(reportUrl);
+  const verdictBefore = await page.locator(".verdict").innerText();
 
   // A cached seed may already carry a stored draft — only click when it does not.
   if ((await page.locator(".reply-sentence").count()) === 0) {
@@ -93,5 +94,8 @@ test("draft reply cites verified findings and the verdict surfaces after reload"
   await expect(page.locator(".reply-sentence").first()).toBeVisible({ timeout: 30_000 });
 
   await page.reload();
-  await expect(page.locator(".verdict")).toContainText("Confirmed");
+  // G-08: the stored draft survives, but the top answer is the frozen assembled
+  // version and must be byte-for-byte unchanged after drafting.
+  await expect(page.locator(".reply-sentence").first()).toBeVisible();
+  await expect(page.locator(".verdict")).toHaveText(verdictBefore);
 });

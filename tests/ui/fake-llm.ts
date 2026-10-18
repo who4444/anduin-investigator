@@ -249,11 +249,15 @@ function decide(system: string, messages: ChatMessage[]) {
   }
   if (system.includes("drafting the client reply")) return replyTurn(messages);
   if (system.includes("investigator")) {
-    const kind = system.includes("root cause")
-      ? "root_cause"
-      : system.includes("commitments")
-        ? "commitments"
-        : "ownership";
+    // The G-23 issue block contains the words "root cause/owner" for every
+    // role, so classify from the "You are the … investigator" line, not a
+    // substring scan of the whole prompt.
+    const role = system.match(/You are the (.+?) investigator/)?.[1] ?? "";
+    const kind = role.includes("commitments")
+      ? "commitments"
+      : role.includes("ownership")
+        ? "ownership"
+        : "root_cause";
     return investigatorTurn(kind, messages);
   }
   return content("Understood.");

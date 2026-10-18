@@ -294,3 +294,18 @@ export interface Commitment extends CommitmentInput {
   dedupeKey: string;
   createdAt: string;
 }
+
+export type ReplyLabel = "safe" | "needs-check" | "do-not-send";
+
+export interface ReplySentence {
+  text: string;
+  claimIds: string[];
+  label?: ReplyLabel;
+}
+
+export interface ReplyPayload {
+  greeting?: string;
+  sentences: ReplySentence[];
+  signOff?: string;
+  approved?: boolean;
+}

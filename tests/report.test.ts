@@ -154,13 +154,32 @@ describe("report metrics", () => {
 
     expect(byId.get("window")).toMatchObject({ determined: true, value: "17 days" });
     expect(byId.get("firstResponse")).toMatchObject({ determined: true });
-    expect(byId.get("commitments")).toMatchObject({ value: "0 of 1" });
-    expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "13 days" });
+    expect(byId.get("commitments")).toMatchObject({ value: "1 of 1 broken" });
+    // Cited records only: uncited registry noise no longer shortens the gap.
+    expect(byId.get("longestSilence")).toMatchObject({ determined: true, value: "15 days" });
     // e1→e2 (Lin, nothing in between) and e6→e7 (Priya) are both unanswered
     // consecutive runs in the full registry; the earliest one wins the tie.
     expect(byId.get("chasers")).toMatchObject({ determined: true, value: "2 from Lin Chen", eventIds: ["e1", "e2"] });
     expect(byId.get("statusConflicts")?.claimIds).toEqual(["c4"]);
     expect(byId.get("processFailures")?.judgment).toBe(true);
+  });
+
+  it("counts only client actors as unanswered chasers", () => {
+    const clientEvents = [
+      event({ id: "x1", ts: "2024-09-22T09:00:00.000Z", actor: "Dana Okafor", source: "slack", channel: "general", text: "First chase." }),
+      event({ id: "x2", ts: "2024-09-23T09:00:00.000Z", actor: "Dana Okafor", source: "slack", channel: "general", text: "Second chase." }),
+      event({ id: "x3", ts: "2024-09-23T10:00:00.000Z", actor: "Ravi Menon", source: "slack", channel: "orbit-support", text: "Looking." }),
+      event({ id: "x4", ts: "2024-09-24T09:00:00.000Z", actor: "Ravi Menon", source: "slack", channel: "orbit-support", text: "Still looking." }),
+    ];
+    const chasers = buildMetrics({
+      events: clientEvents,
+      claims: [],
+      notes: [],
+      clientActors: ["Dana Okafor"],
+    }).find((metric) => metric.id === "chasers");
+    expect(chasers?.determined).toBe(true);
+    expect(chasers?.value).toContain("2 from Dana Okafor");
+    expect(chasers?.eventIds).toEqual(["x1", "x2"]);
   });
 
   it("reports not-determined instead of guessing on thin data", () => {
@@ -327,7 +346,7 @@ describe("commitment clustering", () => {
     expect(ledger[1].outcome).toBe("kept");
 
     const metrics = buildMetrics({ events, claims: duplicateClaims, notes: [] });
-    expect(metrics.find((metric) => metric.id === "commitments")).toMatchObject({ value: "1 of 2" });
+    expect(metrics.find((metric) => metric.id === "commitments")).toMatchObject({ value: "1 of 2 broken" });
   });
 });
 

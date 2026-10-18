@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 import type { IngestFile } from "@/lib/ingest/detect";
 import { ingestFiles } from "@/lib/ingest/run";
 import { findInvestigationByHash, getStages, listInvestigations } from "@/lib/store";
+import { runVersionKey } from "@/lib/pipeline/version";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,8 @@ function json(body: unknown, status = 200): Response {
 
 function contentHash(files: IngestFile[], escalation: string, declaredClient: string): string {
   const hash = createHash("sha1");
+  hash.update(runVersionKey());
+  hash.update("\0");
   hash.update(escalation);
   hash.update("\0");
   hash.update(declaredClient);

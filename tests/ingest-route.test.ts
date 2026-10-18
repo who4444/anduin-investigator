@@ -180,7 +180,7 @@ describeDb("POST /api/investigations", () => {
     expect(stored?.ingestWarnings.some((warning) => warning.includes("readme.txt"))).toBe(true);
   });
 
-  it.fails("does not serve a cached run produced by a different model version", async () => {
+  it("does not serve a cached run produced by a different model version", async () => {
     const originalModel = process.env.DEEPSEEK_MODEL;
     try {
       process.env.DEEPSEEK_MODEL = "model-a";

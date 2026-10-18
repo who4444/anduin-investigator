@@ -110,6 +110,11 @@ export function clientDomainsFor(events: Event[], scope: InvestigationScope | nu
   return [...computeClientDomains(events, scope)].sort();
 }
 
+export function clientActorsFor(events: Event[], scope: InvestigationScope | null): string[] {
+  if (!scope) return [];
+  return clientEvidenceFor(events, scope).actors;
+}
+
 function computeClientDomains(events: Event[], scope: InvestigationScope): Set<string> {
   const domains = new Set(scope.senderDomains.map((domain) => domain.toLowerCase()));
   if (scope.client) {
@@ -120,6 +125,92 @@ function computeClientDomains(events: Event[], scope: InvestigationScope): Set<s
     }
   }
   return domains;
+}
+
+/* G-01: a client is not only an email domain. Slack users carry no address in
+   the export; the only cross-source signal is the resolved display name
+   (email "Dana Okafor <billing@…>" ↔ Slack "Dana Okafor"). Build the client's
+   actor set from the names of everyone who wrote from a client domain, then
+   treat that actor — and the channel they posted in — as client evidence. */
+function normalizeActorName(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
+function actorNames(event: Event): string[] {
+  const names = [event.actor, event.actorResolved ?? ""].map(normalizeActorName).filter(Boolean);
+  return [...new Set(names)];
+}
+
+export interface ClientEvidence {
+  domains: string[];
+  actors: string[];
+  channels: string[];
+  threads: string[];
+  eventIds: string[];
+}
+
+function isClientActor(
+  event: Event,
+  domains: Set<string>,
+  actors: Set<string>,
+): boolean {
+  const domain = actorEmailDomain(event);
+  if (domain && domains.has(domain)) return true;
+  return actorNames(event).some((name) => actors.has(name));
+}
+
+export function clientEvidenceFor(
+  events: Event[],
+  scope: InvestigationScope | null,
+): ClientEvidence {
+  if (!scope || scope.confidence === "none") {
+    return { domains: [], actors: [], channels: [], threads: [], eventIds: [] };
+  }
+
+  const domains = computeClientDomains(events, scope);
+  const actors = new Set<string>();
+  for (const event of events) {
+    const domain = actorEmailDomain(event);
+    if (!domain || !domains.has(domain)) continue;
+    for (const name of actorNames(event)) actors.add(name);
+  }
+
+  const channels = new Set<string>();
+  const threads = new Set<string>();
+  for (const event of events) {
+    if (event.source === "email" && event.threadId && isClientActor(event, domains, actors)) {
+      threads.add(event.threadId);
+    }
+    if (event.source === "slack" && isClientActor(event, domains, actors)) {
+      channels.add(event.channel.toLowerCase());
+    }
+  }
+
+  const eventIds = new Set<string>();
+  for (const event of events) {
+    if (isClientActor(event, domains, actors)) eventIds.add(event.id);
+    if (event.source === "email" && event.threadId && threads.has(event.threadId)) {
+      eventIds.add(event.id);
+    }
+    if (event.source === "slack" && channels.has(event.channel.toLowerCase())) {
+      eventIds.add(event.id);
+    }
+  }
+
+  return {
+    domains: [...domains].sort(),
+    actors: [...actors].sort(),
+    channels: [...channels].sort(),
+    threads: [...threads].sort(),
+    eventIds: [...eventIds],
+  };
 }
 
 /* G-01: scoping is a recall guard first. The client's own evidence — records
@@ -136,12 +227,13 @@ export function splitEventsByScope(
 ): { inScope: Event[]; outOfScope: Event[] } {
   if (!scope || scope.confidence === "none") return { inScope: events, outOfScope: [] };
 
-  const clientDomains = computeClientDomains(events, scope);
+  const client = clientEvidenceFor(events, scope);
   const forced = new Set(includeEventIds);
 
   // An email thread is one unit: a reply that cites no ticket of its own still
-  // belongs to the escalation when its thread root does.
-  const scopedThreads = new Set<string>();
+  // belongs to the escalation when its thread root does. The client's own
+  // threads are always units, even when no anchor matched the root.
+  const scopedThreads = new Set<string>(client.threads);
   for (const event of events) {
     if (event.source === "email" && event.threadId && matchScope(scope, event)) {
       scopedThreads.add(event.threadId);
@@ -149,16 +241,11 @@ export function splitEventsByScope(
   }
 
   // Client evidence: direct authorship, threads the client wrote into, and
-  // channels where a client identity posted.
-  const clientEventIds = new Set<string>();
-  const clientChannels = new Set<string>();
-  for (const event of events) {
-    const domain = actorEmailDomain(event);
-    if (!domain || !clientDomains.has(domain)) continue;
-    clientEventIds.add(event.id);
-    if (event.source === "email" && event.threadId) scopedThreads.add(event.threadId);
-    if (event.source === "slack") clientChannels.add(event.channel.toLowerCase());
-  }
+  // channels where a client identity posted. The channel rule is what keeps a
+  // shared "general" room searchable when the client's Slack account has no
+  // email address to match on.
+  const clientEventIds = new Set(client.eventIds);
+  const clientChannels = new Set(client.channels);
 
   const inScope: Event[] = [];
   const outOfScope: Event[] = [];
@@ -183,13 +270,14 @@ export function excludedClientEvidence(
   scope: InvestigationScope | null,
 ): { clientDomains: string[]; excludedEventIds: string[] } {
   if (!scope || scope.confidence === "none") return { clientDomains: [], excludedEventIds: [] };
-  const clientDomains = computeClientDomains(events, scope);
+  const client = clientEvidenceFor(events, scope);
   const { outOfScope } = splitEventsByScope(events, scope);
-  const excluded = outOfScope.filter((event) => {
-    const domain = actorEmailDomain(event);
-    return domain !== null && clientDomains.has(domain);
-  });
-  return { clientDomains: [...clientDomains].sort(), excludedEventIds: excluded.map((event) => event.id) };
+  const clientEventIds = new Set(client.eventIds);
+  const excluded = outOfScope.filter((event) => clientEventIds.has(event.id));
+  return {
+    clientDomains: client.domains,
+    excludedEventIds: excluded.map((event) => event.id),
+  };
 }
 
 export function scopePromptLine(scope: InvestigationScope | null): string | null {

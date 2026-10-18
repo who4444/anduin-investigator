@@ -210,7 +210,11 @@ export function buildBriefing(input: {
   // silences with scope + leave annotation. A source is quiet during the gap
   // when it has no record in (from, to] — its own record may end the silence
   // (it was quiet until that moment), but the record that starts it was active.
-  const rawSilences = buildSilences(events);
+  // Silences are read from the cited record; uncited registry noise must not
+  // shorten or lengthen the gap a manager sees.
+  const citedEventIds = new Set(claims.map((claim) => claim.eventId));
+  const citedEvents = events.filter((event) => citedEventIds.has(event.id));
+  const rawSilences = buildSilences(citedEvents.length > 1 ? citedEvents : events);
   const silences: BriefingSilence[] = rawSilences.map((silence) => {
     const quietSources = (["jira", "email", "slack"] as SourceKind[]).filter(
       (source) =>

@@ -527,9 +527,9 @@ describe("resolveScope", () => {
   });
 });
 
-/* G-01 ratchets. Scoping must act as a recall guard: client evidence wins
-   over the exclusion rules; unrelated tenants stay excluded. These flip
-   from `it.fails` to `it` when the recall guard lands. */
+/* G-01 ratchets. Scoping acts as a recall guard: client evidence wins over
+   the exclusion rules; unrelated tenants stay excluded. These tests were the
+   `it.fails` ratchets and flipped to green when the recall guard landed. */
 describe("recall guard (G-01)", () => {
   const scoped: InvestigationScope = {
     client: "Northwind Logistics",
@@ -607,5 +607,62 @@ describe("force-include overrides (G-01 review)", () => {
   it("leaves the split unchanged without overrides", () => {
     const { outOfScope } = splitEventsByScope(sharedChannel.events, scoped, []);
     expect(outOfScope.map((event) => event.id)).toContain("f1-distractor");
+  });
+});
+
+describe("G-01 client identity across tools", () => {
+  const clientScope: InvestigationScope = {
+    client: "Bright Market",
+    project: "Lumen",
+    ticketPrefixes: ["LUM"],
+    channels: ["lumen-general"],
+    senderDomains: ["brightmarket.example"],
+    confidence: "scoped",
+    anchors: [],
+  };
+
+  const events: Event[] = [
+    event({
+      id: "e-client-email",
+      source: "email",
+      channel: "email",
+      actor: "Dana Okafor <billing@brightmarket.example>",
+      text: "Still blank.",
+    }),
+    event({
+      id: "e-client-slack",
+      source: "slack",
+      channel: "general",
+      actor: "Dana Okafor",
+      text: "Second chase on the VAT exports.",
+    }),
+    event({
+      id: "e-internal-general",
+      source: "slack",
+      channel: "general",
+      actor: "Marcus Hale",
+      text: "Ticket triage done.",
+    }),
+    event({
+      id: "e-distractor",
+      source: "slack",
+      channel: "vertex-billing",
+      actor: "Ravi Patel",
+      text: "Vertex billing roles.",
+    }),
+  ];
+
+  it("links a Slack actor to the client by the email sender's display name", () => {
+    const { inScope, outOfScope } = splitEventsByScope(events, clientScope);
+    expect(inScope.map((item) => item.id)).toEqual([
+      "e-client-email",
+      "e-client-slack",
+      "e-internal-general",
+    ]);
+    expect(outOfScope.map((item) => item.id)).toEqual(["e-distractor"]);
+  });
+
+  it("does not call a Slack client message excluded client evidence", () => {
+    expect(excludedClientEvidence(events, clientScope).excludedEventIds).toEqual([]);
   });
 });

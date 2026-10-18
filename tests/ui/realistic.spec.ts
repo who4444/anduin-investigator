@@ -80,13 +80,16 @@ test("retrieval stays inside the scoped engagement at volume", async ({ request 
   expect(result.scope!.excludedRecords).toBeGreaterThan(80);
   expect(result.scope!.ticketPrefixes).toContain("LUM");
   expect(result.scope!.channels).toContain("lumen-general");
+  // G-01: the client's shared room is client evidence even without an email
+  // address on the Slack account.
+  expect(result.timeline?.some((event) => event.channel === "general")).toBe(true);
 
   // Every event in the report view belongs to the scoped engagement: jira
   // channels carry the ticket key, slack carries the scoped room, and email
   // rows are scope-matched by sender domain (channel is always "email").
   expect(result.timeline?.length ?? 0).toBeGreaterThanOrEqual(15);
   for (const event of result.timeline ?? []) {
-    expect(`${event.channel}`).toMatch(/^LUM-|lumen|^email$/);
+    expect(`${event.channel}`).toMatch(/^LUM-|lumen|^email$|^general$/);
   }
   // Every cited record exists inside the report set (no fabricated sources).
   const eventIds = new Set((result.timeline ?? []).map((event) => event.id));

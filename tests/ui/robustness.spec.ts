@@ -246,7 +246,12 @@ test("redrafting the reply stays usable and copy confirms", async ({ page, reque
   await page.getByRole("button", { name: "Redraft" }).click();
   await expect(page.locator(".reply-sentence").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(".alert-error")).toHaveCount(0);
+  await expect(page.locator(".reply-label").first()).toHaveText(/safe|needs check|do not send/);
 
+  // G-07: copying is gated on a persisted approval, not just a draft existing.
+  await expect(page.getByRole("button", { name: "Copy reply" })).toBeDisabled();
+  await page.getByLabel("Approve for client use").check();
+  await expect(page.getByRole("button", { name: "Copy reply" })).toBeEnabled();
   await page.getByRole("button", { name: "Copy reply" }).click();
   await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
 });

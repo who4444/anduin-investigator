@@ -116,15 +116,24 @@ in `claims.verify_status` with per-check detail in `claims.verify_checks`.)
    not found or item missing — excluded from the timeline; a model can only
    downgrade, never reject). If key questions remain open, allow one
    retry pass (max 2 iterations total), then finish with the gaps listed.
-7. Assemble: timeline, commitments ledger, gaps, and three-state stats
-   (verified/supported/rejected); a question group counts as answered when it
-   has at least one verified or supported claim.
+7. Assemble: timeline, commitments ledger, gaps, three-state stats
+   (verified/supported/rejected), and an immutable report version. The canonical
+   commitments ledger, bottom line and briefing read the same rows; a question
+   group counts as answered with at least one verified or supported claim.
+8. Report version (G-08, `report_versions`): assemble freezes a case-level and
+   per-issue narrative with the model/prompt version. The report page reads the
+   latest version for the active issue; drafting a reply never replaces it.
+   The upload/pull cache key includes the pipeline + model version.
 
 ### Source tools (agents call these)
 search_jira(jql_or_text), get_issue(key) (comments + changelog),
 search_slack(query, channel?, date range?), get_slack_thread(channel, ts),
 search_email(query, from?, date range?), get_email_thread(id).
-Registry tools: verify_quote(item_id, quote), submit_claim(...).
+Registry tools: verify_quote(item_id, quote), submit_claim(...),
+submit_commitment(...). Commitments are promise-only: completed-fix/QA/status
+objects are rejected as commitments (the backing claim remains a finding).
+Restatements with the same promisor + deadline + issue merge even when the
+object wording differs.
 Each source tool sits behind a Source interface with two implementations:
 live (server-held read-only credentials) and export-upload (fallback).
 Normalization and identity resolution (alias map, LLM-suggested merges, ticket-ID
@@ -189,12 +198,21 @@ read-only scopes, sandbox workspaces only.
 - Must also work on judge-supplied exports through the upload fallback.
 - Label synthetic data as synthetic and any cached fallback run as cached.
 - Report coverage honestly: which sources and queries were actually searched.
+- Client evidence survives scope by construction: email-domain authorship,
+  email threads, linked Slack participant names, client channels and manager
+  overrides. If any client record is still excluded, the report blocks the
+  draft (`/reply` 409) and discloses the exclusion.
+- A promise is never a status assertion or a completed-fix report. The
+  commitments ledger is promise-only and canonical across the metric, section,
+  bottom line and narrative.
+- The report top answer is frozen in `report_versions`; drafting or redrafting a
+  reply must not replace it. Cached runs are keyed by model + pipeline version.
 
 ### Optional, only if time remains
 Draft client reply grounded only in verified claims; time scrubber.
 
 ## Commands
-- `npm run db:up` then `npm run db:migrate` — required before anything that touches Postgres (local docker postgres:16, anduin/anduin/anduin on 5432). Migrations are `migrations/*.sql`, applied by `lib/db/migrate.ts` (idempotent, tracked in `schema_migrations`).
+- `npm run db:up` then `npm run db:migrate` — required before anything that touches Postgres (local docker postgres:16, anduin/anduin/anduin on 5432). Migrations are `migrations/*.sql` (latest: `015_report_versions`), applied by `lib/db/migrate.ts` (idempotent, tracked in `schema_migrations`).
 - `npx vitest run` — full suite. DB-backed suites skip cleanly when `DATABASE_URL` is unset; with it set, Postgres must be up and migrated or they fail.
 - `npm run test:ui` — Playwright UI tests (`tests/ui/**`) against the real built app on port 3100; run `npm run build` first. A deterministic fake OpenAI-compatible LLM (`tests/ui/fake-llm.ts`, started by globalSetup on 9401) serves every agent call, so the full pipeline runs free and offline; seeds hit the content-hash cache across runs, so specs must tolerate both fresh (201) and cached (200) states.
 - `npm run lint`, `npm run typecheck`, `npm run build` — build must stay green; Next requires `export const maxDuration = 60` as a LITERAL in every route (an imported constant breaks the build).
@@ -207,10 +225,10 @@ Draft client reply grounded only in verified claims; time scrubber.
 - `lib/ingest/*` parsers + `detect.ts` (file-kind sniffing, zip expansion) + `normalize.ts` (`toUtcIso` at the ingest boundary, `eventId`, `capText`) + `identity.ts` (deterministic email/name merges; LLM suggestions applied only at confidence ≥ 0.9 AND with a signal overlap, otherwise recorded `applied:false`; suggestions are chained and can never strip an email address out of a canonical — the address is what links people across tools) + `run.ts` (shared ingest flow used by both uploads and live pulls).
 - `lib/sources/*`: the Source implementations — `jira.ts`, `slack.ts`, `gmail.ts` (live, read-only), with the upload path as the export fallback.
 - `lib/agents/*`: `tools.ts` (per-source tools + registry tools + `submit_claim`; searches match text, channel, actor and ticket refs, and results are relevance-ordered via `ranking.ts` — cited refs > literal phrase > tokens, recency tiebreak — before the cap), `analyst.ts`, `investigator.ts` (three kinds: root_cause | commitments | ownership), `skeptic.ts` (advisory — degrades to zero findings on LLM failure, never blocks the pipeline), `summary.ts`.
-- `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `issues.ts` (G-23 issue prompt block + issue-id resolution/fallback), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free and returns the case's `issues`; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
-- `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route + `issues` (GET/PUT the confirmed issue split before investigation) + `reply` (per-issue drafts); `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
+- `lib/pipeline/*`: `scope.ts` (anchor-based client/project resolution: declared client, escalation evidence, model proposals, all registry-verified; >2 convergent anchors = scoped, 1-2 = partial with disclosure, 0 = unscoped; client evidence links Slack display names to email-domain senders and always survives the split), `version.ts` (cache/report version key), `plan.ts` (structured plan parsing/rendering + relative date-window heuristic), `issues.ts` (G-23 issue prompt block + issue-id resolution/fallback), `vocabulary.ts` (deterministic vocabulary digest), `verify-claims.ts` (two-layer verifier: quote + author/time in `attribution.ts`, isolated model support check in `entailment.ts`; writes the three states), `coverage.ts` (which sources/queries were actually searched), `assemble.ts` (`buildResult` is side-effect free and returns the case's `issues`; `assemble` adds the stage log; `needsRetry` = a question group has zero visible (verified or supported) claims and only one retry pass remains).
+- `app/api/investigations/**`: one route per stage (`plan`, `investigate`, `skeptic`, `verify`, `assemble`, `status`, `result`) + the multipart ingest route + `issues` (GET/PUT the confirmed issue split before investigation) + `reply` (per-issue drafts) + `reply/approve` (persisted client-use approval); `app/api/sources/**` serves configuration/targets and live pulls. `lib/api/pipeline.ts` holds `runStage`/`readInvestigationOrDefault` (400 malformed uuid, 404 unknown).
 - `lib/orchestrator.ts` is the CLIENT-side sequencer (plan → optional issue review → 3 investigators in parallel → skeptic → verify → assemble, then one retry for only the missing kinds). Stage progress is client-driven; `/api/investigations/[id]/events` streams stage/log changes over SSE for the progress screen. A multi-issue run pauses after plan (`paused`) and resumes with `startAt: "investigate"`; the worker id is kept in sessionStorage so the paused lease is reused.
-- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure (chapters cut at silences, importance weighting, lane assignment, key moments, person palette) over verified claims only. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` for legacy/single-issue; `issue_report_extras` for per-issue G-23 drafts). The page selects an issue with `?issue=<id>` (or `?issue=all` for the combined view); per-issue claims/events/gaps drive the briefing, ledger, causes and reply, while coverage/scope stay case-level.
+- `lib/report/build.ts` + `lib/report/briefing.ts` + `lib/agents/reply.ts`: the report layer. Every metric, silence, ownership lane, audit row and trust split is computed in CODE from events/claims/notes (`buildReportView`); `buildBriefing` deterministically builds the story structure over verified claims only. Chases count client actors only; silence is computed from the cited record; commitment counts read the canonical ledger. The only model text is the verdict + client reply, which is restricted to verified, unflagged claims and validated sentence-by-sentence against known claim ids before storage (`report_extras` for legacy/single-issue; `issue_report_extras` for per-issue G-23 drafts). The reply stores greeting/sign-off, per-sentence labels, and an approval flag; copying is gated on that flag (not on the draft merely existing). The page selects an issue with `?issue=<id>` (or `?issue=all` for the combined view); per-issue claims/events/gaps drive the briefing, ledger, causes and reply, while coverage/scope stay case-level.
 - UI (plain CSS in `app/globals.css`, tokens at the top; fonts via next/font — Atkinson Hyperlegible for UI, Source Serif 4 for evidence): `app/page.tsx` (start: escalation + source scopes + Northwind and multi-issue synthetic scenarios), `app/upload/page.tsx` (exports fallback), `app/investigations/[id]/progress/page.tsx` (summary-first counts, stages, activity behind a "Show activity" toggle; the pre-run editable issue review; also the read-only "How this was produced" review), `app/investigations/[id]/page.tsx` (report: one scrolling briefing via `app/_components/briefing/*` — story + key moments + metrics, swimlane board, chapters, promises, causes, gaps, draft reply; issue tabs + case overview for multi-issue runs; shared evidence drawer in `app/_components/evidence.tsx`). No Tailwind — do not reintroduce preset-style classes; use the existing CSS classes.
 
 ## Testing quirks

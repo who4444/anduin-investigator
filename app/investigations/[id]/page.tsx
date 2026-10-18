@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { BriefingShell } from "@/app/_components/briefing/shell";
 import { pruneStaleReply } from "@/lib/agents/reply";
 import { buildResult } from "@/lib/pipeline/assemble";
-import { clientDomainsFor } from "@/lib/pipeline/scope";
+import { clientActorsFor, clientDomainsFor } from "@/lib/pipeline/scope";
 import { buildBriefing } from "@/lib/report/briefing";
 import { buildBottomLine } from "@/lib/report/bottomline";
 import {
@@ -11,7 +11,7 @@ import {
   type IssueSummary,
   type ReportPayload,
 } from "@/lib/report/build";
-import { getIssueReportExtras, getReportExtras } from "@/lib/store";
+import { getIssueReportExtras, getLatestReportVersion, getReportExtras } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +116,7 @@ export default async function ReportPage({
       !issueExtras && assembled.issues.length <= 1 ? await getReportExtras(id) : null;
     const extras = issueExtras ?? legacyExtras;
     const prunedReply = pruneStaleReply(extras?.reply ?? null, activeClaims);
+    const reportVersion = await getLatestReportVersion(id, activeIssueId);
 
     report = {
       investigation: {
@@ -135,6 +136,7 @@ export default async function ReportPage({
         text: event.text.slice(0, 240),
       })),
       claims: activeClaims,
+      commitments: assembled.commitments,
       stats: activeStats,
       stages: assembled.stages,
       coverage: assembled.coverage,
@@ -142,12 +144,22 @@ export default async function ReportPage({
       skepticNotes: activeNotes,
       verdict: extras ? (prunedReply ? extras.verdict : null) : null,
       reply: prunedReply,
+      version: reportVersion
+        ? {
+            number: reportVersion.version,
+            narrative: reportVersion.narrative,
+            createdAt: reportVersion.createdAt,
+            model: reportVersion.model,
+            promptVersion: reportVersion.promptVersion,
+          }
+        : null,
       ...buildReportView({
         events: activeEvents,
         claims: activeClaims,
         notes: activeNotes,
         commitments: assembled.commitments,
         clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
+        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
       }),
       briefing: buildBriefing({
         events: activeEvents,
@@ -160,6 +172,8 @@ export default async function ReportPage({
         notes: activeNotes,
         gaps: activeGaps,
         commitments: assembled.commitments,
+        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
+        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
       }),
       scope: assembled.scope,
       issues: issueSummaries,

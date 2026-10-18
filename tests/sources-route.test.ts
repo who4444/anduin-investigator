@@ -139,7 +139,7 @@ describeDb("source routes", () => {
     expect(events.some((event) => event.source === "jira" && event.channel === "FAKE-1")).toBe(true);
 
     const investigation = await getInvestigation(body.investigationId);
-    expect(investigation?.contentHash).toContain("pull:jira:FAKE");
+    expect(investigation?.contentHash).toContain("jira:FAKE");
 
     const stages = await getStages(body.investigationId);
     expect(stages.find((stage) => stage.stage === "ingest")?.status).toBe("done");
