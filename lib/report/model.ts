@@ -10,6 +10,7 @@ import type {
 import { isPromiseLike } from "../pipeline/commitments";
 import type { CoverageReport } from "../pipeline/coverage";
 import { buildCaseState } from "./case-state";
+import { detectContradictions, type Contradiction, type ClientEvidenceInput } from "./contradictions";
 import { rankGaps, type GapTag } from "./gaps";
 
 /* A2: a quote that was judged to REFUTE its claim is not a soft "needs check"
@@ -184,6 +185,8 @@ export interface ReportModel {
   state: ReportStateModel;
   counts: ReportCounts;
   questionCounts: QuestionCounts;
+  /** C3: deterministic contradiction detectors (the audit's first rows). */
+  contradictions: Contradiction[];
   headline: ReportHeadline;
   verifiedFindings: ReportFindingModel[];
   /** Verified in code but excluded from safe copy because a conflict pill applies. */
@@ -1430,7 +1433,28 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   const pillSummary = suppressPills
     ? `Needs check: ${flagged.length} of ${sorted.length}${flagged.some((finding) => finding.pill === "conflict") ? " (including conflicts)" : ""} — the supporting records are thin.`
     : null;
-  const audit = buildAudit(sorted, input.notes, findingByEvent, client);
+  const clientEvidence: ClientEvidenceInput = {
+    domains: (input.clientDomains ?? []).map((domain) => domain.toLowerCase()),
+    actors: input.clientActors ?? [],
+    channels: [],
+    threads: [],
+    eventIds: [],
+  };
+  const contradictions = detectContradictions({
+    events: input.events,
+    claims: input.claims,
+    promises: input.commitments ?? [],
+    asOf: state.asOf,
+    clientEvidence: client.clientKnown ? clientEvidence : undefined,
+  });
+  const audit = [
+    ...contradictions.map((contradiction) => ({
+      findingId: contradiction.basis[0] ? findingByEvent.get(contradiction.basis[0])?.id ?? contradiction.basis[0] : "",
+      headline: contradiction.detector.replace(/_/g, " "),
+      note: contradiction.managerText,
+    })),
+    ...buildAudit(sorted, input.notes, findingByEvent, client),
+  ].slice(0, 12);
   const processFailures = failures.filter((finding) => finding.failureTag === "process").length;
   const processNormsNote =
     processFailures > 0
@@ -1447,6 +1471,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     state,
     counts,
     questionCounts,
+    contradictions,
     headline,
     verifiedFindings,
     withheldVerified,
