@@ -15,7 +15,7 @@ import {
 } from "../store";
 import type { Claim, ClaimInput, ClaimStatus, GapInput, Issue } from "../types";
 import { sampleEvents, summarizeEvents } from "./summary";
-import { buildAgentTools } from "./tools";
+import { buildAgentTools, claimContractViolation } from "./tools";
 
 export type InvestigatorKind = "root_cause" | "commitments" | "ownership";
 
@@ -87,6 +87,9 @@ function collectClaims(content: string, agent: string, issues: Issue[]): ClaimIn
     if (!type || !text || !quote || !eventId) continue;
     if (!CLAIM_STATUSES.includes(status as ClaimStatus)) continue;
     if (!Number.isFinite(confidence)) continue;
+    // I1: the same claim contract applies to the fallback transcript parse —
+    // an overreaching inference is dropped (it was offered notes instead).
+    if (claimContractViolation(text, quote)) continue;
 
     claims.push({
       agent,
@@ -156,8 +159,16 @@ export async function runInvestigator(
     "Work only from the Evidence Registry: every finding must be backed by an item you have read.",
     "Read widely with the source tools — search_jira, get_issue, search_slack, get_slack_thread, search_email, get_email_thread — then call verify_quote to confirm a quote before submitting a claim.",
     "Call submit_claim for each finding. Quote the original text verbatim (copy it exactly; whitespace differences are fine, wording changes are not).",
-    ...(issueBlock ? [issueBlock] : []),
+    "I1: one quote = one assertion. Submit the OBSERVATION the record states; do not conclude beyond it.",
+    "Good observation claims (the quote itself states the assertion):",
+    '- quote: "Timezone change merged for release 4.12." → "Release 4.12 merged the timezone change."',
+    '- quote: "We will ship the fix in the Sep 24 release." → "Lin Chen promised the invoice fix for the Sep 24 release."',
+    "Bad claims (rejected — the conclusion is the agent's, not the record's):",
+    '- quote: "Merged to 4.12; invoices now use UTC." → "This change is the identified cause of the wrong totals." (the record does not say cause)',
+    '- quote: "Status: In Progress → Resolved" → "Resolved ten days before the real fix landed." (the record does not compare dates)',
+    '- quote: "Has anyone heard back from Northwind?" → "The chase went unanswered." (an absence needs a completeness proof: say "no reply in the records searched")',
     "Never invent events, people, dates, or messages. If something cannot be established from the records, put it in notes instead of claiming it.",
+    ...(issueBlock ? [issueBlock] : []),
   ].join("\n");
 
   const user = [

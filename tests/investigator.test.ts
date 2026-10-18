@@ -81,7 +81,7 @@ describeDb("runInvestigator", () => {
               name: "submit_claim",
               args: {
                 type: "root_cause",
-                text: "The 4.12 timezone change shipped on Sep 10 and caused the totals defect.",
+                text: "The 4.12 timezone change shipped on Sep 10.",
                 quote: "Timezone change for release 4.12 shipped on Sep 10.",
                 event_id: jiraId,
                 status: "n/a",
@@ -186,7 +186,7 @@ describeDb("runInvestigator", () => {
             claims: [
               {
                 type: "root_cause",
-                text: "The 4.12 timezone change caused the totals defect.",
+                text: "The 4.12 timezone change shipped on Sep 10.",
                 quote: "Timezone change for release 4.12 shipped on Sep 10.",
                 event_id: jiraId,
                 status: "n/a",
@@ -202,8 +202,8 @@ describeDb("runInvestigator", () => {
     const result = await runInvestigator(investigationId, "root_cause", "1. Reconstruct the timeline.");
 
     expect(calls).toBe(11); // 10 tool rounds, then one forced structured reply
-    expect(result.claims.some((claim) => claim.text === "The 4.12 timezone change caused the totals defect.")).toBe(true);
-    expect((await getClaims(investigationId)).some((claim) => claim.text.includes("timezone change caused"))).toBe(true);
+    expect(result.claims.some((claim) => claim.text === "The 4.12 timezone change shipped on Sep 10.")).toBe(true);
+    expect((await getClaims(investigationId)).some((claim) => claim.text.includes("timezone change shipped"))).toBe(true);
   });
 
   it("gives a budget-exhausted investigator a submission-only phase", async () => {

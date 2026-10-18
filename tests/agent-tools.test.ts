@@ -333,6 +333,63 @@ describeDb("agent tools", () => {
     expect(texts).not.toContain("Relative ts promise.");
   });
 
+  it("rejects a claim that asserts more than its quote states (I1)", async () => {
+    const tools = buildAgentTools(investigationId, "root_cause");
+    const base = {
+      type: "root_cause",
+      quote: "Merged to 4.12; invoices now use UTC.",
+      item_id: issueId,
+      status: "n/a",
+      confidence: 0.9,
+    };
+
+    const causal = JSON.parse(
+      await tools.exec("submit_claim", { ...base, text: "The UTC merge is the identified cause of the wrong totals." }),
+    ) as { error?: string; claimId?: string };
+    expect(causal.error).toMatch(/observation|note/i);
+    expect(causal.claimId).toBeUndefined();
+
+    const comparative = JSON.parse(
+      await tools.exec("submit_claim", {
+        ...base,
+        quote: "Status: In Progress → Resolved",
+        text: "The ticket was resolved ten days before the real fix landed.",
+      }),
+    ) as { error?: string };
+    expect(comparative.error).toMatch(/observation|note/i);
+
+    const observation = JSON.parse(
+      await tools.exec("submit_claim", { ...base, text: "Release 4.12 merged the timezone change." }),
+    ) as { claimId?: string; error?: string };
+    expect(observation.error, JSON.stringify(observation)).toBeUndefined();
+    expect(observation.claimId).toBeDefined();
+  });
+
+  it("requires a completeness phrase on negative claims (I1/G-03)", async () => {
+    const tools = buildAgentTools(investigationId, "ownership");
+    const base = { type: "ownership", item_id: replyId, status: "n/a", confidence: 0.9 };
+
+    const bare = JSON.parse(
+      await tools.exec("submit_claim", {
+        ...base,
+        quote: "Has anyone heard back from Northwind about the totals?",
+        text: "The client's chase went unanswered.",
+      }),
+    ) as { error?: string };
+    // Either rejection is honest: the overreach message or the completeness one.
+    expect(bare.error).toMatch(/observation|records searched|note/i);
+
+    const proven = JSON.parse(
+      await tools.exec("submit_claim", {
+        ...base,
+        quote: "Has anyone heard back from Northwind about the totals?",
+        text: "No reply to the client's chase in the records searched.",
+      }),
+    ) as { claimId?: string; error?: string };
+    expect(proven.error, JSON.stringify(proven)).toBeUndefined();
+    expect(proven.claimId).toBeDefined();
+  });
+
   it("normalizes a date-only ts to UTC midnight on a submitted claim", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const result = JSON.parse(

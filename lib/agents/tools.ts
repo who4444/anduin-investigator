@@ -278,6 +278,29 @@ function readCapped(events: Event[]): { items: Record<string, unknown>[]; trunca
   return { items, truncated };
 }
 
+/** I1: the claim contract at the submission boundary. Returns the rejection
+    reason when the claim asserts more than its quote states, or null when it
+    passes. Shared by the tool loop and the transcript parser. */
+export function claimContractViolation(text: string, quote: string): string | null {
+  const conclusionWords = [...new Set(
+    [...text.matchAll(
+      /\b(proves?|proved|cause[ds]?|causes|attributes?|attributed|means|therefore|before|after|earlier|later|unanswered|never)\b/gi,
+    )].map((match) => match[0].toLowerCase()),
+  )];
+  const quoteLower = quote.toLowerCase();
+  const unsupported = conclusionWords.filter((word) => !quoteLower.includes(word));
+  if (unsupported.length > 0) {
+    return `This claim asserts more than its quote states (${unsupported.slice(0, 3).join(", ")}). Submit the OBSERVATION the quote supports as its own claim, or put the inference in a note — unless the quoted text itself states it.`;
+  }
+  const negativeClaim = /\b(no reply|no response|went unanswered|unanswered|never)\b/i.test(text);
+  const completeness =
+    /(records? (were |are |was )?searched|in the records|no record (of|shows|is|exists)|no stored|nothing (in|stored)|this export)/i;
+  if (negativeClaim && !completeness.test(text) && !completeness.test(quote)) {
+    return "A negative claim ('no reply', 'never happened') must say where it was searched — e.g. 'no reply in the records searched' — or cite a record that states the absence. Otherwise put it in notes.";
+  }
+  return null;
+}
+
 function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; error?: string } {
   const type = asString(args.type);
   const text = asString(args.text);
@@ -303,6 +326,9 @@ function claimFromArgs(args: Record<string, unknown>): { claim?: ClaimInput; err
         "ts must be an ISO 8601 timestamp with an explicit UTC offset (or a date-only YYYY-MM-DD); use the item's own timestamp.",
     };
   }
+
+  const contractViolation = claimContractViolation(text, quote);
+  if (contractViolation) return { error: contractViolation };
 
   return {
     claim: {
