@@ -1,6 +1,6 @@
 import { extractJson, isPlainObject } from "../json";
 import type { LlmClient } from "../llm";
-import type { Event, InvestigationScope, ScopeAnchor, ScopeConfidence } from "../types";
+import type { Event, InvestigationScope, PlanData, ScopeAnchor, ScopeConfidence } from "../types";
 
 /* The escalation names a client and a project; the store may hold records for
    many clients and projects. The model proposes which identifiers belong to
@@ -664,8 +664,7 @@ function selectScopeNodes(
   return { selected, seedComponents };
 }
 
-export async function resolveScope(
-  escalation: string,
+export async function resolveScope(  escalation: string,
   events: Event[],
   client: LlmClient,
   declaredClient?: string | null,
@@ -800,4 +799,131 @@ export async function resolveScope(
     confidence,
     anchors,
   };
+}
+
+/* ---- B3: plan-assisted scope refinement ---- */
+
+export interface ScopeRefinement {
+  scope: InvestigationScope;
+  /** Anchors the refinement actually added. */
+  added: ScopeAnchor[];
+  /** Plan-named identifiers that were not added, with the reason. */
+  skipped: { value: string; why: string }[];
+}
+
+function planText(planData: PlanData): string {
+  return [
+    planData.framing ?? "",
+    ...planData.hypotheses.flatMap((h) => [h.statement, h.test, h.falsify]),
+    ...planData.sources.map((s) => s.approach),
+    ...planData.searchTerms,
+    ...planData.people,
+    ...planData.unknowns,
+  ]
+    .join("\n");
+}
+
+/** Ticket keys and channels the plan names, validated against the registry. */
+function planNamedIdentifiers(planData: PlanData, universe: ScopeUniverse): {
+  prefixes: string[];
+  channels: string[];
+} {
+  const text = planText(planData);
+  const prefixes = new Set<string>();
+  for (const match of text.matchAll(TICKET_ANYWHERE)) {
+    const prefix = match[1].toUpperCase();
+    if (universe.ticketPrefixes.includes(prefix)) prefixes.add(prefix);
+  }
+  const channels = new Set<string>();
+  const lowered = text.toLowerCase();
+  for (const channel of universe.channels) {
+    if (new RegExp(`\\b${channel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(lowered)) {
+      channels.add(channel);
+    }
+  }
+  return { prefixes: [...prefixes], channels: [...channels] };
+}
+
+/** The plan names the target tickets after scope ran; this validates them
+    against the registry and adds only identifiers that touch client evidence
+    (share a record, thread or reference with a client seed) — never a
+    distractor tenant. Unconnected identifiers are skipped with the reason. */
+export function refineScopeWithPlan(
+  scope: InvestigationScope,
+  planData: PlanData,
+  events: Event[],
+): ScopeRefinement {
+  const universe = deriveScopeUniverse(events);
+  const named = planNamedIdentifiers(planData, universe);
+  const added: ScopeAnchor[] = [];
+  const skipped: { value: string; why: string }[] = [];
+
+  const clientEvidence = clientEvidenceFor(events, scope);
+  const selectedPrefixes = new Set(scope.ticketPrefixes.map((p) => p.toUpperCase()));
+  const selectedChannels = new Set(scope.channels.map((c) => c.toLowerCase()));
+
+  const touchesClientEvidence = (prefix: string): boolean => {
+    const needle = new RegExp(`\\b${prefix}-\\d+\\b`);
+    return events.some((event) => {
+      const mentions =
+        needle.test(event.text) ||
+        (event.refs ?? []).some((ref) => ref.toUpperCase().startsWith(`${prefix}-`)) ||
+        (event.source === "jira" && event.channel.toUpperCase().startsWith(`${prefix}-`));
+      if (!mentions) return false;
+      // Shares the record with a client seed: author, domain, thread or channel.
+      return (
+        clientEvidence.eventIds.includes(event.id) ||
+        (event.threadId !== undefined && clientEvidence.threads.includes(event.threadId)) ||
+        (event.source === "slack" && clientEvidence.channels.includes(event.channel.toLowerCase())) ||
+        (event.source === "email" && actorEmailDomain(event) !== null && clientEvidence.domains.includes(actorEmailDomain(event)!)) ||
+        actorNames(event).some((name) => clientEvidence.actors.includes(name))
+      );
+    });
+  };
+
+  const touchesSelectedChannel = (channel: string): boolean =>
+    events.some(
+      (event) =>
+        event.source === "slack" &&
+        event.channel.toLowerCase() === channel &&
+        (clientEvidence.eventIds.includes(event.id) ||
+          actorNames(event).some((name) => clientEvidence.actors.includes(name))),
+    );
+
+  for (const prefix of named.prefixes) {
+    if (selectedPrefixes.has(prefix)) continue;
+    if (touchesClientEvidence(prefix)) {
+      added.push({ kind: "ticket-prefix", value: prefix, source: "linked" });
+      selectedPrefixes.add(prefix);
+    } else {
+      skipped.push({
+        value: prefix,
+        why: "named by the plan, but no client evidence shares a record, thread or reference with it",
+      });
+    }
+  }
+  for (const channel of named.channels) {
+    if (selectedChannels.has(channel)) continue;
+    if (touchesSelectedChannel(channel)) {
+      added.push({ kind: "channel", value: channel, source: "linked" });
+      selectedChannels.add(channel);
+    } else {
+      skipped.push({
+        value: channel,
+        why: "named by the plan, but no client evidence posted in it",
+      });
+    }
+  }
+
+  if (added.length === 0) {
+    return { scope, added, skipped };
+  }
+
+  const refined: InvestigationScope = {
+    ...scope,
+    ticketPrefixes: [...selectedPrefixes].sort(),
+    channels: [...selectedChannels].sort(),
+    anchors: dedupeAnchors([...scope.anchors, ...added]),
+  };
+  return { scope: refined, added, skipped };
 }

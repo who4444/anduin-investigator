@@ -12,7 +12,8 @@ import {
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
 import { resolveScope } from "@/lib/pipeline/scope";
-import { getEvents, getIssues, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
+import { getEvents, getInvestigation, getIssues, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
+import type { ScopeAnchor } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -62,7 +63,28 @@ export async function POST(
     }
 
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);
+
+    // B3: the plan names the target tickets; validate them against the
+    // registry and widen the scope only where client evidence connects.
+    let refinedScope = scope;
+    let refinement: { added: ScopeAnchor[]; skipped: { value: string; why: string }[] } = { added: [], skipped: [] };
+    if (scope && scope.confidence !== "none") {
+      const withPlan = await getInvestigation(id);
+      if (withPlan?.planData) {
+        const { refineScopeWithPlan } = await import("@/lib/pipeline/scope");
+        const result = refineScopeWithPlan(scope, withPlan.planData, events);
+        refinedScope = result.scope;
+        refinement = { added: result.added, skipped: result.skipped };
+        if (result.added.length > 0) {
+          await setScope(id, refinedScope);
+        }
+      }
+    }
+    if (refinedScope?.confidence === "scoped" && refinedScope.client) {
+      await upsertLearnedScope(refinedScope.client, refinedScope);
+    }
+
     const issues = await getIssues(id);
-    return { plan, scope, issues };
+    return { plan, scope: refinedScope, issues, scopeRefinement: refinement };
   }, worker, resume);
 }

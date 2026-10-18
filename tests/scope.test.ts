@@ -533,8 +533,7 @@ describe("resolveScope", () => {
     expect(resolved === null || !resolved.senderDomains.includes("otherclient.example")).toBe(true);
   });
 
-  it("never drops escalation-evidence anchors when components disagree", async () => {
-    // No bridging record links the named ticket to the escalation sender —
+  it("never drops escalation-evidence anchors when components disagree", async () => {    // No bridging record links the named ticket to the escalation sender —
     // they sit in separate components, and both are escalation evidence.
     const events = [
       event({ id: "e-mer", channel: "MER-201", text: "Invoice totals drift." }),
@@ -708,3 +707,78 @@ describe("G-01 client identity across tools", () => {
     expect(excludedClientEvidence(events, clientScope).excludedEventIds).toEqual([]);
   });
 });
+
+describe("plan-assisted scope refinement (B3)", () => {
+  it("confirms plan-named identifiers that are already selected and skips distractors with a reason", async () => {
+    const { refineScopeWithPlan } = await import("../lib/pipeline/scope");
+    const resolved = (await resolveScope(
+      "Northwind Logistics reports wrong Meridian Billing invoices (MER-201).",
+      scopeEvents,
+      scriptedClient(MER_CHANNEL_PROPOSAL),
+      "Northwind Logistics",
+    ))!;
+    expect(resolved).not.toBeNull();
+
+    // The plan names what is already in scope: no change, no fake additions.
+    const confirmed = refineScopeWithPlan(resolved, planWithTickets(["MER-201"]), scopeEvents);
+    expect(confirmed?.added).toEqual([]);
+    expect(confirmed?.scope.ticketPrefixes).toEqual(resolved.ticketPrefixes);
+
+    // The plan names another tenant's ticket with no client connection: skip it.
+    const refused = refineScopeWithPlan(resolved, planWithTickets(["KST-301"]), scopeEvents);
+    expect(refused?.added).toEqual([]);
+    expect(refused?.scope.ticketPrefixes).not.toContain("KST");
+    expect(refused?.skipped.some((entry) => /KST/.test(entry.value) && entry.why.length > 0)).toBe(true);
+  });
+
+  it("adds a plan-named identifier the seeds missed when it touches client evidence", async () => {
+    const { refineScopeWithPlan } = await import("../lib/pipeline/scope");
+    // A narrow scope whose seeds reach only the email domain; the plan names
+    // a ticket whose records share a thread with the client's email.
+    const events = [
+      event({
+        id: "e-b3-client",
+        source: "email",
+        channel: "email",
+        actor: "Dana Okafor <billing@northwind.example>",
+        text: "Chasing again.",
+        threadId: "t-b3",
+      }),
+      event({
+        id: "e-b3-vendor",
+        source: "email",
+        channel: "email",
+        actor: "Lin Chen <lin@meridian.example>",
+        text: "Looking at MER-201 now.",
+        threadId: "t-b3",
+      }),
+      event({ id: "e-b3-other", channel: "KST-301", actor: "Ravi Patel", text: "Acme rate limits." }),
+    ];
+    const narrow: InvestigationScope = {
+      client: "Northwind Logistics",
+      project: null,
+      ticketPrefixes: [],
+      channels: [],
+      senderDomains: ["northwind.example"],
+      confidence: "partial",
+      anchors: [{ kind: "sender-domain", value: "northwind.example", source: "declared" }],
+    };
+    const refined = refineScopeWithPlan(narrow, planWithTickets(["MER-201"]), events);
+    expect(refined?.added.map((anchor) => anchor.value)).toContain("MER");
+    expect(refined?.scope.ticketPrefixes).toContain("MER");
+  });
+});
+
+function planWithTickets(keys: string[]) {
+  return {
+    framing: "Plan",
+    hypotheses: keys.map((key) => ({ statement: `Check ${key}`, test: "read it", falsify: "absent" })),
+    sources: [],
+    searchTerms: [],
+    people: [],
+    dateWindow: { from: null, to: null },
+    unknowns: [],
+    issues: [],
+    issueOverflow: 0,
+  };
+}
