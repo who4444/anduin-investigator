@@ -274,7 +274,7 @@ describeDb("agent tools", () => {
   it("submit_claim persists a claim and treats a repeat as the same claim", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const args = {
-      type: "commitment",
+      type: "finding",
       text: "A fix was promised for the Sep 24 release.",
       quote: "ship the fix in the Sep 24 release",
       item_id: mailId,
@@ -304,7 +304,7 @@ describeDb("agent tools", () => {
   it("rejects a submit_claim whose ts is not a real timestamp", async () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const base = {
-      type: "commitment",
+      type: "finding",
       quote: "ship the fix in the Sep 24 release",
       item_id: mailId,
       status: "broken",
@@ -394,7 +394,7 @@ describeDb("agent tools", () => {
     const tools = buildAgentTools(investigationId, "commitments");
     const result = JSON.parse(
       await tools.exec("submit_claim", {
-        type: "commitment",
+        type: "finding",
         text: "Date-only ts promise.",
         quote: "ship the fix in the Sep 24 release",
         item_id: mailId,

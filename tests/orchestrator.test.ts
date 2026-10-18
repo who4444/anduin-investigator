@@ -632,8 +632,7 @@ describe("deriveRetryPlan (I3)", () => {
 
   const emptyCoverage = { sources: [], neverSearched: [] as ("jira" | "email" | "slack")[] };
 
-  it("targets one retry pass from a missing linked ticket and an unsearched source", () => {
-    const plan = deriveRetryPlan({
+  it("targets one retry pass from a missing linked ticket and an unsearched source", () => {    const plan = deriveRetryPlan({
       investigation: investigation([
         {
           statement: "The linked ticket LINK-1 holds the root cause of the totals defect",
@@ -660,6 +659,53 @@ describe("deriveRetryPlan (I3)", () => {
     expect(plan.reasons.find((reason) => reason.kind === "unsearched_source")?.query).toBe(
       "search_jira(all)",
     );
+  });
+
+  it("retries the commitments kind when the ledger is empty but promises were investigated", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [
+        claim({ agent: "commitments", eventId: "e1", text: "Release 4.12 was announced live as including fixes" }),
+        claim({ agent: "commitments", eventId: "e2", text: "QA re-ran the finance sandbox and exports are still blank" }),
+      ],
+      coverage: emptyCoverage,
+      notes: [],
+      gaps: [],
+      registryIds: new Set(["e1", "e2"]),
+      missing: [],
+      pass: 1,
+      commitments: [],
+    });
+
+    expect(plan.needsRetry).toBe(true);
+    expect(plan.kinds).toEqual(["commitments"]);
+    const reason = plan.reasons.find((entry) => entry.kind === "empty_ledger");
+    expect(reason?.query).toMatch(/promise|commit/i);
+  });
+
+  it("does not retry when the ledger has rows", () => {
+    const plan = deriveRetryPlan({
+      investigation: investigation(),
+      claims: [claim({ agent: "commitments", eventId: "e1", text: "The fix will ship in the Sep 24 release" })],
+      coverage: emptyCoverage,
+      notes: [],
+      gaps: [],
+      registryIds: new Set(["e1"]),
+      missing: [],
+      pass: 1,
+      commitments: [
+        {
+          id: "p1", investigationId: "inv", claimId: "commitments-e1", issueId: null, promisor: "Lin Chen",
+          promisee: "Northwind", object: "invoice totals corrected", conditions: null,
+          deadlinePhrase: "Sep 24", deadlineIso: "2024-09-24T00:00:00.000Z", rationale: null,
+          status: "broken", contested: false, fulfilmentEventIds: [], sourceEventIds: ["e1"],
+          dedupeKey: "k", createdAt: "2024-09-20T00:00:00.000Z",
+        } as import("../lib/types").Commitment,
+      ],
+    });
+
+    expect(plan.kinds).toEqual([]);
+    expect(plan.needsRetry).toBe(false);
   });
 
   it("does not retry a fully covered run", () => {

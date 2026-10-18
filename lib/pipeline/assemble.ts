@@ -179,6 +179,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
     missing,
     pass,
     maxPass: MAX_RETRY_PASS,
+    commitments,
   });
   const needsRetry = retry.needsRetry;
   const complete = stages.some((stage) => stage.stage === "assemble" && stage.status === "done");

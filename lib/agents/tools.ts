@@ -563,6 +563,14 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
       case "submit_claim": {
         const { claim, error } = claimFromArgs(args);
         if (!claim) return JSON.stringify({ error });
+        // C2: promises go through the structured path so the ledger can
+        // merge restatements and compute the outcome in code.
+        if (claim.type === "commitment") {
+          return JSON.stringify({
+            error:
+              "Promises must be recorded with submit_commitment (promisor, promisee, object, deadline, status) so the ledger can decide the outcome. Re-submit this promise there; it also stores the backing claim.",
+          });
+        }
 
         const issues = await getIssues(investigationId);
         const issueId = resolveIssueId(args.issue_id, claim.text, issues);

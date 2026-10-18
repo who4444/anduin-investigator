@@ -2,6 +2,7 @@ import type { InvestigatorKind } from "../agents/investigator";
 import type { CoverageReport } from "./coverage";
 import type {
   Claim,
+  Commitment,
   Gap,
   GapCategory,
   Investigation,
@@ -22,7 +23,8 @@ export type RetryReasonKind =
   | "hypothesis"
   | "unsearched_source"
   | "unanswered"
-  | "question_group";
+  | "question_group"
+  | "empty_ledger";
 
 export interface RetryReason {
   kind: RetryReasonKind;
@@ -56,6 +58,9 @@ export interface RetryInput {
   missing: InvestigatorKind[];
   pass: number;
   maxPass?: number;
+  /** I3: the canonical ledger — an empty ledger behind investigated promises
+      is a gap-driven retry reason. */
+  commitments?: Commitment[];
 }
 
 const KINDS: InvestigatorKind[] = ["root_cause", "commitments", "ownership"];
@@ -156,6 +161,26 @@ export function deriveRetryPlan(input: RetryInput): RetryPlan {
       kinds: [kind],
       reason: `no visible finding from the ${KIND_LABEL[kind]} investigator`,
       query: null,
+      basis: [],
+    });
+  }
+
+  // I3: the commitments investigator reported findings but the promise ledger
+  // is empty — the promises were seen but never recorded as promises. Retry
+  // the commitments kind with an explicit promise-search query.
+  const commitmentsClaims = visible.filter((claim) => claim.agent === "commitments");
+  const ledgerRows = (input.commitments ?? []).filter(
+    (commitment) =>
+      commitment.status !== "withdrawn" &&
+      commitment.claimId &&
+      visible.some((claim) => claim.id === commitment.claimId || claim.eventId === commitment.sourceEventIds[0]),
+  );
+  if (commitmentsClaims.length > 0 && ledgerRows.length === 0) {
+    reasons.push({
+      kind: "empty_ledger",
+      kinds: ["commitments"],
+      reason: "the commitments investigator reported findings but the promise ledger is empty — promises were seen but not recorded as promises",
+      query: "search_email(promise) — record every promise with submit_commitment (promisor, object, deadline)",
       basis: [],
     });
   }
