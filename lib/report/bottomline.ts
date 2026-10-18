@@ -1,5 +1,6 @@
 import type { Claim, Commitment, Event, Gap, SkepticNote } from "../types";
 import { buildLedger, buildMetrics } from "./build";
+import type { QuestionCounts } from "./model";
 
 export type BottomLineTone = "neutral" | "good" | "warn" | "bad";
 
@@ -26,6 +27,8 @@ export interface BottomLineInput {
   commitments?: Commitment[];
   clientDomains?: string[];
   clientActors?: string[];
+  /** A3: the model's labelled pair — the bottom line never recounts. */
+  questionCounts?: QuestionCounts;
 }
 
 function shorten(text: string, maxWords = 9): string {
@@ -149,17 +152,25 @@ export function buildBottomLine(input: BottomLineInput): BottomLine {
     silence.detail,
   );
 
-  // 5. open questions
+  // 5. open questions — the model's labelled pair (A3): raw themes and the
+  // questions behind them are both shown, from one object.
   const gapEventIds = [...new Set(gaps.flatMap((gap) => gap.eventIds))];
+  const counts = input.questionCounts;
+  const rawOpen = counts ? counts.raw : gaps.length;
+  const themeCount = counts ? counts.groups : null;
   const questions = cell(
     "questions",
     "Open questions",
-    gaps.length > 0 ? `${gaps.length} open` : "none open",
-    gaps.length > 0 ? "warn" : "neutral",
-    gaps.length > 0,
+    rawOpen > 0
+      ? themeCount !== null && themeCount !== rawOpen
+        ? `${rawOpen} open · ${themeCount} theme${themeCount === 1 ? "" : "s"}`
+        : `${rawOpen} open`
+      : "none open",
+    rawOpen > 0 ? "warn" : "neutral",
+    rawOpen > 0,
     [],
     gapEventIds,
-    gaps.length > 0 ? shorten(gaps[0].question, 12) : undefined,
+    rawOpen > 0 ? shorten(gaps[0]?.question ?? "What remains open?", 12) : undefined,
   );
 
   return { cells: [cause, promises, chasersCell, silenceCell, questions] };

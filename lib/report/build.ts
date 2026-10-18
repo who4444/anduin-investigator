@@ -8,7 +8,7 @@ import { decodeEntities } from "../ingest/entities";
 import type { Commitment } from "../types";
 import type { BottomLine } from "./bottomline";
 import type { Briefing } from "./briefing";
-import type { ReportModel } from "./model";
+import type { ReportModel, QuestionCounts } from "./model";
 
 export type FindingTag = "technical" | "process" | "communication";
 
@@ -213,6 +213,8 @@ export interface ReportInput {
   clientDomains?: string[];
   /** G-01/G-04: the client's resolved actor names (email ↔ Slack identity). */
   clientActors?: string[];
+  /** A3: the model's labelled open-question pair, passed by every caller. */
+  questionCounts?: QuestionCounts;
 }
 
 const DAY_MS = 86_400_000;

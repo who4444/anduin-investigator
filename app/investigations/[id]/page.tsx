@@ -139,6 +139,24 @@ export default async function ReportPage({
     const prunedReply = pruneStaleReply(extras?.reply ?? null, activeClaims);
     const reportVersion = await getLatestReportVersion(id, activeIssueId);
 
+    // A3: the model is built FIRST; every other section reads it.
+    const model = buildReportModel({
+      investigation: {
+        title: assembled.investigation.title,
+        escalationText: assembled.investigation.escalationText,
+        createdAt: assembled.investigation.createdAt,
+      },
+      events: activeEvents,
+      claims: activeClaims,
+      commitments: assembled.commitments,
+      gaps: activeGaps,
+      notes: activeNotes,
+      scope: assembled.scope,
+      clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
+      clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+      coverage: assembled.coverage,
+    });
+
     report = {
       investigation: {
         id: assembled.investigation.id,
@@ -183,11 +201,13 @@ export default async function ReportPage({
         commitments: assembled.commitments,
         clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
         clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+        questionCounts: model.questionCounts,
       }),
       briefing: buildBriefing({
         events: activeEvents,
         claims: activeClaims,
         commitments: assembled.commitments,
+        verifiedCounts: model.questionCounts,
       }),
       bottomLine: buildBottomLine({
         events: activeEvents,
@@ -197,23 +217,9 @@ export default async function ReportPage({
         commitments: assembled.commitments,
         clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
         clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+        questionCounts: model.questionCounts,
       }),
-      model: buildReportModel({
-        investigation: {
-          title: assembled.investigation.title,
-          escalationText: assembled.investigation.escalationText,
-          createdAt: assembled.investigation.createdAt,
-        },
-        events: activeEvents,
-        claims: activeClaims,
-        commitments: assembled.commitments,
-        gaps: activeGaps,
-        notes: activeNotes,
-        scope: assembled.scope,
-        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
-        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
-        coverage: assembled.coverage,
-      }),
+      model,
       scope: assembled.scope,
       issues: issueSummaries,
       activeIssueId,

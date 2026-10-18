@@ -425,7 +425,7 @@ export function ModelAnswer({
           <span className="now-label">Last client contact</span>
           <StateValue
             field={model.state.lastClientContact}
-            render={(value) => `${value.name} · ${value.ts.slice(0, 10)}`}
+            render={(value) => `${value.actor} · ${value.ts.slice(0, 10)}`}
             onFinding={(findingId) => findingById.get(findingId) && onFinding(findingById.get(findingId)!)}
           />
         </div>
@@ -433,7 +433,7 @@ export function ModelAnswer({
           <span className="now-label">Last internal update</span>
           <StateValue
             field={model.state.lastInternalUpdate}
-            render={(value) => `${value.name} · ${value.ts.slice(0, 10)}`}
+            render={(value) => `${value.actor} · ${value.ts.slice(0, 10)}`}
             onFinding={(findingId) => findingById.get(findingId) && onFinding(findingById.get(findingId)!)}
           />
         </div>

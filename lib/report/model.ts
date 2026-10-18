@@ -108,6 +108,14 @@ export interface ReportCounts {
   openQuestions: number;
 }
 
+/** A3: the labelled pair behind every open-question display. */
+export interface QuestionCounts {
+  /** Grouped themes (the card count). */
+  groups: number;
+  /** Individual questions behind the themes (the details line). */
+  raw: number;
+}
+
 export interface HeadlineSentence {
   text: string;
   findingIds: string[];
@@ -175,6 +183,7 @@ export interface ReportModel {
   failures: ReportFindingModel[];
   state: ReportStateModel;
   counts: ReportCounts;
+  questionCounts: QuestionCounts;
   headline: ReportHeadline;
   verifiedFindings: ReportFindingModel[];
   /** Verified in code but excluded from safe copy because a conflict pill applies. */
@@ -1382,6 +1391,10 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
 
   const state = buildState(input, sorted);
   const openQuestions = buildOpenQuestions(input, state, client, findingByEvent, sorted);
+  const questionCounts: QuestionCounts = {
+    groups: openQuestions.length,
+    raw: openQuestions.reduce((total, group) => total + Math.max(group.questions.length, 1), 0),
+  };
   const promises = sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
   const failures = sorted.filter((finding) => finding.failureTag !== null);
   // A2: "You can say" = verified AND client-safe AND unflagged. The count
@@ -1433,6 +1446,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     failures,
     state,
     counts,
+    questionCounts,
     headline,
     verifiedFindings,
     withheldVerified,

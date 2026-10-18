@@ -132,6 +132,8 @@ export function buildBriefing(input: {
   events: Event[];
   claims: Claim[];
   commitments?: Commitment[];
+  /** A3: when provided, the confidence counts read the model's pair. */
+  verifiedCounts?: { groups: number; raw: number };
 }): Briefing {
   const { events, claims } = input;
   const eventsById = new Map(events.map((event) => [event.id, event]));
@@ -441,6 +443,10 @@ export function buildBriefing(input: {
       rejected: claims.filter((claim) => claim.verifyStatus === "rejected").length,
       total: claims.length,
       flagged: claims.filter((claim) => claim.skepticFlag).length,
+      // A3: the labelled open-question pair from the model, when passed.
+      ...(input.verifiedCounts
+        ? { openQuestions: input.verifiedCounts.raw, questionThemes: input.verifiedCounts.groups }
+        : {}),
     },
     chapters,
     events: eventsOut,

@@ -324,10 +324,20 @@ describeDb("three-state verification", () => {
       rejected: 2,
       total: 6,
       flagged: 0,
+      // A3: the labelled open-question pair travels with the briefing.
+      openQuestions: 6,
+      questionThemes: 5,
     });
     // G-10: one canonical story step per cited record; the four visible claims
     // share two records, so the story has two steps, not four near-duplicates.
     expect(reportBody.briefing.events).toHaveLength(2);
+
+    // A3: the bottom line never recounts — its open-question cell shows the
+    // model's labelled pair.
+    const questionsCell = reportBody.bottomLine.cells.find(
+      (cell: { id: string }) => cell.id === "questions",
+    );
+    expect(questionsCell.value).toBe("6 open · 5 themes");
     expect(
       reportBody.briefing.events.some(
         (event: { verification: string }) => event.verification === "supported",

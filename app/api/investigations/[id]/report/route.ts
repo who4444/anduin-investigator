@@ -25,13 +25,35 @@ export async function GET(
     const extras = await getReportExtras(id);
     const prunedReply = pruneStaleReply(extras?.reply ?? null, assembled.claims);
     const reportVersion = await getLatestReportVersion(id, null);
+    const clientDomains = clientDomainsFor(assembled.timeline, assembled.scope);
+    const clientActors = clientActorsFor(assembled.timeline, assembled.scope);
+
+    // A3: the model is built FIRST; every other section reads it. No caller
+    // may derive a different count.
+    const model = buildReportModel({
+      investigation: {
+        title: assembled.investigation.title,
+        escalationText: assembled.investigation.escalationText,
+        createdAt: assembled.investigation.createdAt,
+      },
+      events: assembled.timeline,
+      claims: assembled.claims,
+      commitments: assembled.commitments,
+      gaps: assembled.gaps,
+      notes: assembled.skepticNotes,
+      scope: assembled.scope,
+      clientDomains,
+      clientActors,
+      coverage: assembled.coverage,
+    });
     const view = buildReportView({
       events: assembled.timeline,
       claims: assembled.claims,
       notes: assembled.skepticNotes,
       commitments: assembled.commitments,
-      clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
-      clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+      clientDomains,
+      clientActors,
+      questionCounts: model.questionCounts,
     });
 
     return json({
@@ -61,6 +83,7 @@ export async function GET(
         events: assembled.timeline,
         claims: assembled.claims,
         commitments: assembled.commitments,
+        verifiedCounts: model.questionCounts,
       }),
       bottomLine: buildBottomLine({
         events: assembled.timeline,
@@ -68,25 +91,11 @@ export async function GET(
         notes: assembled.skepticNotes,
         gaps: assembled.gaps,
         commitments: assembled.commitments,
-        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
-        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
+        clientDomains,
+        clientActors,
+        questionCounts: model.questionCounts,
       }),
-      model: buildReportModel({
-        investigation: {
-          title: assembled.investigation.title,
-          escalationText: assembled.investigation.escalationText,
-          createdAt: assembled.investigation.createdAt,
-        },
-        events: assembled.timeline,
-        claims: assembled.claims,
-        commitments: assembled.commitments,
-        gaps: assembled.gaps,
-        notes: assembled.skepticNotes,
-        scope: assembled.scope,
-        clientDomains: clientDomainsFor(assembled.timeline, assembled.scope),
-        clientActors: clientActorsFor(assembled.timeline, assembled.scope),
-        coverage: assembled.coverage,
-      }),
+      model,
       scope: assembled.scope,
       complete: assembled.complete,
       missing: assembled.missing,
