@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { loadEnv } from "../lib/db/env";
+import type { InvestigationScope } from "../lib/types";
 
 loadEnv();
 
@@ -523,5 +524,262 @@ describeDb("pipeline routes", () => {
     const response = await POST(post("http://localhost/skeptic"), context(investigationId));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ flagged: 0, issues: 0 });
+  });
+});
+
+/* Workstream E: the client reply is gated on a resolved client, a named
+   scope, at least one verified client-safe fact, an explicit issue id for a
+   multi-issue run, and sentence-level truth checks against the case state. */
+describeDb("reply safety routes", () => {
+  const created: string[] = [];
+
+  afterAll(async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    setLlmClientForTests(null);
+    const { deleteInvestigation } = await import("../lib/store");
+    for (const id of created) {
+      await deleteInvestigation(id);
+    }
+  });
+
+  const scoped: InvestigationScope = {
+    client: "Northwind Logistics",
+    project: "Meridian Billing",
+    ticketPrefixes: ["MER"],
+    channels: [],
+    senderDomains: [],
+    confidence: "scoped",
+    anchors: [],
+  };
+
+  async function seedReplyRun(input: {
+    scope: InvestigationScope | null;
+    events: { id: string; ts: string; text: string }[];
+    claims: { text: string; quote: string; type?: string; eventId: string; issueIndex?: number }[];
+    issueTitles?: string[];
+  }): Promise<{ id: string; issues: { id: string }[] }> {
+    const {
+      createInvestigation,
+      insertEvents,
+      insertClaims,
+      setClaimVerification,
+      setScope,
+      confirmIssues,
+      getIssues,
+    } = await import("../lib/store");
+    const id = await createInvestigation({
+      title: `Reply safety ${randomUUID()}`,
+      escalationText: "Invoice totals wrong since 4.12.",
+      contentHash: `hash-${randomUUID()}`,
+      declaredClient: input.scope?.client ?? null,
+    });
+    created.push(id);
+
+    await insertEvents(
+      id,
+      input.events.map((entry) => ({
+        id: entry.id,
+        source: "jira",
+        ts: entry.ts,
+        actor: "Lin Chen",
+        channel: "MER-101",
+        text: entry.text,
+      })),
+    );
+    if (input.scope) await setScope(id, input.scope);
+
+    let issueIds: string[] = [];
+    if (input.issueTitles) {
+      const issues = await confirmIssues(
+        id,
+        input.issueTitles.map((title) => ({ title, ask: "", summary: "", confidence: 0.9 })),
+      );
+      issueIds = issues.map((issue) => issue.id);
+    }
+
+    const inserted = await insertClaims(
+      id,
+      input.claims.map((entry) => ({
+        agent: "root_cause",
+        type: entry.type ?? "root_cause",
+        text: entry.text,
+        quote: entry.quote,
+        eventId: entry.eventId,
+        status: "n/a" as const,
+        confidence: 0.9,
+        issueId: entry.issueIndex === undefined ? undefined : issueIds[entry.issueIndex],
+      })),
+    );
+    for (const claim of inserted) await setClaimVerification(claim.id, "verified");
+    return { id, issues: await getIssues(id) };
+  }
+
+  async function useReplyLlm(
+    build: (ids: string[]) => { text: string; claimIds: string[] }[],
+  ): Promise<void> {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    setLlmClientForTests({
+      chat: async (messages) => {
+        const user = messages
+          .filter((message) => message.role === "user")
+          .map((message) => (typeof message.content === "string" ? message.content : ""))
+          .join("\n");
+        const ids = [
+          ...new Set(
+            user.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [],
+          ),
+        ];
+        return { content: JSON.stringify({ verdict: "Verified findings.", sentences: build(ids) }) };
+      },
+    });
+  }
+
+  const resolvedEvents = [
+    { id: "e_reply_cause", ts: "2024-09-10T03:00:00.000Z", text: "Timezone change merged for release 4.12." },
+    { id: "e_reply_status", ts: "2024-09-20T10:00:00.000Z", text: "Status: Open → Resolved" },
+  ];
+  const causeClaim = {
+    text: "A timezone change in release 4.12 caused the totals error.",
+    quote: "Timezone change merged for release 4.12",
+    eventId: "e_reply_cause",
+  };
+
+  it("blocks a reply before any model call when the client is unresolved", async () => {
+    const { id } = await seedReplyRun({
+      scope: null,
+      events: [resolvedEvents[0]],
+      claims: [causeClaim],
+    });
+    const { setLlmClientForTests } = await import("../lib/llm");
+    let called = false;
+    setLlmClientForTests({
+      chat: async () => {
+        called = true;
+        return { content: "{}" };
+      },
+    });
+    const { POST } = await import("../app/api/investigations/[id]/reply/route");
+    const { getReportExtras } = await import("../lib/store");
+
+    const response = await POST(post("http://localhost/reply"), context(id));
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toMatch(/client is not identified/i);
+    expect(called).toBe(false);
+    expect((await getReportExtras(id))?.reply ?? null).toBeNull();
+  });
+
+  it("drops a false status sentence and signs as the vendor", async () => {
+    const { id } = await seedReplyRun({ scope: scoped, events: resolvedEvents, claims: [causeClaim] });
+    await useReplyLlm((ids) => [
+      { text: "The issue remains open.", claimIds: [ids[0] ?? ""] },
+      { text: "The release 4.12 timezone change caused the totals error.", claimIds: [ids[0] ?? ""] },
+    ]);
+    const { POST } = await import("../app/api/investigations/[id]/reply/route");
+
+    const response = await POST(post("http://localhost/reply"), context(id));
+    const body = (await response.json()) as { sentences: { text: string }[]; signOff: string };
+
+    expect(response.status).toBe(200);
+    expect(body.sentences.map((sentence) => sentence.text)).toEqual([
+      "The release 4.12 timezone change caused the totals error.",
+    ]);
+    expect(body.signOff).toMatch(/Meridian/);
+    expect(body.signOff).not.toMatch(/Anduin/i);
+  });
+
+  it("drops an invented dated commitment and returns an explicit no-draft result", async () => {
+    const { id } = await seedReplyRun({ scope: scoped, events: resolvedEvents, claims: [causeClaim] });
+    await useReplyLlm((ids) => [
+      { text: "We will provide an update on October 2.", claimIds: [ids[0] ?? ""] },
+    ]);
+    const { POST } = await import("../app/api/investigations/[id]/reply/route");
+    const { getReportExtras } = await import("../lib/store");
+
+    const response = await POST(post("http://localhost/reply"), context(id));
+
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toMatch(/no sentence|could not be tied|discarded/i);
+    expect((await getReportExtras(id))?.reply ?? null).toBeNull();
+  });
+
+  it("keeps a promise sentence and drops an implied update date", async () => {
+    const { id } = await seedReplyRun({
+      scope: scoped,
+      events: resolvedEvents,
+      claims: [
+        causeClaim,
+        {
+          text: "The fix was promised for the September 24 release.",
+          quote: "promised the fix for the Sep 24 release",
+          type: "commitment",
+          eventId: "e_reply_cause",
+        },
+      ],
+    });
+    await useReplyLlm((ids) => [
+      { text: "The promised September 24 fix did not ship.", claimIds: ids },
+      { text: "We will provide another update next week.", claimIds: ids },
+    ]);
+    const { POST } = await import("../app/api/investigations/[id]/reply/route");
+
+    const response = await POST(post("http://localhost/reply"), context(id));
+    const body = (await response.json()) as { sentences: { text: string }[] };
+
+    expect(response.status).toBe(200);
+    expect(body.sentences.map((sentence) => sentence.text)).toEqual([
+      "The promised September 24 fix did not ship.",
+    ]);
+  });
+
+  it("requires an issue id for a multi-issue run and drafts per issue", async () => {
+    const { id, issues } = await seedReplyRun({
+      scope: scoped,
+      events: [
+        { id: "e_reply_vat", ts: "2024-09-10T03:00:00.000Z", text: "Invoice totals blank after the 2.1.0 upgrade." },
+        { id: "e_reply_sso", ts: "2024-09-12T03:00:00.000Z", text: "SSO login fails after the identity migration." },
+      ],
+      claims: [
+        {
+          text: "The 2.1.0 upgrade blanked the invoice totals.",
+          quote: "Invoice totals blank after the 2.1.0 upgrade.",
+          eventId: "e_reply_vat",
+          issueIndex: 0,
+        },
+        {
+          text: "The identity migration broke SSO login.",
+          quote: "SSO login fails after the identity migration.",
+          eventId: "e_reply_sso",
+          issueIndex: 1,
+        },
+      ],
+      issueTitles: ["Blank invoice totals", "SSO login fails"],
+    });
+    await useReplyLlm((ids) => [
+      { text: "The 2.1.0 upgrade blanked the invoice totals.", claimIds: [ids[0] ?? ""] },
+    ]);
+    const { POST } = await import("../app/api/investigations/[id]/reply/route");
+    const { getClaims } = await import("../lib/store");
+
+    const missing = await POST(post("http://localhost/reply"), context(id));
+    expect(missing.status).toBe(422);
+    expect((await missing.json()).error).toMatch(/issue/i);
+
+    const unknown = await POST(post("http://localhost/reply", { issueId: "ghost" }), context(id));
+    expect(unknown.status).toBe(422);
+
+    const ok = await POST(post("http://localhost/reply", { issueId: issues[0].id }), context(id));
+    const body = (await ok.json()) as { sentences: { claimIds: string[] }[] };
+    expect(ok.status).toBe(200);
+
+    const firstIssueClaimIds = new Set(
+      (await getClaims(id)).filter((claim) => claim.issueId === issues[0].id).map((claim) => claim.id),
+    );
+    expect(body.sentences.length).toBeGreaterThan(0);
+    for (const sentence of body.sentences) {
+      for (const claimId of sentence.claimIds) {
+        expect(firstIssueClaimIds.has(claimId)).toBe(true);
+      }
+    }
   });
 });

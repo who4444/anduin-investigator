@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { generateReply } from "@/lib/agents/reply";
+import { generateReply, replyEligible, ReplyNotDraftableError } from "@/lib/agents/reply";
 import {
   errorResponse,
   json,
@@ -38,9 +38,28 @@ export async function POST(
       );
     }
 
+    // E1: refuse before any model call when the client, scope, verified
+    // client-safe facts or (for a multi-issue run) the issue id are missing.
+    const eligibility = replyEligible({
+      scope: assembled.investigation.scope,
+      claims: assembled.claims,
+      issues: assembled.issues,
+      issueId,
+      excludedClientRecords: excluded,
+    });
+    if (!eligibility.eligible) {
+      return errorResponse(
+        eligibility.reason ?? "This investigation is not ready for a client reply.",
+        422,
+      );
+    }
+
     const draft = await generateReply(id, issueId);
     return json(draft);
   } catch (error) {
+    if (error instanceof ReplyNotDraftableError) {
+      return errorResponse(error.message, 422);
+    }
     const message = error instanceof Error ? error.message : String(error);
     return errorResponse(message, 502);
   }

@@ -180,25 +180,36 @@ function replyTurn(messages: ChatMessage[]) {
     .filter((message) => message.role === "user")
     .map((message) => String(message.content ?? ""))
     .join("\n");
-  const ids = [
-    ...new Set(
-      userText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? [],
-    ),
-  ];
-  const first = ids[0] ?? "";
-  const second = ids[1] ?? first;
+  // The reply prompt carries the verified facts as a JSON line; a draft
+  // sentence must be grounded in one of them (numbers, status, commitments
+  // and internal QA language are all validated against the cited fact).
+  const payloadLine = userText.split("\n").find((line) => line.trim().startsWith("[{"));
+  let findings: { id?: string; text?: string }[] = [];
+  if (payloadLine) {
+    try {
+      const parsed = JSON.parse(payloadLine);
+      if (Array.isArray(parsed)) findings = parsed;
+    } catch {
+      findings = [];
+    }
+  }
+  const first = findings.find((finding) => typeof finding.id === "string")?.id ?? "";
+  const safe = findings.find((finding) => {
+    const text = typeof finding.text === "string" ? finding.text : "";
+    return (
+      text.length > 0 &&
+      !/\d/.test(text) &&
+      !/(resolved|reopened|closed|open|in progress|fixed|shipped|delivered|released|will|shall|promise|commit|schedul\w*|next week|tomorrow|QA|handoff|assigned|owner|internal|coverage|searched)/i.test(
+        text,
+      )
+    );
+  });
+  const sentence =
+    safe?.text ?? "We have reviewed the records for this issue and shared them with the team.";
+  const claimIds = safe?.id ? [safe.id] : first ? [first] : [];
   return content({
-    verdict: "Confirmed: the 4.12 UTC change broke invoice totals and the promised fix never shipped.",
-    sentences: [
-      {
-        text: "Our records confirm invoice totals were affected by the UTC change in release 4.12.",
-        claimIds: first ? [first] : [],
-      },
-      {
-        text: "A dated remediation plan will be sent by Friday.",
-        claimIds: second ? [second] : [],
-      },
-    ],
+    verdict: "Verified findings reviewed for the client reply.",
+    sentences: [{ text: sentence, claimIds }],
   });
 }
 

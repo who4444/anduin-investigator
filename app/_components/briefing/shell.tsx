@@ -85,7 +85,11 @@ export function BriefingShell({
         } excluded from this investigation — a reply could contradict evidence that was never searched, so drafting is blocked until the scope is resolved.`
       : multi && !report.activeIssueId
         ? "Open an issue tab to draft its reply; the combined view mixes issues."
-        : null;
+        : !model.client.clientKnown
+          ? "Confirm the client before drafting a reply — a draft to the wrong party could contradict the records."
+          : model.counts.verified === 0
+            ? "No verified, client-safe finding is available yet; run verification and review the findings before drafting a reply."
+            : null;
 
   const issueHref = (issueId: string | null) => {
     const query = new URLSearchParams();

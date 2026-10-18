@@ -34,6 +34,7 @@ test.beforeAll(async ({ request }) => {
     form.append("files", new File([readFileSync(`public/demo/${name}`)], name, { type: mimeType }));
   }
   form.append("escalation", "Invoice totals wrong since 4.12; four chases unanswered.");
+  form.append("client", "Northwind Logistics");
   form.append("title", "UI harness scenario");
 
   // 201 = freshly ingested; 200 = a previous run left the same seed cached.
