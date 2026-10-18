@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/pipeline";
 import { getLlmClient } from "@/lib/llm";
 import { resolveScope } from "@/lib/pipeline/scope";
+import { clientDomainsFor } from "@/lib/pipeline/scope";
 import { getEvents, getInvestigation, getIssues, getLearnedScope, setScope, upsertLearnedScope } from "@/lib/store";
 import type { ScopeAnchor } from "@/lib/types";
 
@@ -82,9 +83,13 @@ export async function POST(
     }
     if (refinedScope?.confidence === "scoped" && refinedScope.client) {
       // Synthetic runs must not teach the store: a demo/labelling origin is
-      // not evidence about the real client's records.
+      // not evidence about the real client's records. And only the client's
+      // VERIFIED domains are learned — correspondence/vendor domains are not.
       if (found.investigation.origin !== "demo") {
-        await upsertLearnedScope(refinedScope.client, refinedScope);
+        await upsertLearnedScope(refinedScope.client, {
+          ...refinedScope,
+          senderDomains: clientDomainsFor(events, refinedScope),
+        });
       }
     }
 

@@ -138,16 +138,18 @@ export function clientActorsFor(events: Event[], scope: InvestigationScope | nul
 }
 
 function computeClientDomains(events: Event[], scope: InvestigationScope): Set<string> {
-  // Only domains VERIFIED as the client's: the anchor-listed ones (declared,
-  // escalation, learned, linked) plus registry domains token-matched to the
-  // client name. The vendor's correspondence domain — the client's emails
-  // address it — is scope material but never client identity (B1/B5).
-  const domains = new Set(
-    scope.anchors
-      .filter((anchor) => anchor.kind === "sender-domain")
-      .map((anchor) => anchor.value.toLowerCase()),
-  );
+  // Only domains VERIFIED as the client's: anchor-listed domains that are
+  // manager/escalation-backed or name the client (token match), plus registry
+  // domains token-matched to the client name. A learned domain that does not
+  // name the client (the vendor's correspondence address) never counts.
   const tokens = clientTokens(scope.client ?? "");
+  const domains = new Set<string>();
+  for (const anchor of scope.anchors) {
+    if (anchor.kind !== "sender-domain") continue;
+    const value = anchor.value.toLowerCase();
+    if (anchor.source === "learned" && !tokens.some((token) => value.startsWith(token))) continue;
+    domains.add(value);
+  }
   for (const event of events) {
     const domain = actorEmailDomain(event);
     if (domain && tokens.some((token) => domain.startsWith(token))) domains.add(domain);
