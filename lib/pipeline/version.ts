@@ -2,7 +2,7 @@
    version. A cached answer from a different model must never be served as if
    this run produced it. Bump PIPELINE_VERSION whenever prompt semantics or
    report rules change in a way that should invalidate caches. */
-export const PIPELINE_VERSION = "2026-10-18-p0.2";
+export const PIPELINE_VERSION = "2026-10-18-p0.3";
 
 export function modelVersion(): string {
   return process.env.DEEPSEEK_MODEL?.trim() || "unknown-model";

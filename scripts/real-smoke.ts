@@ -51,6 +51,22 @@ async function progressWatch(page: import("@playwright/test").Page, label: strin
   for (let i = 0; i < 120; i += 1) {
     const reportVisible = await page.locator("#answer").isVisible().catch(() => false);
     if (reportVisible) return;
+
+    // G-12: a partial scope pauses before any investigator spends tokens.
+    const confirmScope = page.getByRole("button", { name: "Confirm scope & investigate" });
+    if (await confirmScope.isVisible().catch(() => false)) {
+      console.log(`${label}: confirming the pre-run scope review`);
+      await confirmScope.click().catch(() => undefined);
+    }
+    // G-23: a multi-issue case pauses for the editable issue review.
+    const confirmIssues = page.getByRole("button", {
+      name: /Confirm \d+ issues? and investigate/i,
+    });
+    if (await confirmIssues.isVisible().catch(() => false)) {
+      console.log(`${label}: confirming the issue review`);
+      await confirmIssues.click().catch(() => undefined);
+    }
+
     const failed = await page.locator(".alert-error").allInnerTexts().catch(() => []);
     if (failed.length > 0) {
       console.log(`${label}: PROGRESS ERROR`, failed);

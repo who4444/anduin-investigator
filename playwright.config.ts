@@ -22,6 +22,9 @@ export default defineConfig({
       PORT: "3100",
       DEEPSEEK_BASE_URL: "http://127.0.0.1:9401",
       DEEPSEEK_MODEL: "fake-model",
+      // G-13: make the lease-idle takeover window short so the dead-tab
+      // resume e2e finishes quickly instead of waiting the 90s default.
+      RESUME_IDLE_SECONDS: "2",
     },
   },
 });

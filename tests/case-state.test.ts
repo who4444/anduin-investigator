@@ -109,6 +109,33 @@ describe("buildCaseState (G-06)", () => {
     expect(state.latestFix.value?.text).not.toContain("escalation");
   });
 
+  it("does not treat the release that introduced the defect as a fix", () => {
+    const state = buildCaseState({
+      events: [
+        event({
+          id: "e-defect-release",
+          ts: "2024-09-10T03:00:00.000Z",
+          text: "The UTC conversion was merged to release branch 4.12, and 4.12 is live on production as of this morning.",
+        }),
+        event({
+          id: "e-qa-plan",
+          ts: "2024-09-24T16:00:00.000Z",
+          text: "Let us keep MER-101 open until QA passes.",
+        }),
+        event({
+          id: "e-qa-fail",
+          ts: "2024-09-25T09:00:00.000Z",
+          text: "QA is still failing on the Sep 24 build.",
+        }),
+      ],
+      claims: [],
+      clientDomains: [],
+    });
+    expect(state.latestFix.known).toBe(false);
+    expect(state.fixCheck.value).not.toContain("until QA passes");
+    expect(state.fixCheck.value).toContain("still failing");
+  });
+
   it("keeps the last assignment, and reads an unassignment as no owner", () => {
     const assigned = buildCaseState({
       events: [

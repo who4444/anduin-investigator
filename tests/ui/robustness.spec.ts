@@ -261,6 +261,189 @@ test("redrafting the reply stays usable and copy confirms", async ({ page, reque
   await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
 });
 
+/* G-12: a partial scope pauses before the run, survives a reload, accepts an
+   add-back, and the confirmed report no longer calls itself unconfirmed. */
+test("the pre-run scope review pauses, survives reload, and confirms the report", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Our billing module has been wrong since the last update. Please explain.", ""),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+
+  await page.goto(`/investigations/${investigationId}/progress?synthetic=1`);
+  const review = page.locator("section.panel", { hasText: "Confirm the scope before I investigate" });
+  await expect(review).toBeVisible({ timeout: 60_000 });
+  await expect(review).toContainText("Unconfirmed scope");
+  await expect(review).toContainText("records will be searched");
+  await expect(review).toContainText("min");
+
+  await page.reload();
+  await expect(review).toBeVisible({ timeout: 60_000 });
+  const before = (await (
+    await request.get(`/api/investigations/${investigationId}/scope`)
+  ).json()) as { confirmed: boolean; inScopeRecords: number };
+  expect(before.confirmed).toBe(false);
+
+  await review.locator(".excluded-list input[type=checkbox]").first().check();
+  await review.getByRole("button", { name: "Confirm scope & investigate" }).click();
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+
+  const after = (await (
+    await request.get(`/api/investigations/${investigationId}/scope`)
+  ).json()) as { confirmed: boolean; inScopeRecords: number };
+  expect(after.confirmed).toBe(true);
+  expect(after.inScopeRecords).toBeGreaterThan(before.inScopeRecords);
+  await expect(page.locator(".scope-line")).toContainText("Scope confirmed by you");
+  await expect(page.locator(".scope-line")).toContainText("reviewed record added back into scope");
+  await expect(page.locator(".scope-line")).not.toContainText("Unconfirmed scope");
+});
+
+/* G-13: a run interrupted after one investigator must not redo that
+   investigator when it resumes. */
+test("resuming a partial investigator pass reruns only the missing kinds", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Partial investigator resume check"),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+
+  await request.post(`/api/investigations/${investigationId}/plan`, { data: { pass: 1 } });
+  await request.post(`/api/investigations/${investigationId}/investigate`, {
+    data: { kind: "root_cause", pass: 1 },
+  });
+  // Confirm the scope up front so this test exercises only the resume path.
+  await request.put(`/api/investigations/${investigationId}/scope`, {
+    data: { includeEventIds: [] },
+  });
+
+  const before = (await (
+    await request.get(`/api/investigations/${investigationId}/status`)
+  ).json()) as { stages: { stage: string; status: string; log: unknown[] }[] };
+  const rootBefore = before.stages.find((stage) => stage.stage === "root_cause");
+  expect(rootBefore?.status).toBe("done");
+  const rootLogBefore = rootBefore?.log.length;
+
+  await page.goto(`/investigations/${investigationId}/progress?synthetic=1`);
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+
+  const after = (await (
+    await request.get(`/api/investigations/${investigationId}/status`)
+  ).json()) as { stages: { stage: string; status: string; log: unknown[] }[] };
+  const byName = new Map(after.stages.map((stage) => [stage.stage, stage]));
+  expect(byName.get("commitments")?.status).toBe("done");
+  expect(byName.get("ownership")?.status).toBe("done");
+  expect(byName.get("verify")?.status).toBe("done");
+  expect(byName.get("assemble")?.status).toBe("done");
+  // The already-done root_cause stage must not have been called again.
+  expect(byName.get("root_cause")?.log.length).toBe(rootLogBefore);
+});
+
+/* G-13: an unfinished report must offer a link that actually DRIVES the run.
+   'How this was produced' (review=1) is read-only by design; the report's
+   'Watch the run' on an incomplete run used to point there and never resumed. */
+test("an unfinished report's 'Watch the run' resumes the run end to end", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Unfinished report resume"),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+  // Only ingest exists: the pipeline never ran.
+
+  await page.goto(`/investigations/${investigationId}?synthetic=1`);
+  const watch = page.getByRole("link", { name: "Watch the run" });
+  await expect(watch).toBeVisible({ timeout: 30_000 });
+  // The link must drive the run, not open the read-only review.
+  await expect(watch).not.toHaveAttribute("href", /review=1/);
+
+  await watch.click();
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
+
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+});
+
+/* G-13: the read-only review of an unfinished run must say so and offer a
+   continuation, never sit silently on a half-done pipeline. */
+test("the read-only review of an unfinished run offers a resuming continuation", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Unfinished review continuation"),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+
+  await page.goto(`/investigations/${investigationId}/progress?review=1&synthetic=1`);
+  await expect(page.getByText("has not finished", { exact: false })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByRole("link", { name: "Continue the investigation" }).click();
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
+
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+});
+
+/* G-13: closing the tab kills its worker id; reopening presents a new one.
+   The resumed session must wait out the dead lease (or take it over once the
+   holder has gone idle) and finish — the exact flow that used to fail with
+   'a stage is already running'. */
+test("a dead tab's run is taken over by a reopened session and finishes", async ({
+  page,
+  request,
+}) => {
+  const created = await request.post("/api/investigations", {
+    multipart: demoForm("Dead tab takeover check"),
+  });
+  expect([200, 201], "ingest").toContain(created.status());
+  const { investigationId } = (await created.json()) as { investigationId: string };
+
+  // Tab A starts the plan and dies mid-run: its worker holds the lease.
+  const plan = await request.post(`/api/investigations/${investigationId}/plan`, {
+    data: { pass: 1, worker: "dead-tab" },
+  });
+  expect(plan.status(), "plan").toBe(200);
+
+  // Tab B (a new worker) opens the progress page and confirms the scope the
+  // dead tab never confirmed. The resume then waits for the idle window and
+  // takes the run over instead of erroring out.
+  await page.goto(`/investigations/${investigationId}/progress?synthetic=1`);
+  await page
+    .getByRole("button", { name: "Confirm scope & investigate" })
+    .click({ timeout: 15_000 })
+    .catch(() => undefined);
+
+  await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });
+  await expect(page.locator("#answer")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".alert-error")).toHaveCount(0);
+
+  // The takeover completed the whole pipeline.
+  const status = (await (
+    await request.get(`/api/investigations/${investigationId}/status`)
+  ).json()) as { stages: { stage: string; status: string }[] };
+  const byName = new Map(status.stages.map((stage) => [stage.stage, stage]));
+  expect(byName.get("assemble")?.status).toBe("done");
+});
+
 /* G-13: a tab that closes mid-run leaves a half-finished, durable run;
    reopening the progress page resumes at the first missing stage and the
    run finishes without redoing what is already stored. */

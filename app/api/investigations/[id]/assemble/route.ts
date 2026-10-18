@@ -5,6 +5,7 @@ import {
   readInvestigationOrDefault,
   readJsonBody,
   readPass,
+  readResume,
   readWorker,
   runStage,
 } from "@/lib/api/pipeline";
@@ -23,9 +24,10 @@ export async function POST(
   const body = await readJsonBody(request);
   const pass = readPass(body);
   const worker = readWorker(body);
+  const resume = readResume(body);
 
   return runStage(id, "assemble", pass, async () => {
     const result = await assemble(id);
     return { needsRetry: result.needsRetry, missing: result.missing, stats: result.stats };
-  }, worker);
+  }, worker, resume);
 }

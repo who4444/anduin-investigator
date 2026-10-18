@@ -7,11 +7,26 @@ import {
   readJsonBody,
 } from "@/lib/api/pipeline";
 import { clearClaimReview, upsertClaimReview } from "@/lib/store";
+import { buildResult, recordReportVersions } from "@/lib/pipeline/assemble";
 import type { ClaimReviewVerdict } from "@/lib/types";
 
 export const maxDuration = 60;
 
 const VERDICTS: ClaimReviewVerdict[] = ["wrong", "unsupported", "out_of_scope"];
+
+/* G-14: a correction changes the findings, so freeze a fresh report version
+   whose stats record the reviewed count. The previous version stays intact. */
+async function freezeAfterReview(investigationId: string): Promise<boolean> {
+  try {
+    const result = await buildResult(investigationId);
+    if (!result.complete) return false;
+    await recordReportVersions(result);
+    return true;
+  } catch {
+    // The review is the durable correction; versioning must not lose it.
+    return false;
+  }
+}
 
 /* G-14: the manager's correction. A reviewed claim leaves the findings, the
    client pack and the draft; the review is the audit trail. */
@@ -33,7 +48,8 @@ export async function POST(
 
   try {
     const review = await upsertClaimReview(id, claimId, verdict as ClaimReviewVerdict, reason || null);
-    return json({ review });
+    const versionRecorded = await freezeAfterReview(id);
+    return json({ review, versionRecorded });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/No claim with that id/.test(message) || /invalid input syntax for type uuid/i.test(message)) {
@@ -53,7 +69,8 @@ export async function DELETE(
 
   try {
     await clearClaimReview(id, claimId);
-    return json({ cleared: true });
+    const versionRecorded = await freezeAfterReview(id);
+    return json({ cleared: true, versionRecorded });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return errorResponse(`Could not clear the review: ${message}`, 500);

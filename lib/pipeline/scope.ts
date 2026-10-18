@@ -15,6 +15,8 @@ export interface ScopeUniverse {
 }
 
 export interface ReportScope extends InvestigationScope {
+  /** The manager confirmed a partial scope before the run (G-12). */
+  reviewed: boolean;
   excludedRecords: number;
   excludedClaims: number;
   /** Out-of-scope records authored by the client itself (G-01 invariant). */

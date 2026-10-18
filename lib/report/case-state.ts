@@ -40,9 +40,14 @@ export interface CaseState {
 const STATUS_TRANSITION = /^\s*Status:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const ASSIGNEE_TRANSITION = /^\s*Assignee:\s*(.+?)\s*→\s*(.+?)\s*$/;
 const VERSION_TOKEN = /\b\d+\.\d+(?:\.\d+)?\b/;
-const FIX_EVENT = /\b(release|build|deploy(?:ed|ment)?|hotfix|patch|fix(?:ed)?|shipped|is live|rolled out)\b/i;
+/* A release announcement is not a fix: the record needs a fix word and a
+   delivery word. "4.12 is live" introduced the defect; "5.3.4 fixed the VAT
+   rounding" is the fix. */
+const FIX_WORD = /\b(?:fix(?:ed|es|ing)?|hotfix|patch(?:ed)?|corrected)\b/i;
+const DELIVERY_WORD = /\b(?:shipped|deployed|released|is live|went live|rolled out|included|corrected|fixed)\b/i;
 const QA_EVENT = /\bQA\b/i;
-const QA_OUTCOME = /\bfail(?:ed|ing|s)?\b|\bpass(?:ed|es|ing)?\b|\bgreen\b|\bred\b/i;
+/* "until QA passes" is a plan, not a result. */
+const QA_OUTCOME = /\b(?:failed|failing|passed|green|red)\b/i;
 const EMAIL_DOMAIN = /@([A-Za-z0-9.-]+)/;
 
 function actorDomain(event: Event): string | null {
@@ -88,7 +93,7 @@ export function buildCaseState(input: {
   // shows as the current state.
   let currentStatus: CaseStateField<string> = unknown("no status transition was recorded");
   let owner: CaseStateField<string> = unknown("no assignee transition was recorded");
-  let latestFix: CaseStateField<CaseFix> = unknown("no release or fix record was found");
+  let latestFix: CaseStateField<CaseFix> = unknown("no record shows a fix shipping");
   let fixCheck: CaseStateField<string> = unknown("no QA record was found");
 
   for (const event of ordered) {
@@ -103,7 +108,12 @@ export function buildCaseState(input: {
         ? unknown(`the latest assignee change unassigned the ticket (${event.ts.slice(0, 10)})`)
         : { known: true, value: name, since: event.ts, eventId: event.id };
     }
-    if (!isClientEvent(event) && VERSION_TOKEN.test(event.text) && FIX_EVENT.test(event.text)) {
+    if (
+      !isClientEvent(event) &&
+      VERSION_TOKEN.test(event.text) &&
+      FIX_WORD.test(event.text) &&
+      DELIVERY_WORD.test(event.text)
+    ) {
       latestFix = {
         known: true,
         value: { text: shorten(event.text), ts: event.ts },
@@ -118,10 +128,15 @@ export function buildCaseState(input: {
 
   // The next commitment: the earliest open promise that carries a date
   // beyond the record horizon ("when is this fixed?" has an answer only
-  // when a record states one).
+  // when a record states one). A promise the manager reviewed away is not
+  // part of "what is true now" (G-14).
+  const reviewedClaimIds = new Set(
+    input.claims.filter((claim) => claim.review).map((claim) => claim.id),
+  );
   const openPromises = (input.commitments ?? [])
     .filter(
       (commitment) =>
+        !reviewedClaimIds.has(commitment.claimId) &&
         commitment.status !== "kept" &&
         commitment.status !== "withdrawn" &&
         commitment.deadlineIso !== null &&

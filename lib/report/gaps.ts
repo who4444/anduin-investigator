@@ -26,12 +26,20 @@ export const GAP_TAG_LABEL: Record<GapTag, string> = {
 /* Words that tie a gap to the client-facing decision, not to internal trivia. */
 const CLIENT_TALK = /\b(client|customer|reply|respond|fix|release|promise|escalat|credit|refund|deadline|owner|handoff)\b/i;
 
-const NOT_SEARCHED_TALK = /\bnot searched|never searched|excluded|outside the (?:scope|search)\b/i;
+const NOT_SEARCHED_TALK =
+  /\bnot[- ]searched|never[- ]searched|excluded|outside the (?:scope|search)\b|\bsource lookup\b.*\bfailed\b|\bfailed\b.*\bsource lookup\b/i;
 const CONFLICT_TALK = /\bconflict|contradict|disagree|mismatch\b/i;
 const ABSENT_TALK = /\bno record|no evidence|absent|nothing (?:was|is) (?:found|recorded)|not found|no trace\b/i;
+const TOOL_CALL = /\b(?:get|search|verify|list|find|read)_[a-z0-9_]+\([^)]*\)/gi;
+const TOOL_NAME = /\b(?:get|search|verify|list|find|read)_[a-z0-9_]+\b/gi;
+const GENERIC_QUESTION = /^(?:could not determine|unknown|not determined)\b|\(decisions and ownership\)\s*$/i;
 
 export function cleanGapText(text: string): string {
   return text
+    .replace(TOOL_CALL, "the source lookup")
+    .replace(TOOL_NAME, "the source lookup")
+    .replace(/\bthe the\b/gi, "the")
+    .replace(/\bclaims? \d+(?:\s*,\s*\d+)*/gi, "stored findings")
     .replace(/\b(?:e|ev|claim|event|item|note|g|gap)_[a-z0-9_]+/gi, "a stored record")
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "a stored record")
     .replace(/\bI was unable to\b/gi, "we could not")
@@ -53,8 +61,18 @@ export function rankGaps(gaps: Gap[], coverage?: CoverageReport): RankedGap[] {
   const ranked: RankedGap[] = [];
 
   for (const gap of gaps) {
-    const question = cleanGapText(gap.question);
-    const note = cleanGapText(gap.note);
+    let question = cleanGapText(gap.question);
+    let note = cleanGapText(gap.note);
+    // Skeptic notes often reuse an umbrella question ("Could not determine
+    // (decisions and ownership)") and put the actual unknown in the note.
+    // Promote that note so the manager reads nine distinct questions, not the
+    // same heading nine times.
+    if (GENERIC_QUESTION.test(question) && note.length > 0) {
+      question = note;
+      note = "";
+    } else if (question === note) {
+      note = "";
+    }
     const key = `${question.toLowerCase()}|${note.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);

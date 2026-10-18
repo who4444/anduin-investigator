@@ -32,7 +32,9 @@ export function normalizeObject(object: string): string {
     .trim();
 }
 
-function normalizePerson(person: string | null): string {
+/** Identity-normalised person key: email suffix, punctuation and word order
+    must not split one promisor into two people. */
+export function normalizePerson(person: string | null): string {
   if (!person) return "";
   return person
     .toLowerCase()
@@ -44,7 +46,9 @@ function normalizePerson(person: string | null): string {
     .join(" ");
 }
 
-/** Same promisor + promisee + object + deadline = one promise. */
+/** Same promisor + object + deadline = one promise. The promisee's wording
+    ("Northwind", "Priya Nair / Meridian (Northwind)") differs between
+    restatements of the same promise, so it must not split the key. */
 export function commitmentDedupeKey(input: {
   promisor: string | null;
   promisee: string | null;
@@ -54,7 +58,6 @@ export function commitmentDedupeKey(input: {
   const deadline = input.deadlineIso ? input.deadlineIso.slice(0, 10) : "no-deadline";
   return [
     normalizePerson(input.promisor),
-    normalizePerson(input.promisee),
     normalizeObject(input.object),
     deadline,
   ].join("|");

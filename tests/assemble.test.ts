@@ -283,6 +283,7 @@ describeDb("verify + assemble", () => {
         senderDomains: ["northwind.example"],
         confidence: "scoped",
         anchors: [],
+        reviewed: false,
         excludedRecords: 2,
         excludedClaims: 1,
         excludedClientRecords: 0,

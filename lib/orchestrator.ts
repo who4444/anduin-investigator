@@ -24,6 +24,22 @@ export function resumePointFromStages(stages: Stage[]): ResumePoint {
   return "assemble";
 }
 
+/** G-13: the investigator kinds whose stored stage is not done yet. */
+export function missingInvestigatorKinds(stages: Stage[]): InvestigatorKindName[] {
+  return INVESTIGATOR_KINDS.filter(
+    (kind) => !stages.some((entry) => entry.stage === kind && entry.status === "done"),
+  );
+}
+
+/** G-13: the pass a resumed run should continue at. A partial first pass
+    resumes at pass 1; a run interrupted during the retry pass continues at 2. */
+export function investigatorResumePass(stages: Stage[]): number {
+  const passes = stages
+    .filter((entry) => (INVESTIGATOR_KINDS as readonly string[]).includes(entry.stage))
+    .map((entry) => entry.pass);
+  return passes.length > 0 ? Math.max(...passes) : 1;
+}
+
 export interface RunPipelineOptions {
   onStage?: (update: StageUpdate) => void;
   fetchImpl?: typeof fetch;
@@ -34,8 +50,22 @@ export interface RunPipelineOptions {
   /** G-12: pause after plan when the scope is only partially confirmed, so
       the manager sees what will be searched before tokens are spent. */
   stopForScopeReview?: boolean;
+  /** G-13: resume a run whose earlier stages are already stored. A resumed
+      run may wait for a dead session's lease and take it over once the
+      holder has gone idle. */
+  resume?: boolean;
+  /** How long between lease takeover attempts, in ms (default 10s). */
+  leaseWaitMs?: number;
+  /** How many takeover attempts before failing (~3 minutes at the default). */
+  maxLeaseWaits?: number;
+  /** Human-readable status while waiting for the previous session. */
+  onNotice?: (text: string | null) => void;
   /** Resume a run whose earlier stages are already stored (G-13). */
   startAt?: ResumePoint;
+  /** G-13: on a resumed investigate stage, run only these kinds. */
+  investigatorKinds?: InvestigatorKindName[];
+  /** G-13: the pass a resumed investigate stage continues at. */
+  startPass?: number;
   /** Stable worker id; the issue review pauses and resumes on the same lease. */
   workerId?: string;
 }
@@ -96,6 +126,9 @@ export async function runPipeline(
     options.onStage?.({ stage, pass, status, error });
   };
 
+  const leaseWaitMs = options.leaseWaitMs ?? 10_000;
+  const maxLeaseWaits = options.maxLeaseWaits ?? 18;
+
   const callStage = async (
     stage: string,
     pass: number,
@@ -104,15 +137,36 @@ export async function runPipeline(
   ) => {
     notify(notifyName as StageName, pass, "running");
     let response: Response;
-    try {
-      response = await fetchImpl(`${base}/${stage}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pass, worker: workerId, ...body }),
-      });
-    } catch (error) {
-      throw new StageError(notifyName, pass, error instanceof Error ? error.message : String(error));
+    let waits = 0;
+    for (;;) {
+      try {
+        response = await fetchImpl(`${base}/${stage}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            pass,
+            worker: workerId,
+            ...(options.resume ? { resume: true } : {}),
+            ...body,
+          }),
+        });
+      } catch (error) {
+        throw new StageError(notifyName, pass, error instanceof Error ? error.message : String(error));
+      }
+      // G-13: a resumed run may arrive while the dead session's lease still
+      // lives. Wait for it to go idle (or vanish) instead of failing the
+      // whole resume; the server takes it over once the holder is stale.
+      if (response.status === 409 && options.resume && waits < maxLeaseWaits) {
+        waits += 1;
+        options.onNotice?.(
+          "Waiting for the previous session to release this run — it resumes automatically, up to ~3 minutes.",
+        );
+        await new Promise((resolve) => setTimeout(resolve, leaseWaitMs));
+        continue;
+      }
+      break;
     }
+    options.onNotice?.(null);
     const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
     if (!response.ok) {
       const message = typeof payload.error === "string" ? payload.error : `Stage ${stage} failed.`;
@@ -146,6 +200,11 @@ export async function runPipeline(
 
   let retries = 0;
   const startAt = options.startAt ?? "plan";
+  const basePass = options.startPass ?? 1;
+  const initialKinds =
+    options.investigatorKinds && options.investigatorKinds.length > 0
+      ? options.investigatorKinds
+      : INVESTIGATOR_KINDS;
 
   try {
     if (startAt === "plan") {
@@ -170,7 +229,7 @@ export async function runPipeline(
     }
 
     for (;;) {
-      const pass = 1 + retries;
+      const pass = basePass + retries;
       const initialPass = retries === 0;
       const skipInvestigators =
         initialPass && startAt !== "plan" && startAt !== "investigate";
@@ -179,7 +238,7 @@ export async function runPipeline(
       const skipVerify = initialPass && startAt === "assemble";
 
       if (initialPass && !skipInvestigators) {
-        await runInvestigators(INVESTIGATOR_KINDS, pass);
+        await runInvestigators(initialKinds, pass);
       }
 
       if (!skipSkeptic) {
@@ -213,7 +272,7 @@ export async function runPipeline(
       }
 
       retries += 1;
-      const retryPass = 1 + retries;
+      const retryPass = basePass + retries;
       options.onMissingRetry?.(missing, retryPass);
       await runInvestigators(retryKinds, retryPass);
     }

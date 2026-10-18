@@ -37,6 +37,22 @@ describe("commitment rules (G-05)", () => {
       key("invoice totals corrected", "2024-10-01T00:00:00.000Z"),
     );
     expect(key("invoice totals corrected", null)).toContain("no-deadline");
+    // Promisee wording is a restatement detail, not a different promise.
+    expect(
+      commitmentDedupeKey({
+        promisor: "Marcus Webb",
+        promisee: "Northwind",
+        object: "invoice totals corrected",
+        deadlineIso: "2024-09-24T00:00:00.000Z",
+      }),
+    ).toBe(
+      commitmentDedupeKey({
+        promisor: "Marcus Webb <marcus.webb@meridian.example>",
+        promisee: "Priya Nair / Meridian (Northwind)",
+        object: "invoice totals corrected",
+        deadlineIso: "2024-09-24T00:00:00.000Z",
+      }),
+    );
   });
 
   it("a failing outcome outweighs a kept reading, and disagreement is contested", () => {
@@ -221,6 +237,14 @@ describeDb("commitments end to end (G-05)", () => {
         channel: "orbit-support",
         text: "The VAT fix is scheduled for the Sep 20 release.",
       },
+      {
+        id: "e_fuzzy_3",
+        source: "email",
+        ts: "2024-09-05T09:10:00.000Z",
+        actor: "Ravi Menon <ravi.menon@orbit.example>",
+        channel: "email",
+        text: "The VAT export fix will ship with the Sep 20 release.",
+      },
     ]);
     const tools = buildAgentTools(id, "commitments");
     const submissions = [
@@ -242,13 +266,26 @@ describeDb("commitments end to end (G-05)", () => {
         status: "kept",
         rationale: "the release was announced",
       },
+      {
+        text: "Ravi Menon will ship the VAT export fix with the Sep 20 release.",
+        object: "ship the VAT export fix with the Sep 20 release",
+        deadline: "Sep 20",
+        quote: "The VAT export fix will ship with the Sep 20 release.",
+        item_id: "e_fuzzy_3",
+        actor: "Ravi Menon <ravi.menon@orbit.example>",
+        to: "Bright Market (client)",
+        status: "unclear",
+        rationale: null,
+      },
     ];
     for (const submission of submissions) {
+      const actor = "actor" in submission ? submission.actor : "Ravi Menon";
+      const to = "to" in submission ? submission.to : "Bright Market";
       const result = JSON.parse(
         await tools.exec("submit_commitment", {
           ...submission,
-          actor: "Ravi Menon",
-          to: "Bright Market",
+          actor,
+          to,
           confidence: 0.8,
         }),
       ) as { error?: string };
@@ -257,7 +294,7 @@ describeDb("commitments end to end (G-05)", () => {
 
     const commitments = await getCommitments(id);
     expect(commitments).toHaveLength(1);
-    expect(commitments[0].sourceEventIds).toHaveLength(2);
+    expect(commitments[0].sourceEventIds).toHaveLength(3);
     expect(commitments[0].status).toBe("broken");
     await deleteInvestigation(id);
     created.splice(created.indexOf(id), 1);

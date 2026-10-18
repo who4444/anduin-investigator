@@ -202,21 +202,27 @@ export interface RunToolLoopOptions {
   maxRounds?: number;
   temperature?: number;
   forceJson?: boolean;
+  /** Continue an existing transcript instead of starting from system/user. */
+  messages?: ChatMessage[];
 }
 
 export interface ToolLoopResult {
   content: string;
   log: ToolLoopLogEntry[];
+  /** The full transcript, for a submission phase that needs the evidence read. */
+  messages: ChatMessage[];
 }
 
 const RESULT_PREVIEW_LENGTH = 200;
 
 export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoopResult> {
   const { client, system, user, tools, exec, maxRounds = 8 } = options;
-  const messages: ChatMessage[] = [
-    { role: "system", content: system },
-    { role: "user", content: user },
-  ];
+  const messages: ChatMessage[] = options.messages
+    ? [...options.messages]
+    : [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ];
   const log: ToolLoopLogEntry[] = [];
   let content = "";
 
@@ -234,7 +240,7 @@ export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoop
 
     const toolCalls = response.toolCalls ?? [];
     if (toolCalls.length === 0) {
-      return { content, log };
+      return { content, log, messages };
     }
 
     messages.push({
@@ -271,7 +277,7 @@ export async function runToolLoop(options: RunToolLoopOptions): Promise<ToolLoop
     }
   }
 
-  return { content, log };
+  return { content, log, messages };
 }
 
 let defaultClient: LlmClient | null = null;

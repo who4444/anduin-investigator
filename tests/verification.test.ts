@@ -325,7 +325,9 @@ describeDb("three-state verification", () => {
       total: 6,
       flagged: 0,
     });
-    expect(reportBody.briefing.events).toHaveLength(4);
+    // G-10: one canonical story step per cited record; the four visible claims
+    // share two records, so the story has two steps, not four near-duplicates.
+    expect(reportBody.briefing.events).toHaveLength(2);
     expect(
       reportBody.briefing.events.some(
         (event: { verification: string }) => event.verification === "supported",

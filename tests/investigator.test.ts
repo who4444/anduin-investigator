@@ -206,6 +206,64 @@ describeDb("runInvestigator", () => {
     expect((await getClaims(investigationId)).some((claim) => claim.text.includes("timezone change caused"))).toBe(true);
   });
 
+  it("gives a budget-exhausted investigator a submission-only phase", async () => {
+    const { setLlmClientForTests } = await import("../lib/llm");
+    const { runInvestigator } = await import("../lib/agents/investigator");
+    const { getClaims } = await import("../lib/store");
+
+    let calls = 0;
+    let harvestCalls = 0;
+    let submitted = false;
+    setLlmClientForTests({
+      chat: async (_messages, opts) => {
+        calls += 1;
+        const toolNames = (opts?.tools ?? []).map((tool) => tool.function.name);
+        const canSearch = toolNames.includes("search_jira");
+        if (canSearch) {
+          return {
+            content: "",
+            toolCalls: [{ id: `search_${calls}`, name: "search_jira", args: { query: "timezone" } }],
+          };
+        }
+        harvestCalls += 1;
+        if (!submitted) {
+          submitted = true;
+          return {
+            content: "",
+            toolCalls: [
+              {
+                id: "submit_1",
+                name: "submit_claim",
+                args: {
+                  type: "root_cause",
+                  text: "Budget-exhausted submission survived.",
+                  quote: "Timezone change for release 4.12 shipped on Sep 10.",
+                  event_id: jiraId,
+                  status: "n/a",
+                  confidence: 0.8,
+                },
+              },
+            ],
+          };
+        }
+        return { content: JSON.stringify({ claims: [], notes: [] }) };
+      },
+    });
+
+    const result = await runInvestigator(investigationId, "root_cause", "1. Reconstruct the timeline.");
+
+    expect(harvestCalls).toBeGreaterThan(0);
+    expect(calls).toBeGreaterThan(10);
+    expect(
+      result.claims.some((claim) => claim.text === "Budget-exhausted submission survived."),
+    ).toBe(true);
+    expect(
+      (await getClaims(investigationId)).some(
+        (claim) => claim.text === "Budget-exhausted submission survived.",
+      ),
+    ).toBe(true);
+  });
+
   it("keeps a final-JSON claim with a bad ts by dropping the ts, not the claim", async () => {
     const { setLlmClientForTests } = await import("../lib/llm");
     const { runInvestigator } = await import("../lib/agents/investigator");

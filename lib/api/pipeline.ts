@@ -52,19 +52,27 @@ export function readWorker(body: unknown): string {
   return typeof raw === "string" ? raw.slice(0, 64) : "";
 }
 
+/** G-13: a resumed run (a reopened tab) may take over the dead session's
+    lease once the holder has gone idle; see acquireStageLease. */
+export function readResume(body: unknown): boolean {
+  if (typeof body !== "object" || body === null) return false;
+  return (body as Record<string, unknown>).resume === true;
+}
+
 export async function runStage<T>(
   investigationId: string,
   stage: StageName,
   pass: number,
   work: () => Promise<T>,
   worker = "",
+  resume = false,
 ): Promise<Response> {
   // One pipeline RUN at a time per investigation. Stages from the same worker
   // (the parallel investigators of a single run) share the lease; a second
-  // tab with its own worker id is refused until the run ends or the lease
-  // expires.
+  // tab with its own worker id is refused until the run ends, the lease
+  // expires, or — for an explicit resume — the holder has gone idle.
   const holder = worker || `direct-${crypto.randomUUID()}`;
-  const leased = await acquireStageLease(investigationId, holder);
+  const leased = await acquireStageLease(investigationId, holder, undefined, { resume });
   if (!leased) {
     return errorResponse(
       "A stage is already running for this investigation. Wait for it to finish, then reload.",

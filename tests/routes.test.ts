@@ -294,6 +294,41 @@ describeDb("pipeline routes", () => {
     expect(released.status).toBe(200);
   });
 
+  /* G-13: closing the tab kills its worker id; reopening the run presents a
+     new one. A resume may take over a lease whose holder has gone idle (the
+     old tab is gone), but never one that renewed recently (it may be alive). */
+  it("a resume takes over an idle lease, never a fresh one", async () => {
+    const { acquireStageLease, clearStageLease } = await import("../lib/store");
+    const { getPool } = await import("../lib/db/pool");
+    const sql = getPool();
+
+    try {
+      expect(await acquireStageLease(investigationId, "dead-tab", 60)).toBe(true);
+
+      // Fresh foreign lease: a resume must still be refused.
+      expect(
+        await acquireStageLease(investigationId, "new-tab", 60, { resume: true, idleSeconds: 20 }),
+      ).toBe(false);
+
+      // The holder stopped renewing longer ago than the idle window: gone.
+      // The lease is still in the future for the plain rule — only the
+      // resume rule may take it over.
+      await sql`
+        update investigations
+        set lease = jsonb_set(lease, '{expiresAt}', to_jsonb((now() + interval '30 seconds')::text))
+        where id = ${investigationId}
+      `;
+      expect(
+        await acquireStageLease(investigationId, "new-tab", 60, { resume: true, idleSeconds: 20 }),
+      ).toBe(true);
+
+      // The taken-over lease is fresh again: plain starts stay refused.
+      expect(await acquireStageLease(investigationId, "third-tab", 60)).toBe(false);
+    } finally {
+      await clearStageLease(investigationId);
+    }
+  });
+
   it("sweeps a stage stuck in running and surfaces it as an error", async () => {
     const { upsertStage, getStages } = await import("../lib/store");
     const { getPool } = await import("../lib/db/pool");

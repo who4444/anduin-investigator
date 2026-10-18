@@ -14,6 +14,7 @@ interface FakeStage {
   stage: string;
   pass: number;
   kind?: string;
+  resume?: boolean;
 }
 
 function fakeFetch(
@@ -22,10 +23,12 @@ function fakeFetch(
   const calls: (FakeStage & { url: string })[] = [];
   const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
-    const body = init?.body ? (JSON.parse(String(init.body)) as { pass?: number; kind?: string }) : {};
+    const body = init?.body
+      ? (JSON.parse(String(init.body)) as { pass?: number; kind?: string; resume?: boolean })
+      : {};
     const segments = url.split("/");
     const stage = segments[segments.length - 1];
-    const call = { url, stage, pass: body.pass ?? 1, kind: body.kind };
+    const call = { url, stage, pass: body.pass ?? 1, kind: body.kind, resume: body.resume };
     calls.push(call);
     return handler(call);
   }) as unknown as typeof fetch;
@@ -288,6 +291,27 @@ describe("runPipeline notifications", () => {
     expect(calls.filter((call) => call.stage === "investigate")).toHaveLength(3);
   });
 
+  it("resumes only the investigator kinds that are not done", async () => {
+    const { fetchImpl, calls } = fakeFetch((call) => {
+      if (call.stage === "assemble") return jsonResponse({ needsRetry: false, missing: [] });
+      return jsonResponse({ ok: true });
+    });
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      startAt: "investigate",
+      investigatorKinds: ["commitments", "ownership"],
+      startPass: 1,
+    });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(calls.filter((call) => call.stage === "investigate").map((call) => call.kind)).toEqual([
+      "commitments",
+      "ownership",
+    ]);
+    expect(calls.every((call) => call.pass === 1)).toBe(true);
+  });
+
   /* G-13: a half-finished run resumes at the first unfinished stage and
      retries only what is missing. */
   it("resumes at verify without re-running the investigators or the skeptic", async () => {
@@ -341,6 +365,40 @@ describe("runPipeline notifications", () => {
     expect(outcome).toEqual({ ok: true, retries: 0 });
     expect(calls.some((call) => call.stage === "investigate")).toBe(true);
   });
+
+  /* G-13: a resumed run waits out a lease the previous (dead) session still
+     holds, then takes over; a fresh run still fails fast on a 409. */
+  it("waits and retries while a resumed run's lease is still held", async () => {
+    let attempts = 0;
+    const { fetchImpl, calls } = fakeFetch(() => {
+      attempts += 1;
+      if (attempts <= 2) return jsonResponse({ error: "A stage is already running." }, 409);
+      return jsonResponse({ needsRetry: false, missing: [] });
+    });
+    const notices: (string | null)[] = [];
+
+    const outcome = await runPipeline("inv-1", {
+      fetchImpl,
+      startAt: "assemble",
+      resume: true,
+      leaseWaitMs: 1,
+      onNotice: (text) => notices.push(text),
+    });
+
+    expect(outcome).toEqual({ ok: true, retries: 0 });
+    expect(attempts).toBe(3);
+    expect(calls[0].resume).toBe(true);
+    expect(notices.some((text) => text !== null && /waiting/i.test(text))).toBe(true);
+  });
+
+  it("a fresh run fails fast on a 409 without waiting", async () => {
+    const { fetchImpl, calls } = fakeFetch(() => jsonResponse({ error: "busy" }, 409));
+
+    const outcome = await runPipeline("inv-1", { fetchImpl, leaseWaitMs: 1 });
+
+    expect(outcome.ok).toBe(false);
+    expect(calls.filter((call) => call.stage === "plan")).toHaveLength(1);
+  });
 });
 
 describe("resumePointFromStages (G-13)", () => {
@@ -349,6 +407,26 @@ describe("resumePointFromStages (G-13)", () => {
     pass: 1,
     status: status as never,
     log: [],
+  });
+
+  it("names only the missing investigator kinds", async () => {
+    const { missingInvestigatorKinds, investigatorResumePass } = await import(
+      "../lib/orchestrator"
+    );
+    expect(
+      missingInvestigatorKinds([stage("plan"), stage("root_cause")]),
+    ).toEqual(["commitments", "ownership"]);
+    expect(
+      missingInvestigatorKinds([
+        stage("plan"),
+        stage("root_cause"),
+        stage("commitments"),
+        stage("ownership"),
+      ]),
+    ).toEqual([]);
+    expect(
+      investigatorResumePass([stage("root_cause"), { ...stage("commitments", "error"), pass: 2 }]),
+    ).toBe(2);
   });
 
   it("walks forward to the first unfinished stage", async () => {

@@ -6,6 +6,7 @@ import {
   readInvestigationOrDefault,
   readJsonBody,
   readPass,
+  readResume,
   readWorker,
   runStage,
 } from "@/lib/api/pipeline";
@@ -26,6 +27,7 @@ export async function POST(
   const body = await readJsonBody(request);
   const pass = readPass(body);
   const worker = readWorker(body);
+  const resume = readResume(body);
 
   return runStage(id, "plan", pass, async () => {
     // Re-entering the plan stage (a reload while the issue review is open)
@@ -62,5 +64,5 @@ export async function POST(
     const plan = await runAnalyst(id, found.investigation.escalationText, pass);
     const issues = await getIssues(id);
     return { plan, scope, issues };
-  }, worker);
+  }, worker, resume);
 }

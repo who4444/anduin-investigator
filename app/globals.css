@@ -2254,6 +2254,11 @@ button.promise-card {
   margin-right: 8px;
 }
 
+.scope-flag.scope-confirmed {
+  border-color: var(--verified);
+  color: var(--verified);
+}
+
 /* ---------- issue review (G-23) ---------- */
 
 .issue-review {

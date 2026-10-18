@@ -170,6 +170,7 @@ export async function buildResult(investigationId: string): Promise<AssembleOutc
         const clientEvidence = excludedClientEvidence(events, investigation.scope);
         return {
           ...investigation.scope,
+          reviewed: Boolean(investigation.scopeReviewedAt),
           excludedRecords: outOfScope.length,
           excludedClaims,
           excludedClientRecords: clientEvidence.excludedEventIds.length,
@@ -227,6 +228,16 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
 
   // G-08: freeze the top answer now. The report page reads the latest version;
   // drafting a reply or re-rendering the page cannot rewrite this narrative.
+  await recordReportVersions(result);
+
+  return result;
+}
+
+/** G-08/G-14: freeze the top answer for the current claim set. Assemble calls
+    this once per run; the review route calls it again so a manager correction
+    produces a new version whose stats carry the reviewed count. */
+export async function recordReportVersions(result: AssembleOutcome): Promise<void> {
+  const investigationId = result.investigation.id;
   const caseBriefing = buildBriefing({
     events: result.timeline,
     claims: result.claims,
@@ -257,6 +268,4 @@ export async function assemble(investigationId: string): Promise<AssembleOutcome
       promptVersion: PIPELINE_VERSION,
     });
   }
-
-  return result;
 }

@@ -156,13 +156,46 @@ export function buildBriefing(input: {
     }
   }
 
-  const ordered = kept
+  // G-10: one canonical step per cited record. A commitment already merges
+  // restatements across sources; the remaining claims that cite the same
+  // record are not separate steps on the timeline — they are angles on one
+  // event, and the evidence drawer still lists them.
+  const claimPriority = (claim: Claim): number => {
+    if (claim.type === "commitment" && claim.status === "broken") return 0;
+    if (claim.type === "process_failure") return 1;
+    if (claim.type === "commitment") return 2;
+    if (claim.type === "root_cause") return 3;
+    if (claim.type === "ownership" || claim.type === "decision") return 4;
+    return 5;
+  };
+  const storyPriority = (claim: Claim): number => {
+    const importance = importanceFor(claim);
+    const importanceRank = importance === "key" ? 0 : importance === "normal" ? 1 : 2;
+    return importanceRank * 10 + claimPriority(claim);
+  };
+
+  const filtered = kept
     .map((claim) => ({ claim, event: eventsById.get(claim.eventId) }))
     .filter((entry): entry is { claim: Claim; event: Event } => entry.event !== undefined)
     .filter((entry) => {
       const merged = mergedSourceByEvent.get(entry.claim.eventId);
       return !merged || merged.claimId === entry.claim.id;
-    })
+    });
+
+  const byEvent = new Map<string, { claim: Claim; event: Event }[]>();
+  for (const entry of filtered) {
+    const group = byEvent.get(entry.event.id) ?? [];
+    group.push(entry);
+    byEvent.set(entry.event.id, group);
+  }
+  const ordered = [...byEvent.values()]
+    .map((group) =>
+      [...group].sort(
+        (a, b) =>
+          storyPriority(a.claim) - storyPriority(b.claim) ||
+          effectiveTs(a.claim, a.event).localeCompare(effectiveTs(b.claim, b.event)),
+      )[0],
+    )
     .sort((a, b) => {
       const left = effectiveTs(a.claim, a.event);
       const right = effectiveTs(b.claim, b.event);
@@ -355,8 +388,11 @@ export function buildBriefing(input: {
   const unclearClusters = promiseLedger.length - brokenClusters - keptClusters;
   const lastDay = eventsOut.length > 0 ? eventsOut[eventsOut.length - 1].dayNumber : 0;
   const sources = new Set(eventsOut.map((event) => event.source));
-  const flagged = claims.filter((claim) => claim.skepticFlag).length;
-  const supportedCount = kept.filter((claim) => claim.verifyStatus === "supported").length;
+  // Narrative counts describe the canonical story steps, not every claim
+  // angle folded into a step.
+  const storyClaims = ordered.map((entry) => entry.claim);
+  const flagged = storyClaims.filter((claim) => claim.skepticFlag).length;
+  const supportedCount = storyClaims.filter((claim) => claim.verifyStatus === "supported").length;
   const longestSilence = silences.reduce((longest, silence) => Math.max(longest, silence.days), 0);
 
   const narrativeParts: string[] = [];

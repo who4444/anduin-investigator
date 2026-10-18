@@ -171,7 +171,7 @@ export async function runInvestigator(
   ].join("\n");
 
   const claimsBefore = (await getClaims(investigationId)).filter((claim) => claim.agent === kind).length;
-  const { content, log } = await runToolLoop({
+  const loop = await runToolLoop({
     client: getLlmClient(),
     system,
     user,
@@ -179,52 +179,93 @@ export async function runInvestigator(
     exec: tools.exec,
     maxRounds: MAX_ROUNDS,
   });
+  const log = [...loop.log];
+  let finalContent = loop.content;
+  let transcript = loop.messages;
+
+  const mergeContent = (base: string, incoming: string): string => {
+    const incomingParsed = extractJson(incoming);
+    if (!isPlainObject(incomingParsed)) return base;
+    const baseParsed = extractJson(base);
+    if (!isPlainObject(baseParsed)) return incoming;
+    const merge = (key: string): unknown[] => [
+      ...(Array.isArray(baseParsed[key]) ? (baseParsed[key] as unknown[]) : []),
+      ...(Array.isArray(incomingParsed[key]) ? (incomingParsed[key] as unknown[]) : []),
+    ];
+    return JSON.stringify({ claims: merge("claims"), notes: merge("notes") });
+  };
+
+  const submitted = async (): Promise<boolean> =>
+    (await getClaims(investigationId)).filter((claim) => claim.agent === kind).length > claimsBefore;
+
+  // A model that spends its whole search budget reading and verifying can run
+  // out of rounds before it submits anything. Give it one submission-only
+  // phase with the full transcript: no search tools, only submit_claim /
+  // submit_commitment. This is what prevents a real run from ending with a
+  // rich tool log and an empty report.
+  let harvestedClaims = false;
+  if (!(await submitted())) {
+    const submitNames = new Set(["submit_claim", "submit_commitment"]);
+    try {
+      const harvest = await runToolLoop({
+        client: getLlmClient(),
+        system,
+        user,
+        messages: [
+          ...transcript,
+          {
+            role: "user",
+            content:
+              "The search budget is spent. Search and read tools are no longer available. You have already read the evidence above — do not search again. Submit every source-backed finding now with submit_claim (or submit_commitment for promises): use the item_id you read, an exact quote, the actor and timestamp from the item, and issue_id. If a finding is not supported by the records, leave it out and put it in notes.",
+          },
+        ],
+        tools: tools.specs.filter((spec) => submitNames.has(spec.function.name)),
+        exec: async (name, args) =>
+          submitNames.has(name)
+            ? tools.exec(name, args)
+            : JSON.stringify({
+                error: "The search budget is spent. Submit the findings you already verified.",
+              }),
+        maxRounds: 3,
+      });
+      log.push(...harvest.log);
+      transcript = harvest.messages;
+      harvestedClaims = collectClaims(harvest.content, kind, issues).length > 0;
+      finalContent = mergeContent(finalContent, harvest.content);
+    } catch {
+      // The loop transcript is still parsed below.
+    }
+  }
+
+  // If the submission phase still produced no claims, ask for a JSON-only
+  // summary with the transcript attached (the old fallback lost the evidence
+  // it was supposed to summarise).
+  if (!harvestedClaims && !(await submitted())) {
+    try {
+      const summary = await getLlmClient().chat(
+        [
+          ...transcript,
+          {
+            role: "user",
+            content:
+              'Reply with JSON only: {"claims":[],"notes":["things you could not determine"]}. Use only evidence in this conversation; cite item ids and set issue_id on every note.',
+          },
+        ],
+        { forceJson: true },
+      );
+      finalContent = mergeContent(finalContent, summary.content);
+    } catch {
+      // The loop's own content is still parsed below.
+    }
+  }
+
+  const existing = await getClaims(investigationId);
   const toolLog = log.map((entry) => ({
     round: entry.round,
     name: entry.name,
     args: truncateArgs(entry.args),
     resultCount: previewCount(entry.resultPreview),
   }));
-
-  const existing = await getClaims(investigationId);
-  const submittedDuringLoop = existing.filter((claim) => claim.agent === kind).length > claimsBefore;
-
-  // If the tool budget ran out before anything was submitted, force one final
-  // structured reply so the investigation still yields findings.
-  let finalContent = content;
-  if (!submittedDuringLoop) {
-    try {
-      const forced = await getLlmClient().chat(
-        [
-          { role: "system", content: system },
-          { role: "user", content: user },
-          {
-            role: "user",
-            content:
-              'You have reached the tool-call limit. Do not call tools. Reply with JSON only: {"claims":[],"notes":[]} using evidence you have already read, citing item ids you have seen and setting issue_id on every claim and note.',
-          },
-        ],
-        { forceJson: true },
-      );
-      // Merge the forced reply into the loop content as JSON — string
-      // concatenation of two objects no longer parses.
-      const forcedParsed = extractJson(forced.content);
-      if (isPlainObject(forcedParsed)) {
-        const baseParsed = extractJson(finalContent);
-        if (!isPlainObject(baseParsed)) {
-          finalContent = forced.content;
-        } else {
-          const merge = (key: string): unknown[] => [
-            ...(Array.isArray(baseParsed[key]) ? (baseParsed[key] as unknown[]) : []),
-            ...(Array.isArray(forcedParsed[key]) ? (forcedParsed[key] as unknown[]) : []),
-          ];
-          finalContent = JSON.stringify({ claims: merge("claims"), notes: merge("notes") });
-        }
-      }
-    } catch {
-      // The loop's own content is still parsed below.
-    }
-  }
 
   const existingKeys = new Set(
     existing.filter((claim) => claim.agent === kind).map((claim) => claimKey(claim.eventId, claim.text)),

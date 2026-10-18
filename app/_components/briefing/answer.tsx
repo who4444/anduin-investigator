@@ -145,7 +145,11 @@ export function AnswerSection({
 
       {scope && scope.confidence !== "none" && (
         <p className={`scope-line tone-${scope.confidence}`}>
-          {scope.confidence === "partial" && <span className="scope-flag">Unconfirmed scope</span>}
+          {scope.confidence === "partial" && (
+            <span className={`scope-flag${scope.reviewed ? " scope-confirmed" : ""}`}>
+              {scope.reviewed ? "Scope confirmed by you" : "Unconfirmed scope"}
+            </span>
+          )}
           <span className="scope-client">{scopeParts.join(" · ")}</span>
           {scope.excludedRecords + scope.excludedClaims > 0 && (
             <span className="small muted">
@@ -164,8 +168,11 @@ export function AnswerSection({
               from other clients or projects excluded
             </span>
           )}
-          {scope.confidence === "partial" && (
+          {scope.confidence === "partial" && !scope.reviewed && (
             <span className="small muted"> — verify before relying on it.</span>
+          )}
+          {scope.confidence === "partial" && scope.reviewed && (
+            <span className="small muted"> — confirmed by you before the run.</span>
           )}
           {scope.includedByReview > 0 && (
             <span className="small muted">

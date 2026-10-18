@@ -61,7 +61,7 @@ exports[`report view snapshots (P0 fixtures) > duplicate-promise view 1`] = `
     },
     "latestFix": {
       "known": false,
-      "reason": "no release or fix record was found",
+      "reason": "no record shows a fix shipping",
       "value": null,
     },
     "nextCommitment": {
@@ -469,13 +469,9 @@ exports[`report view snapshots (P0 fixtures) > shared-channel view 1`] = `
       },
     },
     "latestFix": {
-      "eventId": "f1-jira",
-      "known": true,
-      "since": "2024-09-10T03:00:00.000Z",
-      "value": {
-        "text": "Timezone change merged for release 4.12.",
-        "ts": "2024-09-10T03:00:00.000Z",
-      },
+      "known": false,
+      "reason": "no record shows a fix shipping",
+      "value": null,
     },
     "nextCommitment": {
       "known": false,

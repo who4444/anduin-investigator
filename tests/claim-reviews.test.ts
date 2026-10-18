@@ -31,9 +31,14 @@ describeDb("claim reviews (G-14)", () => {
   let claimB = "";
 
   beforeAll(async () => {
-    const { createInvestigation, insertClaims, insertEvents, setClaimVerification } = await import(
-      "../lib/store"
-    );
+    const {
+      createInvestigation,
+      insertClaims,
+      insertEvents,
+      mergeCommitment,
+      setClaimVerification,
+      upsertStage,
+    } = await import("../lib/store");
     investigationId = await createInvestigation({
       title: `Reviews ${randomUUID()}`,
       escalationText: "",
@@ -83,6 +88,26 @@ describeDb("claim reviews (G-14)", () => {
     claimB = inserted[1].id;
     await setClaimVerification(claimA, "verified", null, { quote: { ok: true } });
     await setClaimVerification(claimB, "verified", null, { quote: { ok: true } });
+    await mergeCommitment(investigationId, {
+      claimId: claimB,
+      issueId: null,
+      promisor: "Marcus Webb",
+      promisee: "Northwind",
+      object: "invoice totals fixed in the Sep 24 release",
+      conditions: null,
+      deadlinePhrase: "Sep 24",
+      deadlineIso: "2024-09-24T00:00:00.000Z",
+      rationale: null,
+      fulfilmentEventIds: [],
+      status: "broken",
+      sourceEventId: "e_rv_2",
+      dedupeKey: "rv|invoice totals|2024-09-24",
+    });
+    // Make the investigation look assembled so the review route freezes a new
+    // report version and stats.reviewed can be asserted.
+    await upsertStage(investigationId, "assemble", 1, "done");
+    const { assemble } = await import("../lib/pipeline/assemble");
+    await assemble(investigationId);
   });
 
   afterAll(async () => {
@@ -119,6 +144,58 @@ describeDb("claim reviews (G-14)", () => {
     ).toBe(true);
     // The untouched verified claim is still safe to repeat.
     expect(view.safeToRepeat.map((item) => item.claimId)).toContain(claimB);
+
+    // G-14/G-08: the correction froze a new report version whose stats carry it.
+    const { getLatestReportVersion } = await import("../lib/store");
+    const version = await getLatestReportVersion(investigationId, null);
+    expect((version?.stats as { reviewed?: number } | undefined)?.reviewed).toBe(1);
+  });
+
+  it("removes a reviewed promise from the ledger, the bottom line and the metric", async () => {
+    const { POST, DELETE } = await import(
+      "../app/api/investigations/[id]/claims/[claimId]/review/route"
+    );
+    const response = await POST(
+      post({ verdict: "unsupported", reason: "the release note was about a different fix" }),
+      context(investigationId, claimB),
+    );
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { versionRecorded?: boolean }).versionRecorded).toBe(true);
+
+    const { buildResult } = await import("../lib/pipeline/assemble");
+    const { buildBottomLine } = await import("../lib/report/bottomline");
+    const { buildReportView } = await import("../lib/report/build");
+    const result = await buildResult(investigationId);
+    expect(result.stats.reviewed).toBe(2);
+
+    const view = buildReportView({
+      events: result.timeline,
+      claims: result.claims,
+      notes: [],
+      commitments: result.commitments,
+    });
+    expect(view.ledger.some((row) => row.claimId === claimB)).toBe(false);
+
+    const bottom = buildBottomLine({
+      events: result.timeline,
+      claims: result.claims,
+      notes: [],
+      gaps: [],
+      commitments: result.commitments,
+    });
+    const promises = bottom.cells.find((cell) => cell.id === "promises");
+    expect(promises?.claimIds).not.toContain(claimB);
+    expect(view.metrics.find((metric) => metric.id === "commitments")?.claimIds).not.toContain(claimB);
+
+    const { getLatestReportVersion } = await import("../lib/store");
+    const version = await getLatestReportVersion(investigationId, null);
+    expect((version?.stats as { reviewed?: number } | undefined)?.reviewed).toBe(2);
+
+    // Leave the fixture clean for the DELETE test below.
+    await DELETE(
+      new NextRequest("http://localhost/review", { method: "DELETE" }),
+      context(investigationId, claimB),
+    );
   });
 
   it("rejects an unknown verdict and an unknown claim, and clears on DELETE", async () => {

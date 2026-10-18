@@ -46,6 +46,7 @@ export function BriefingShell({
   report,
   progressHref,
   rerunHref,
+  watchHref,
   synthetic,
   cached,
   live,
@@ -53,6 +54,7 @@ export function BriefingShell({
   report: ReportPayload;
   progressHref: string;
   rerunHref: string;
+  watchHref: string;
   synthetic: boolean;
   cached: boolean;
   live: boolean;
@@ -227,7 +229,7 @@ export function BriefingShell({
         {!report.complete && (
           <p className="alert alert-warn">
             This report is still being produced — findings may be incomplete.{" "}
-            <a href={progressHref}>Watch the run</a> and reload afterwards.
+            <a href={watchHref}>Watch the run</a> and reload afterwards.
           </p>
         )}
         {multi && !report.activeIssueId && (

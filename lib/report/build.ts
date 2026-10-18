@@ -905,6 +905,7 @@ export function buildLedger(input: ReportInput): LedgerRow[] {
         const claim = claimsById.get(commitment.claimId);
         if (
           !claim ||
+          claim.review ||
           (claim.verifyStatus !== "verified" && claim.verifyStatus !== "supported")
         ) {
           return null;

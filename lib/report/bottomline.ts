@@ -37,7 +37,9 @@ function shorten(text: string, maxWords = 9): string {
 
 function visibleClaims(claims: Claim[]): Claim[] {
   return claims.filter(
-    (claim) => claim.verifyStatus === "verified" || claim.verifyStatus === "supported",
+    (claim) =>
+      !claim.review &&
+      (claim.verifyStatus === "verified" || claim.verifyStatus === "supported"),
   );
 }
 

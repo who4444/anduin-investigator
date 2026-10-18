@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { resumePointFromStages, runPipeline, type StageUpdate } from "@/lib/orchestrator";
+import {
+  investigatorResumePass,
+  missingInvestigatorKinds,
+  resumePointFromStages,
+  runPipeline,
+  type StageUpdate,
+} from "@/lib/orchestrator";
 import type { CoverageReport } from "@/lib/pipeline/coverage";
 import { coverageLabel, coverageState } from "@/lib/pipeline/coverage";
 import type { ReportScope } from "@/lib/pipeline/scope";
@@ -75,6 +81,16 @@ function reportHref(id: string, flags: ProgressViewProps["flags"]) {
   return `/investigations/${id}${suffix ? `?${suffix}` : ""}`;
 }
 
+/** G-13: the driving progress URL (no review=1) — visiting it resumes the run. */
+function drivingProgressHref(id: string, flags: ProgressViewProps["flags"]) {
+  const query = new URLSearchParams();
+  if (flags.synthetic) query.set("synthetic", "1");
+  if (flags.cached) query.set("cached", "1");
+  if (flags.live) query.set("live", "1");
+  const suffix = query.toString();
+  return `/investigations/${id}/progress${suffix ? `?${suffix}` : ""}`;
+}
+
 function asReviewIssues(issues: Issue[]): ReviewIssue[] {
   return issues.map((issue) => ({
     id: issue.id,
@@ -137,6 +153,8 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
   const [scopeSelection, setScopeSelection] = useState<Set<string>>(new Set());
   const [scopeSaving, setScopeSaving] = useState(false);
   const [scopeError, setScopeError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reviewIncomplete, setReviewIncomplete] = useState(false);
   const started = useRef(false);
   const done = useRef(false);
 
@@ -221,6 +239,13 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       const assembleDone = current.some(
         (stage) => stage.stage === "assemble" && stage.status === "done",
       );
+      // G-13: the read-only review of an unfinished run must say so and
+      // offer a continuation — it never drives the pipeline itself.
+      if (!rerun && reviewOnly && !assembleDone) {
+        setReviewIncomplete(true);
+        finish();
+        return;
+      }
       // A re-run deliberately redoes investigate → verify → assemble over the
       // enlarged scope, so the finished state must not short-circuit it.
       if (!rerun && (assembleDone || reviewOnly)) {
@@ -295,8 +320,15 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         // G-13: resume at the first unfinished stage — a half-finished run
         // redoes only what is missing, never the stages already stored.
         const resumeAt = resumePointFromStages(current);
+        const resumeInvestigators = resumeAt === "investigate";
         const outcome = await runPipeline(investigationId, {
           startAt: resumeAt === "plan" ? "investigate" : resumeAt,
+          investigatorKinds: resumeInvestigators ? missingInvestigatorKinds(current) : undefined,
+          startPass: resumeInvestigators ? investigatorResumePass(current) : undefined,
+          // A resumed run may take over the dead session's lease once it has
+          // gone idle, and narrates the wait instead of failing (G-13).
+          resume: true,
+          onNotice: setNotice,
           onStage,
         });
         await handleOutcome(outcome);
@@ -387,6 +419,8 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       started.current = true;
       const outcome = await runPipeline(investigationId, {
         startAt: "investigate",
+        resume: true,
+        onNotice: setNotice,
         onStage: (update) => {
           if (update.status === "error" && update.error) {
             setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
@@ -424,6 +458,8 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
       const outcome = await runPipeline(investigationId, {
         startAt: "plan",
         stopForIssueReview: true,
+        resume: true,
+        onNotice: setNotice,
         onStage: (update) => {
           if (update.status === "error" && update.error) {
             setError(`${update.stage.replace(/_/g, " ")} failed: ${update.error}`);
@@ -505,6 +541,14 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         Stages are stored server-side: closing this tab pauses the run, and reopening this page
         resumes it at the first unfinished stage — finished work is never redone.
       </p>
+      {notice && <p className="alert alert-warn">{notice}</p>}
+      {reviewIncomplete && (
+        <p className="alert alert-warn">
+          This run has not finished — the stored stages are shown read-only.{" "}
+          <a href={drivingProgressHref(investigationId, flags)}>Continue the investigation</a> to
+          resume it at the first unfinished stage.
+        </p>
+      )}
 
       <section className="panel">
         <ol className="stage-list">

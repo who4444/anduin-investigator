@@ -279,4 +279,35 @@ describe("buildBriefing", () => {
     expect(promiseSteps[0].sourceCount).toBe(3);
     expect(promiseSteps[0].contested).toBe(true);
   });
+
+  /* G-10 acceptance: several angles citing the same record are one step, not
+     a cluster of near-identical rows; the drawer still lists every claim. */
+  it("renders one story step per cited record when several claims cite it", () => {
+    const angles = [
+      ...claims,
+      claim({
+        id: "c3b",
+        eventId: "e3",
+        text: "The Sep 24 promise was never delivered.",
+        type: "root_cause",
+        actor: "Marcus Webb",
+        ts: "2024-09-24T16:00:00.000Z",
+      }),
+      claim({
+        id: "c3c",
+        eventId: "e3",
+        text: "The fix was promised for Sep 24 but QA later failed.",
+        type: "process_failure",
+        actor: "Marcus Webb",
+        ts: "2024-09-24T16:00:00.000Z",
+      }),
+    ];
+    const grouped = buildBriefing({ events, claims: angles });
+    const e3Steps = grouped.events.filter((entry) => entry.ts.startsWith("2024-09-24"));
+    expect(e3Steps).toHaveLength(1);
+    // The broken commitment is the canonical step for that record.
+    expect(e3Steps[0].claimId).toBe("c3");
+    // The narrative counts steps, so it cannot promise more findings than rows.
+    expect(grouped.narrative).toContain(`${grouped.events.length} source-backed findings`);
+  });
 });

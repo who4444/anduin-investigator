@@ -198,12 +198,16 @@ export default async function ReportPage({
   // G-01 review: the report offers the excluded list, and this is where a
   // confirmed add-back re-runs the investigation over the enlarged scope.
   const rerunHref = `/investigations/${id}/progress?rerun=1${suffix ? `&${suffix}` : ""}`;
+  // G-13: for an unfinished report the run must be DRIVEN (no review=1);
+  // review=1 is the read-only "how this was produced" view.
+  const watchHref = `/investigations/${id}/progress${suffix ? `?${suffix}` : ""}`;
 
   return (
     <BriefingShell
       report={report}
       progressHref={progressHref}
       rerunHref={rerunHref}
+      watchHref={watchHref}
       synthetic={query.synthetic === "1" || report.investigation.origin === "demo"}
       cached={query.cached === "1"}
       live={query.live === "1" || report.investigation.origin === "pull"}

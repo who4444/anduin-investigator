@@ -3,7 +3,7 @@ import type { JSONValue } from "postgres";
 
 import { getPool } from "./db/pool";
 import { toUtcIso } from "./ingest/normalize";
-import { mergeStatuses } from "./pipeline/commitments";
+import { mergeStatuses, normalizePerson } from "./pipeline/commitments";
 import { normalizePlanData } from "./pipeline/plan";
 import type {
   Claim,
@@ -522,18 +522,20 @@ export async function mergeCommitment(
   // Restatements rarely phrase the object the same way ("ship the VAT export
   // fix in the Sep 20 release" vs "fix scheduled for the Sep 20 release").
   // Same promisor + deadline + issue is the same promise in practice; merge it
-  // rather than showing the manager two rows for one commitment.
-  const [fuzzyRow] = exactRow
-    ? [null]
-    : await sql<CommitmentRow[]>`
-        select * from commitments
-        where investigation_id = ${investigationId}
-          and lower(coalesce(promisor, '')) = lower(${record.promisor ?? ""})
-          and deadline_iso is not distinct from ${record.deadlineIso}::timestamptz
-          and issue_id is not distinct from ${record.issueId ?? null}::uuid
-        order by created_at asc
-        limit 1
-      `;
+  // rather than showing the manager two rows for one commitment. The promisor
+  // is compared by identity-normalised name (email suffix/word order ignored).
+  let fuzzyRow: CommitmentRow | null = null;
+  if (!exactRow) {
+    const candidates = await sql<CommitmentRow[]>`
+      select * from commitments
+      where investigation_id = ${investigationId}
+        and deadline_iso is not distinct from ${record.deadlineIso}::timestamptz
+        and issue_id is not distinct from ${record.issueId ?? null}::uuid
+      order by created_at asc
+    `;
+    const promisor = normalizePerson(record.promisor);
+    fuzzyRow = candidates.find((row) => normalizePerson(row.promisor) === promisor) ?? null;
+  }
   const existingRow = exactRow ?? fuzzyRow;
 
   if (existingRow) {
@@ -921,13 +923,25 @@ export async function setIngestWarnings(id: string, warnings: string[]): Promise
 const STAGE_LEASE_SECONDS = 180;
 const STALE_RUNNING_SECONDS = 180;
 
+/** G-13: a resumed run (a reopened tab presents a new worker id) may take
+    over a lease whose holder has not renewed for this long — the old tab is
+    gone. Well above the longest single stage, so a live holder is never
+    clobbered mid-flight. Tunable for tests via RESUME_IDLE_SECONDS. */
+const RESUME_IDLE_SECONDS = Math.max(0, Number(process.env.RESUME_IDLE_SECONDS ?? 90));
+
 export async function acquireStageLease(
   investigationId: string,
   holder: string,
   ttlSeconds = STAGE_LEASE_SECONDS,
+  options: { resume?: boolean; idleSeconds?: number } = {},
 ): Promise<boolean> {
   const sql = getPool();
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+  // The holder's last renewal was (expiresAt - ttl). Stealable when that is
+  // older than the idle window: expiresAt < now + ttl - idleSeconds.
+  const idleSeconds = options.idleSeconds ?? RESUME_IDLE_SECONDS;
+  const stealBefore = new Date(Date.now() + (ttlSeconds - idleSeconds) * 1000).toISOString();
+  const resume = options.resume === true;
   const rows = await sql<{ id: string }[]>`
     update investigations
     set lease = ${sql.json({ holder, expiresAt } as unknown as JSONValue)}
@@ -936,6 +950,7 @@ export async function acquireStageLease(
         lease is null
         or (lease ->> 'expiresAt')::timestamptz < now()
         or lease ->> 'holder' = ${holder}
+        or (${resume} and (lease ->> 'expiresAt')::timestamptz < ${stealBefore}::timestamptz)
       )
     returning id
   `;
