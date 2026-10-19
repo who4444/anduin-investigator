@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:ui": "playwright test",
     "realistic:gen": "tsx scripts/gen-realistic.ts",
-    "real:smoke": "tsx scripts/real-smoke.ts"
+    "real:smoke": "tsx scripts/real-smoke.ts",
+    "clean:test": "tsx scripts/clean-test-investigations.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",
