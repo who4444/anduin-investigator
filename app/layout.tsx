@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Atkinson_Hyperlegible, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 
 import "./globals.css";
 
-const atkinson = Atkinson_Hyperlegible({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-atkinson",
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
 });
 
-const sourceSerif = Source_Serif_4({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-source-serif",
+  weight: ["400", "500"],
+  variable: "--font-newsreader",
 });
 
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500"],
   variable: "--font-jetbrains",
 });
 
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${atkinson.variable} ${sourceSerif.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${inter.variable} ${newsreader.variable} ${jetbrains.variable}`}>
       <body>
         <header className="app-header">
           <div className="app-header-inner">

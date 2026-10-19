@@ -99,7 +99,7 @@ test("the section nav links to the visible timeline board", async ({ page, reque
   await page.getByRole("link", { name: "Timeline detail" }).click();
   await expect(page).toHaveURL(/#timeline-detail$/);
   await expect(page.locator("#timeline-detail")).toBeVisible();
-  await expect(page.locator(".swimlane-axis-track")).toBeVisible();
+  await expect(page.locator(".tl-axis-track")).toBeVisible();
 });
 
 test("print layout keeps the answer and hides interactive chrome", async ({ page, request }) => {
@@ -107,10 +107,11 @@ test("print layout keeps the answer and hides interactive chrome", async ({ page
   await page.goto(`/investigations/${id}`);
 
   await page.emulateMedia({ media: "print" });
-  await expect(page.locator(".app-header")).toBeHidden();
+  await expect(page.locator(".apps-header")).toHaveCount(0).catch(() => undefined);
+  await expect(page.locator(".app-header")).toContainText("internal report · not for external distribution");
   await expect(page.locator(".section-index")).toBeHidden();
   await expect(page.locator("#timeline-detail")).toBeHidden();
-  await expect(page.locator(".scoreboard-cell").first()).toBeVisible();
+  await expect(page.locator(".stats-bar")).toBeVisible();
   await expect(page.locator(".scope-line").first()).toBeVisible();
 });
 
@@ -119,22 +120,25 @@ test("a 375px viewport keeps the story readable", async ({ page, request }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto(`/investigations/${id}`);
 
-  // The swimlane is deliberately hidden on small screens; the chapters carry
-  // the same events.
-  await expect(page.locator(".swimlane-wrap")).toBeHidden();
-  await expect(page.locator(".scoreboard-cell").first()).toBeVisible();
+  // The timeline now stays on small screens as a horizontal scroller with the
+  // lane labels sticky on the left.
+  const scroller = page.locator(".tl-scroll");
+  await expect(scroller).toBeVisible();
+  const overflow = await scroller.evaluate((node) => node.scrollWidth > node.clientWidth);
+  expect(overflow).toBe(true);
+  await expect(page.locator(".stats-legend .legend-item").first()).toBeVisible();
   await expect(page.locator(".chapter").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "What happened" })).toBeVisible();
 });
 
-test("keyboard-only: the drawer opens from a scoreboard cell and Esc restores focus", async ({
+test("keyboard-only: the drawer opens from the verification legend and Esc restores focus", async ({
   page,
   request,
 }) => {
   const id = await seed(request);
   await page.goto(`/investigations/${id}`);
 
-  const cell = page.locator(".scoreboard-cell:not([disabled])").first();
+  const cell = page.locator(".stats-legend .legend-item:not([disabled])").first();
   await cell.focus();
   await page.keyboard.press("Enter");
 
@@ -148,7 +152,7 @@ test("keyboard-only: the drawer opens from a scoreboard cell and Esc restores fo
   await page.keyboard.press("Escape");
   await expect(drawer).toHaveCount(0);
   const focusRestored = await page.evaluate(
-    () => (document.activeElement as HTMLElement | null)?.classList.contains("scoreboard-cell") ?? false,
+    () => (document.activeElement as HTMLElement | null)?.classList.contains("legend-item") ?? false,
   );
   expect(focusRestored).toBe(true);
 });

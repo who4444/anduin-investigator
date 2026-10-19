@@ -32,9 +32,9 @@ test("the built-in scenario runs end to end and lands on the answer-first report
   // invariant — the declared client. Scope resolution itself is covered by
   // scope.spec.ts on fresh runs.
   await expect(page.locator(".scope-line")).toContainText("Northwind Logistics");
-  await expect(page.locator(".scoreboard-cell")).toHaveCount(5);
+  await expect(page.locator(".stats-legend .legend-item")).toHaveCount(3);
   await expect(page.locator(".client-says")).toContainText("The client says");
-  await expect(page.locator(".do-now .action-card").first()).toBeVisible();
+  await expect(page.locator(".do-now .do-row").first()).toBeVisible();
 
   // Sections are named as the business questions.
   await expect(page.getByRole("heading", { name: "What happened" })).toBeVisible();

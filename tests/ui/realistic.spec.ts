@@ -61,12 +61,12 @@ test("a realistic four-tenant workspace lands scoped to the escalation's engagem
   await expect(page.locator(".scope-line.tone-scoped")).toContainText("Bright Market");
   await expect(page.locator(".scope-line")).toContainText("excluded");
 
-  // The five answers are all determined at this volume.
-  const cells = await page.locator(".scoreboard-cell").all();
-  expect(cells.length).toBe(5);
-  for (const cell of cells) {
-    await expect(cell).not.toContainText("not determined");
-  }
+  // The answer-level counts are all determined at this volume.
+  await expect(page.locator(".stats-bar")).toBeVisible();
+  await expect(page.locator(".stats-legend .legend-item")).toHaveCount(3);
+  const meta = await page.locator(".stats-meta").innerText();
+  expect(meta).toMatch(/\d+ findings/);
+  expect(meta).not.toContain("not determined");
 });
 
 test("retrieval stays inside the scoped engagement at volume", async ({ request }) => {

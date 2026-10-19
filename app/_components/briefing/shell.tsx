@@ -10,8 +10,8 @@ import {
   ModelOpenQuestions,
   ModelPromises,
   ModelStory,
-  ModelSwimlane,
 } from "@/app/_components/briefing/model-view";
+import { ModelSwimlane } from "@/app/_components/briefing/timeline";
 import { ReplySection } from "@/app/_components/briefing/sections";
 import type { ReportPayload } from "@/lib/report/build";
 import { fullFindingLabel } from "@/lib/report/model";
@@ -112,6 +112,20 @@ export function BriefingShell({
     const heading = fullFindingLabel(finding, report.model.actors);
     if (finding.claimIds[0]) openClaim(finding.claimIds[0], heading);
     else if (finding.eventIds[0]) setDrawer({ eventId: finding.eventIds[0], heading });
+  };
+
+  /* Timeline clicks land on the finding in "What happened" and briefly
+     highlight it (falling back to the evidence drawer when the row is not on
+     the page). */
+  const focusFinding = (finding: ReportFindingModel) => {
+    const element = document.getElementById(finding.slug);
+    if (!element) {
+      openFinding(finding);
+      return;
+    }
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    element.classList.add("is-highlight");
+    window.setTimeout(() => element.classList.remove("is-highlight"), 1600);
   };
 
   async function approveReply(approved: boolean) {
@@ -274,7 +288,7 @@ export function BriefingShell({
             <section className="briefing-section board-section" id="timeline-detail" aria-labelledby="board-title">
               <h2 id="board-title">Timeline detail</h2>
               <p className="small muted">One board for the whole report; the silent period is drawn here once.</p>
-              <ModelSwimlane report={report} onFinding={openFinding} />
+              <ModelSwimlane report={report} onFinding={focusFinding} />
             </section>
             <ModelPromises report={report} onFinding={openFinding} />
             <ModelFailures report={report} onFinding={openFinding} />

@@ -1,0 +1,1150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Anduin Investigator — redesign preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================================
+   Design tokens — the central layer (mirrors the planned :root in globals.css)
+   ========================================================================= */
+:root {
+  /* surfaces */
+  --page: #FAFAF8;
+  --panel: #FFFFFF;
+  --fill: #F3F2EE;
+  --fill-hover: #ECEAE4;
+
+  /* ink */
+  --text: #1C1B19;
+  --muted: #6B6862;
+  --faint: #A6A29A; /* non-text only: dots, swatches */
+
+  /* lines */
+  --border: #E7E5E0;
+  --border-strong: #D8D5CE;
+
+  /* brand accent — primary buttons, links, focus, active tab ONLY */
+  --accent: #3B4CCA;
+  --accent-soft: #EEF0FC;
+  --accent-hover: #3240B4;
+  --accent-disabled: #9AA2E4;
+  --link: var(--accent);
+
+  /* source identity */
+  --jira: #2B6CB0;   --jira-soft: #EDF3FA;
+  --slack: #7B3F8C;  --slack-soft: #F6EFFA;
+  --email: #946200;  --email-soft: #FBF4E4;
+
+  /* status — soft tint + darker text, always icon + label */
+  --verified: #1D7A5F;      --verified-soft: #E9F6F1;
+  --needs-check: #8A5A00;   --needs-check-soft: #FCF3E2;
+  --conflict: #B4233A;      --conflict-soft: #FBEEF0;
+  --neutral-soft: #F1F0EC;
+
+  /* type */
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-headline: "Newsreader", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-meta: 12px;
+  --fs-secondary: 14px;
+  --fs-body: 16px;
+  --fs-section: 20px;
+  --fs-page: 32px;
+
+  /* space */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-section: 48px;
+
+  /* shape */
+  --r-control: 8px;
+  --r-card: 12px;
+  --r-tag: 6px;
+  --r-pill: 999px;
+
+  /* depth — exactly two elevations */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-float: 0 8px 24px rgba(16, 24, 40, 0.08);
+
+  /* motion */
+  --dur: 150ms;
+  --ease: ease;
+
+  /* layout */
+  --content: 720px;
+  --report: 1080px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+a { color: var(--link); text-decoration: none; }
+button { font-family: inherit; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tabular { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: var(--fs-secondary); }
+.meta { font-size: var(--fs-meta); }
+.hide-mobile { display: inline; }
+
+h1 { font-size: var(--fs-page); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+h2 { font-size: var(--fs-section); font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+h3 { font-size: var(--fs-body); font-weight: 600; line-height: 1.35; }
+
+/* ============================================================================
+   Demo shell (review artifact only — not part of the app)
+   ========================================================================= */
+.demo-bar {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(250, 250, 248, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.demo-bar .demo-title {
+  font-size: var(--fs-meta); font-weight: 500; color: var(--muted);
+  letter-spacing: 0.02em; margin-right: auto;
+}
+.demo-tab {
+  height: 32px; padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong); border-radius: var(--r-control);
+  background: var(--panel); color: var(--text);
+  font-size: var(--fs-secondary); font-weight: 500; cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.demo-tab:hover { background: var(--fill); }
+.demo-tab.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.demo-view[hidden] { display: none; }
+
+/* ============================================================================
+   Global app header (layout.tsx) — aligned to the content column
+   ========================================================================= */
+.app-header { border-bottom: 1px solid var(--border); background: var(--page); }
+.app-header-inner {
+  max-width: var(--report);
+  margin: 0 auto;
+  padding: var(--sp-4) var(--sp-5);
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4);
+  transition: max-width var(--dur) var(--ease);
+}
+body[data-view="begin"] .app-header-inner,
+body[data-view="progress"] .app-header-inner,
+body[data-view="components"] .app-header-inner { max-width: var(--content); }
+.app-brand { font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+.app-brand:hover { color: var(--accent); }
+
+/* ============================================================================
+   Containers
+   ========================================================================= */
+.wrap { max-width: var(--content); margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-8); }
+.wrap-report { max-width: var(--report); margin: 0 auto; padding: 0 var(--sp-5) var(--sp-8); }
+
+/* ============================================================================
+   Buttons — filled primary / outlined secondary / text tertiary
+   ========================================================================= */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  height: 44px; padding: 0 var(--sp-5);
+  border: 1px solid var(--border-strong); border-radius: var(--r-control);
+  background: var(--panel); color: var(--text);
+  font-size: var(--fs-body); font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.btn:hover { background: var(--fill); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-primary:disabled {
+  background: var(--accent-disabled); border-color: var(--accent-disabled); color: #fff;
+  cursor: not-allowed;
+}
+
+.btn-text {
+  height: auto; padding: var(--sp-2) 0; border: none; background: none;
+  color: var(--accent); font-weight: 500;
+}
+.btn-text:hover { background: none; text-decoration: underline; }
+
+.btn-sm { height: 36px; padding: 0 var(--sp-4); font-size: var(--fs-secondary); }
+.btn .icon { width: 18px; height: 18px; }
+
+/* ============================================================================
+   Inputs — 44px, soft border, accent focus ring
+   ========================================================================= */
+.input {
+  width: 100%; min-height: 44px; padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-strong); border-radius: var(--r-control);
+  background: var(--panel); color: var(--text);
+  font-family: inherit; font-size: var(--fs-body); line-height: 1.45;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.input::placeholder { color: var(--faint); }
+.input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+textarea.input { min-height: 132px; resize: vertical; }
+
+.field { display: flex; flex-direction: column; gap: var(--sp-2); }
+.field-label { font-size: var(--fs-meta); font-weight: 500; color: var(--muted); letter-spacing: 0.01em; }
+
+/* ============================================================================
+   Panels & sections
+   ========================================================================= */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-6);
+}
+.stack { display: flex; flex-direction: column; gap: var(--sp-6); }
+.stack-sm { gap: var(--sp-3); }
+.stack-lg { gap: var(--sp-section); }
+.row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.spread { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+.hairline { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+/* ============================================================================
+   Pills, tags, chips
+   ========================================================================= */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-meta); font-weight: 500;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.pill .icon { width: 13px; height: 13px; }
+.pill-verified  { background: var(--verified-soft); color: var(--verified); }
+.pill-check     { background: var(--needs-check-soft); color: var(--needs-check); }
+.pill-conflict  { background: var(--conflict-soft); color: var(--conflict); }
+.pill-neutral   { background: var(--neutral-soft); color: var(--muted); }
+.pill-outline   { background: var(--panel); border-color: var(--border-strong); color: var(--muted); }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 8px;
+  border-radius: var(--r-tag);
+  font-size: var(--fs-meta); font-weight: 500;
+  background: var(--neutral-soft); color: var(--muted);
+}
+.tag-source { border: 1px solid transparent; }
+.tag-jira  { background: var(--jira-soft); color: var(--jira); }
+.tag-slack { background: var(--slack-soft); color: var(--slack); }
+.tag-email { background: var(--email-soft); color: var(--email); }
+.tag .icon { width: 13px; height: 13px; }
+
+.count-chip {
+  display: inline-flex; align-items: center;
+  height: 24px; padding: 0 10px; border-radius: var(--r-pill);
+  background: var(--fill); color: var(--muted);
+  font-size: var(--fs-secondary); font-weight: 500;
+}
+
+/* selectable chips — replace raw checkboxes */
+.pick {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  height: 34px; padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong); border-radius: var(--r-pill);
+  background: var(--panel); color: var(--text);
+  font-size: var(--fs-secondary); cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.pick:hover { background: var(--fill); }
+.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pick[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pick .pick-key { font-family: var(--font-mono); font-size: var(--fs-meta); opacity: 0.72; }
+.pick[aria-pressed="true"] .pick-key { opacity: 0.85; }
+
+/* ============================================================================
+   Icons (inline sprite; stroke 2, round caps — Lucide-style)
+   ========================================================================= */
+.icon { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icon-16 { width: 16px; height: 16px; }
+.icon-28 { width: 28px; height: 28px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* source icon tile */
+.source-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.source-icon.jira  { background: var(--jira-soft); color: var(--jira); }
+.source-icon.slack { background: var(--slack-soft); color: var(--slack); }
+.source-icon.email { background: var(--email-soft); color: var(--email); }
+
+/* ============================================================================
+   Page 1 — Begin
+   ========================================================================= */
+.sources-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.source-card { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-5); }
+.source-card-head { display: flex; align-items: center; gap: var(--sp-3); }
+.source-card-title { font-weight: 600; }
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-meta); color: var(--muted); }
+.conn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.conn.is-on .dot { background: var(--verified); }
+
+.sample-strip {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: var(--sp-4) var(--sp-6);
+  border: 1px dashed var(--border-strong); border-radius: var(--r-card);
+  background: var(--panel);
+}
+.recent-row {
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--border);
+}
+.recent-row:last-child { border-bottom: none; }
+.recent-row a { color: var(--text); font-weight: 500; }
+.recent-row a:hover { color: var(--accent); }
+
+/* ============================================================================
+   Page 2 — Progress
+   ========================================================================= */
+.steps { position: relative; padding-left: 40px; }
+.steps::before {
+  content: ""; position: absolute; left: 15px; top: 12px; bottom: 12px;
+  width: 2px; background: var(--border);
+}
+.step { position: relative; padding: var(--sp-3) 0 var(--sp-5); }
+.step:last-child { padding-bottom: var(--sp-2); }
+.step-icon {
+  position: absolute; left: -40px; top: var(--sp-3);
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel); border: 2px solid var(--border-strong); color: var(--faint);
+}
+.step.is-done .step-icon { border-color: var(--verified); color: var(--verified); background: var(--verified-soft); }
+.step.is-running .step-icon { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.step-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); }
+.step-name { font-weight: 600; }
+.step-dur { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--muted); }
+.step-sub { font-size: var(--fs-secondary); color: var(--muted); margin-top: 2px; }
+
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.tile { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-5); }
+.tile-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-section); font-weight: 500; }
+.tile-label { font-size: var(--fs-meta); color: var(--muted); font-weight: 500; }
+
+.callout {
+  display: flex; gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+  border: 1px solid var(--needs-check-soft);
+  border-left: 3px solid var(--needs-check);
+  border-radius: var(--r-card);
+  background: var(--needs-check-soft);
+  color: var(--text);
+}
+.callout .icon { color: var(--needs-check); margin-top: 2px; }
+.callout-body { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.log-group { border-top: 1px solid var(--border); padding-top: var(--sp-3); }
+.log-group:first-child { border-top: none; padding-top: 0; }
+.log-group-title {
+  font-family: var(--font-mono); font-size: var(--fs-meta); font-weight: 500;
+  color: var(--muted); letter-spacing: 0.02em; text-transform: lowercase;
+  display: flex; align-items: center; gap: var(--sp-2); cursor: pointer;
+}
+.log-row {
+  display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-4);
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-5);
+  font-size: var(--fs-secondary); color: var(--muted);
+}
+.log-row .tool { font-family: var(--font-mono); font-size: var(--fs-meta); color: var(--text); }
+.log-row .time { font-family: var(--font-mono); font-size: var(--fs-meta); }
+
+/* ============================================================================
+   Page 3 — Report
+   ========================================================================= */
+.tabbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(250, 250, 248, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.tabbar-inner {
+  max-width: var(--report); margin: 0 auto; padding: 0 var(--sp-5);
+  display: flex; gap: var(--sp-5); overflow-x: auto;
+}
+.tabbar a {
+  display: inline-flex; align-items: center; height: 48px;
+  color: var(--muted); font-size: var(--fs-secondary); font-weight: 500;
+  border-bottom: 2px solid transparent; white-space: nowrap;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.tabbar a:hover { color: var(--text); }
+.tabbar a.is-active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.report-head { padding: var(--sp-6) 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+.report-title { font-size: var(--fs-section); font-weight: 600; letter-spacing: -0.01em; }
+
+.hero {
+  padding: var(--sp-8) 0 var(--sp-6);
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+.hero-answer {
+  font-family: var(--font-headline);
+  font-size: 34px; line-height: 1.25; font-weight: 400; letter-spacing: -0.005em;
+  max-width: 26em;
+}
+.hero-line { font-size: var(--fs-body); color: var(--text); max-width: 48em; }
+.hero-status { display: flex; align-items: center; gap: var(--sp-3); color: var(--muted); font-size: var(--fs-meta); }
+.hero-status .mono { font-size: var(--fs-meta); }
+
+.stats-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; gap: 2px; background: var(--fill); }
+.stats-bar span { display: block; height: 100%; }
+.seg-verified { background: var(--verified); }
+.seg-check { background: #D9A21B; }
+.seg-conflict { background: var(--conflict); }
+.stats-legend { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-4); }
+.legend-item { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-secondary); }
+.legend-item .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.legend-item .count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+.stats-meta { display: flex; gap: var(--sp-5); flex-wrap: wrap; margin-top: var(--sp-4); font-size: var(--fs-secondary); color: var(--muted); }
+.stats-meta a { font-weight: 500; }
+
+.now-block {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border); border: 1px solid var(--border); border-radius: var(--r-card);
+  overflow: hidden;
+}
+.now-item { background: var(--panel); padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+.now-label { font-size: var(--fs-meta); font-weight: 500; color: var(--muted); }
+.now-value { font-weight: 500; }
+.now-sub { font-size: var(--fs-meta); color: var(--needs-check); }
+.now-unknown { font-size: var(--fs-secondary); color: var(--muted); }
+.record-link {
+  font-size: var(--fs-meta); font-family: var(--font-mono); color: var(--accent);
+  border-bottom: 1px dotted var(--accent);
+}
+
+.do-now { display: flex; flex-direction: column; }
+.do-row {
+  display: flex; gap: var(--sp-4); align-items: flex-start;
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+.do-row:last-child { border-bottom: none; }
+.do-row .icon { margin-top: 2px; }
+.do-row .icon.warn { color: var(--needs-check); }
+.do-row .icon.bad { color: var(--conflict); }
+.do-row .icon.info { color: var(--accent); }
+.do-trigger { font-size: var(--fs-meta); color: var(--muted); margin-top: 2px; }
+
+.finding {
+  display: grid; grid-template-columns: 150px 1fr; gap: var(--sp-5);
+  padding: var(--sp-5) 0; border-bottom: 1px solid var(--border);
+}
+.finding:last-child { border-bottom: none; }
+.finding-side { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.finding-head { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
+.finding-title { font-weight: 500; }
+.finding-text { color: var(--muted); font-size: var(--fs-secondary); }
+.finding-quote {
+  border-left: 3px solid var(--border-strong);
+  padding: var(--sp-2) var(--sp-4); margin-top: var(--sp-3);
+  background: var(--fill);
+  border-radius: 0 var(--r-tag) var(--r-tag) 0;
+  font-size: var(--fs-secondary); font-style: italic; color: var(--muted);
+}
+
+.timeline { display: flex; flex-direction: column; gap: var(--sp-2); }
+.tl-axis { display: grid; grid-template-columns: 110px 1fr; gap: var(--sp-4); color: var(--muted); font-family: var(--font-mono); font-size: var(--fs-meta); }
+.tl-axis .ticks { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: var(--sp-2); }
+.tl-row { display: grid; grid-template-columns: 110px 1fr; gap: var(--sp-4); align-items: center; }
+.tl-lane { font-size: var(--fs-meta); font-weight: 500; color: var(--muted); }
+.tl-track {
+  position: relative; height: 44px;
+  border-radius: var(--r-tag);
+  background:
+    linear-gradient(90deg, var(--border) 0 1px, transparent 1px) repeat-x;
+  background-size: calc(100% / 6) 100%;
+}
+.tl-track { background-image: none; }
+.tl-grid { position: absolute; inset: 0; display: flex; }
+.tl-grid span { flex: 1; border-right: 1px solid var(--border); }
+.tl-grid span:last-child { border-right: none; }
+.marker {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--panel); border: 2px solid var(--accent);
+}
+.marker.green { border-color: var(--verified); }
+.marker.amber { border-color: var(--needs-check); }
+.marker.red { border-color: var(--conflict); }
+.marker.cluster {
+  width: 26px; height: 22px; border-radius: var(--r-pill);
+  background: var(--accent); border: 2px solid var(--accent-soft); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+}
+.silence-band {
+  position: absolute; top: 4px; bottom: 4px;
+  background: repeating-linear-gradient(135deg, var(--fill) 0 6px, var(--fill-hover) 6px 12px);
+  border-radius: var(--r-tag); opacity: 0.9;
+}
+.silence-label { position: absolute; top: -18px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+.q-group { padding: var(--sp-5) 0; border-bottom: 1px solid var(--border); }
+.q-group:last-child { border-bottom: none; }
+.q-next { font-size: var(--fs-secondary); color: var(--muted); margin-top: var(--sp-2); }
+
+/* reply composer */
+.composer {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-8) var(--sp-8) var(--sp-6);
+  max-width: 760px;
+}
+.composer-meta {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-bottom: var(--sp-4); margin-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-secondary); color: var(--muted);
+}
+.composer-body { display: flex; flex-direction: column; gap: var(--sp-4); }
+.composer-greeting { color: var(--text); }
+.reply-line { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.reply-sentence { font-size: var(--fs-body); }
+.reply-composer-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  margin-top: var(--sp-6); padding-top: var(--sp-4); border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.approve { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-secondary); color: var(--muted); }
+.copy-reason { font-size: var(--fs-meta); color: var(--muted); margin-top: var(--sp-2); }
+
+/* ============================================================================
+   Skeleton
+   ========================================================================= */
+.skeleton {
+  border-radius: var(--r-tag);
+  background: linear-gradient(90deg, var(--fill) 25%, var(--fill-hover) 37%, var(--fill) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.sk-line { height: 12px; }
+.sk-card { height: 120px; border-radius: var(--r-card); }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+/* ============================================================================
+   Motion prefs
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ============================================================================
+   Responsive
+   ========================================================================= */
+@media (max-width: 900px) {
+  .sources-grid, .tiles, .now-block { grid-template-columns: 1fr; }
+  .finding { grid-template-columns: 1fr; gap: var(--sp-3); }
+}
+@media (max-width: 640px) {
+  :root { --fs-page: 26px; }
+  .wrap, .wrap-report, .tabbar-inner, .app-header-inner { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+  .panel { padding: var(--sp-5); }
+  .hero-answer { font-size: 26px; }
+  .tl-row, .tl-axis { grid-template-columns: 64px 1fr; }
+  .hide-mobile { display: none; }
+  .demo-bar { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= icon sprite (Lucide-style) ======================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.4 12.3l2.5 2.5 4.7-5.2"/></symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+  <symbol id="i-loader" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.6l9.3 16.1H2.7z"/><path d="M12 10v4.2"/><path d="M12 17.4v.1"/></symbol>
+  <symbol id="i-xcircle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.4 7.2L12 13l8.6-5.8"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 3.5L7.2 20.5M16.8 3.5L15 20.5M4.2 9h16.2M3.6 15h16.2"/></symbol>
+  <symbol id="i-kanban" viewBox="0 0 24 24"><rect x="4" y="4" width="4.6" height="16" rx="1.2"/><rect x="9.7" y="4" width="4.6" height="10" rx="1.2"/><rect x="15.4" y="4" width="4.6" height="13" rx="1.2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3.2 2"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15"/><path d="M13.5 6.5L19 12l-5.5 5.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M6.5 9.5L12 15l5.5-5.5"/></symbol>
+</svg>
+
+<!-- ============================== demo switcher ============================= -->
+<div class="demo-bar">
+  <span class="demo-title">REDESIGN PREVIEW · not the app</span>
+  <button class="demo-tab is-active" data-view="begin">1 · Begin</button>
+  <button class="demo-tab" data-view="progress">2 · Progress</button>
+  <button class="demo-tab" data-view="report">3 · Report</button>
+  <button class="demo-tab" data-view="components">Components</button>
+</div>
+
+<!-- ================================ app header =============================== -->
+<header class="app-header">
+  <div class="app-header-inner">
+    <a class="app-brand" href="#">Anduin Investigator</a>
+    <span class="meta muted">internal report · not for external distribution</span>
+  </div>
+</header>
+
+<!-- ============================== VIEW 1 · BEGIN ============================= -->
+<section class="demo-view" id="view-begin">
+  <div class="wrap stack">
+    <div class="stack-sm" style="display:flex;flex-direction:column;gap:8px">
+      <h1>Begin an investigation</h1>
+      <p class="muted">Paste the client's escalation, pick the sources, and get a sourced account of what happened.</p>
+    </div>
+
+    <section class="panel stack">
+      <label class="field">
+        <span class="field-label">The client's escalation</span>
+        <textarea class="input">Northwind reports that our Meridian Billing vendor's invoice totals have been wrong since release 4.12, our finance team is blocked, and we have not had a reply to four messages. Please explain what happened and when this will be fixed.</textarea>
+      </label>
+      <label class="field">
+        <span class="field-label">Client (the external party)</span>
+        <input class="input" value="Northwind Logistics" />
+        <span class="meta muted">Name the external party who escalated, not the product or vendor. The project/product is confirmed from the records after the plan.</span>
+      </label>
+    </section>
+
+    <div class="sources-grid">
+      <section class="panel source-card">
+        <div class="source-card-head">
+          <span class="source-icon jira"><svg class="icon"><use href="#i-kanban"/></svg></span>
+          <span class="source-card-title">Jira</span>
+          <span class="conn is-on" style="margin-left:auto"><span class="dot"></span>Connected</span>
+        </div>
+        <div class="row">
+          <button class="pick" aria-pressed="true"><span class="pick-key">MER</span> Meridian Billing</button>
+          <button class="pick" aria-pressed="false"><span class="pick-key">SUP</span> Support Desk</button>
+          <button class="pick" aria-pressed="false"><span class="pick-key">KST</span> Kestrel</button>
+        </div>
+      </section>
+
+      <section class="panel source-card">
+        <div class="source-card-head">
+          <span class="source-icon slack"><svg class="icon"><use href="#i-hash"/></svg></span>
+          <span class="source-card-title">Slack</span>
+          <span class="conn is-on" style="margin-left:auto"><span class="dot"></span>Connected</span>
+        </div>
+        <div class="row">
+          <button class="pick" aria-pressed="true">#meridian-billing</button>
+          <button class="pick" aria-pressed="true">#general</button>
+          <button class="pick" aria-pressed="false">#kestrel-eng</button>
+        </div>
+      </section>
+
+      <section class="panel source-card">
+        <div class="source-card-head">
+          <span class="source-icon email"><svg class="icon"><use href="#i-mail"/></svg></span>
+          <span class="source-card-title">Gmail</span>
+          <span class="conn is-on" style="margin-left:auto"><span class="dot"></span>Connected</span>
+        </div>
+        <input class="input" value="label:meridian newer_than:90d" />
+      </section>
+    </div>
+
+    <div class="sample-strip">
+      <span class="small muted">Try a sample:</span>
+      <button class="btn btn-sm">Northwind scenario</button>
+      <button class="btn btn-sm">Multi-issue scenario</button>
+      <span class="pill pill-neutral" style="margin-left:auto">synthetic data</span>
+    </div>
+
+    <div class="stack-sm" style="display:flex;flex-direction:column;gap:12px">
+      <div class="row">
+        <button class="btn btn-primary">Investigate</button>
+        <a href="#" class="btn btn-text">Use uploaded exports instead</a>
+      </div>
+      <!-- one merged status line (was two helper paragraphs) -->
+      <p class="small muted">Ready — Jira: 1 project · Slack: 2 channels · Gmail: one mailbox filter.</p>
+    </div>
+
+    <section class="panel">
+      <div class="spread" style="margin-bottom:8px">
+        <h2>Recent investigations</h2>
+      </div>
+      <ul>
+        <li class="recent-row">
+          <a href="#">Northwind Logistics — invoice totals after release 4.12</a>
+          <span class="mono muted meta">2026-10-19</span>
+          <span class="pill pill-neutral">synthetic</span>
+        </li>
+        <li class="recent-row">
+          <a href="#">Contoso — two independent issues after 2.1.0</a>
+          <span class="mono muted meta">2026-10-18</span>
+          <span class="pill pill-neutral">synthetic</span>
+        </li>
+        <li class="recent-row">
+          <a href="#">Bright Market — VAT exports after 5.3.0</a>
+          <span class="mono muted meta">2026-10-17</span>
+          <span class="pill pill-outline">in progress</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</section>
+
+<!-- ============================ VIEW 2 · PROGRESS ============================ -->
+<section class="demo-view" id="view-progress" hidden>
+  <div class="wrap stack">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1>Investigation</h1>
+      <p class="muted">Northwind Logistics · Meridian Billing — <span class="mono">48</span> items stored from 2 sources.</p>
+    </div>
+
+    <section class="panel">
+      <ol class="steps">
+        <li class="step is-done">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-check"/></svg></span>
+          <div class="step-head"><span class="step-name">Plan</span><span class="step-dur">8s</span></div>
+          <div class="step-sub">Scope: Northwind Logistics · Meridian Billing · MER, meridian-billing · partial</div>
+        </li>
+        <li class="step is-done">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-check"/></svg></span>
+          <div class="step-head"><span class="step-name">Root cause</span><span class="step-dur">31s</span></div>
+          <div class="step-sub">6 findings · 4 verified</div>
+        </li>
+        <li class="step is-done">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-check"/></svg></span>
+          <div class="step-head"><span class="step-name">Commitments</span><span class="step-dur">24s</span></div>
+          <div class="step-sub">3 promises recorded</div>
+        </li>
+        <li class="step is-running">
+          <span class="step-icon"><svg class="icon icon-16 spin"><use href="#i-loader"/></svg></span>
+          <div class="step-head"><span class="step-name">Decisions and ownership</span><span class="step-dur">12s</span></div>
+          <div class="step-sub">searching Slack and email…</div>
+        </li>
+        <li class="step">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-circle"/></svg></span>
+          <div class="step-head"><span class="step-name">Skeptic</span><span class="step-dur">—</span></div>
+          <div class="step-sub">waits for the investigators</div>
+        </li>
+        <li class="step">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-circle"/></svg></span>
+          <div class="step-head"><span class="step-name">Verify</span><span class="step-dur">—</span></div>
+          <div class="step-sub">quotes, authors and timestamps</div>
+        </li>
+        <li class="step">
+          <span class="step-icon"><svg class="icon icon-16"><use href="#i-circle"/></svg></span>
+          <div class="step-head"><span class="step-name">Assemble</span><span class="step-dur">—</span></div>
+          <div class="step-sub">timeline, ledger and the report</div>
+        </li>
+      </ol>
+    </section>
+
+    <div class="tiles">
+      <div class="panel tile">
+        <span class="source-icon jira"><svg class="icon"><use href="#i-kanban"/></svg></span>
+        <span><span class="tile-value">31</span><br /><span class="tile-label">Jira items</span></span>
+      </div>
+      <div class="panel tile">
+        <span class="source-icon email"><svg class="icon"><use href="#i-mail"/></svg></span>
+        <span><span class="tile-value">12</span><br /><span class="tile-label">Email items</span></span>
+      </div>
+      <div class="panel tile">
+        <span class="source-icon slack"><svg class="icon"><use href="#i-hash"/></svg></span>
+        <span><span class="tile-value">5</span><br /><span class="tile-label">Slack items</span></span>
+      </div>
+    </div>
+
+    <section class="callout">
+      <svg class="icon"><use href="#i-alert"/></svg>
+      <div class="callout-body">
+        <div>
+          <strong>Unconfirmed scope.</strong>
+          <span> 2 anchors; <span class="mono">9</span> stored records from other clients or projects are excluded. Confirm the scope before the investigators run, or add records back.</span>
+        </div>
+        <div class="row">
+          <button class="btn btn-sm">Review excluded records</button>
+          <button class="btn btn-primary btn-sm">Confirm scope &amp; investigate</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stack-sm" style="display:flex;flex-direction:column;gap:16px">
+      <div class="spread">
+        <h2 style="font-size:16px">Activity</h2>
+        <button class="btn btn-sm">Hide activity</button>
+      </div>
+      <div class="log-group">
+        <div class="log-group-title"><svg class="icon icon-16"><use href="#i-chevron"/></svg> root_cause</div>
+        <div class="log-row"><span class="tool">search_jira("invoice")</span><span>12 results, newest first</span><span class="time">10:31:07</span></div>
+        <div class="log-row"><span class="tool">get_issue(MER-101)</span><span>whole issue in order (5 items)</span><span class="time">10:31:14</span></div>
+        <div class="log-row"><span class="tool">submit_claim</span><span>stored · quote verified</span><span class="time">10:31:22</span></div>
+      </div>
+      <div class="log-group">
+        <div class="log-group-title"><svg class="icon icon-16"><use href="#i-chevron"/></svg> commitments</div>
+        <div class="log-row"><span class="tool">search_email("fix")</span><span>4 results</span><span class="time">10:31:05</span></div>
+        <div class="log-row"><span class="tool">submit_commitment</span><span>promise recorded · deadline Sep 24</span><span class="time">10:31:19</span></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ============================= VIEW 3 · REPORT ============================= -->
+<section class="demo-view" id="view-report" hidden>
+
+  <div class="tabbar">
+    <nav class="tabbar-inner" aria-label="Report sections">
+      <a href="#" class="is-active">The answer</a>
+      <a href="#">What happened</a>
+      <a href="#">Timeline detail</a>
+      <a href="#">Promises</a>
+      <a href="#">Failures</a>
+      <a href="#">Open questions</a>
+      <a href="#">Reply</a>
+    </nav>
+  </div>
+
+  <div class="wrap-report">
+    <div class="report-head">
+      <div class="spread">
+        <h1 class="report-title">Northwind Logistics — invoice totals after release 4.12</h1>
+        <span class="row">
+          <span class="pill pill-neutral">synthetic data</span>
+          <span class="pill pill-outline">cached result</span>
+        </span>
+      </div>
+      <div class="meta muted row" style="gap:12px">
+        <span class="mono">Logged 2026-10-19</span>
+        <span aria-hidden>·</span>
+        <span class="tag tag-source tag-jira"><svg class="icon"><use href="#i-kanban"/></svg>jira</span>
+        <span class="tag tag-source tag-email"><svg class="icon"><use href="#i-mail"/></svg>email</span>
+        <span aria-hidden>·</span>
+        <a href="#">How this was produced</a>
+      </div>
+    </div>
+
+    <!-- hero answer -->
+    <section class="hero">
+      <p class="hero-answer">The MER-101 incident traces to the MER-87 timezone change merged to release 4.12; the promised Sep&nbsp;24 fix did not resolve it.</p>
+      <p class="hero-line">Marcus Webb promised Northwind a fix by Sep 24; it was broken. As of Oct 1 the ticket reads Resolved, last status change by Marcus Webb, and the client has chased four times without a reply.</p>
+      <p class="hero-line"><strong>Still unknown:</strong> which change actually fixed the problem. <a href="#">Next: reply to Northwind Logistics with the verified status and the open question.</a></p>
+      <div class="hero-status">
+        <span class="mono">21 findings</span><span>·</span>
+        <span class="mono">6 verified</span><span>·</span>
+        <span class="mono">15 need check</span><span>·</span>
+        <span class="mono">2 open questions</span><span>·</span>
+        <span>jira, email</span>
+      </div>
+    </section>
+
+    <!-- one slim stacked bar replaces the five cards -->
+    <section class="panel stack">
+      <div>
+        <div class="stats-bar" role="img" aria-label="6 verified, 15 needs check (4 conflicts)">
+          <span class="seg-verified" style="flex:6"></span>
+          <span class="seg-check" style="flex:11"></span>
+          <span class="seg-conflict" style="flex:4"></span>
+        </div>
+        <div class="stats-legend">
+          <a class="legend-item" href="#"><span class="swatch" style="background:var(--verified)"></span><svg class="icon icon-16" style="color:var(--verified)"><use href="#i-check"/></svg><span class="count">6</span> verified</a>
+          <a class="legend-item" href="#"><span class="swatch" style="background:#D9A21B"></span><svg class="icon icon-16" style="color:var(--needs-check)"><use href="#i-alert"/></svg><span class="count">15</span> needs check</a>
+          <a class="legend-item" href="#"><span class="swatch" style="background:var(--conflict)"></span><svg class="icon icon-16" style="color:var(--conflict)"><use href="#i-xcircle"/></svg><span class="count">4</span> conflict <span class="meta muted">(of the 15)</span></a>
+        </div>
+        <div class="stats-meta">
+          <a href="#">All 21 findings</a>
+          <a href="#">2 open questions</a>
+          <a href="#">Next action: reply to the client</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- what is true now -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <h2>What is true now</h2>
+      <div class="now-block">
+        <div class="now-item"><span class="now-label">Current status</span><span class="now-value">Resolved <a class="record-link" href="#">record</a></span></div>
+        <div class="now-item"><span class="now-label">Owner now</span><span class="now-value">Ravi Menon</span><span class="now-sub">last status change by Marcus Webb</span></div>
+        <div class="now-item"><span class="now-label">Latest fix</span><span class="now-value">Meridian 4.12 build was shipped with the fix</span><span class="now-sub">check: QA still failing on the Sep 24 build</span></div>
+        <div class="now-item"><span class="now-label">Next commitment</span><span class="now-unknown">no open promise carries a date</span></div>
+        <div class="now-item"><span class="now-label">Last client contact</span><span class="now-value">Priya Nair</span><span class="now-unknown">Sep 30 — chased, no reply</span></div>
+        <div class="now-item"><span class="now-label">Last internal update</span><span class="now-value">Marcus Webb</span><span class="now-unknown">Oct 1</span></div>
+      </div>
+    </section>
+
+    <!-- do now -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <h2>Do now</h2>
+      <div class="panel do-now">
+        <div class="do-row">
+          <svg class="icon warn"><use href="#i-alert"/></svg>
+          <div><div><strong>Agree a new date with Lin Chen for the invoice totals fix and tell Northwind.</strong></div><div class="do-trigger">from: the Sep 24 promise was broken · <a href="#">record</a></div></div>
+        </div>
+        <div class="do-row">
+          <svg class="icon bad"><use href="#i-xcircle"/></svg>
+          <div><div><strong>Resolve the contradictory resolution before repeating the closure.</strong></div><div class="do-trigger">from: MER-101 marked Resolved while QA still failed · <a href="#">record</a></div></div>
+        </div>
+        <div class="do-row">
+          <svg class="icon info"><use href="#i-arrow"/></svg>
+          <div><div><strong>Reply to Northwind Logistics with the verified status and the open question.</strong></div><div class="do-trigger">from: four unanswered chases · <a href="#">record</a></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- what happened -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <h2>What happened</h2>
+      <div class="panel">
+        <div class="finding">
+          <div class="finding-side">
+            <span class="mono meta muted">technical · Sep 5</span>
+            <span class="pill pill-verified"><svg class="icon"><use href="#i-check"/></svg>verified</span>
+            <span class="tag tag-source tag-jira"><svg class="icon"><use href="#i-kanban"/></svg>jira</span>
+          </div>
+          <div>
+            <div class="finding-head"><span class="finding-title">Timezone change merged for release 4.12</span></div>
+            <div class="finding-text">The MER-87 change switched invoice date handling to UTC and was merged to the 4.12 release branch.</div>
+            <div class="finding-quote">“Switch invoice date handling to UTC for the totals.”</div>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding-side">
+            <span class="mono meta muted">promise · Sep 20</span>
+            <span class="pill pill-verified"><svg class="icon"><use href="#i-check"/></svg>verified</span>
+            <span class="tag tag-source tag-email"><svg class="icon"><use href="#i-mail"/></svg>email</span>
+          </div>
+          <div>
+            <div class="finding-head"><span class="finding-title">Lin Chen promised the invoice fix for the Sep 24 release</span></div>
+            <div class="finding-text">“We will ship the fix in the Sep 24 release.” The promise was restated in the shared channel.</div>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding-side">
+            <span class="mono meta muted">status · Sep 26</span>
+            <span class="pill pill-conflict"><svg class="icon"><use href="#i-xcircle"/></svg>conflict</span>
+            <span class="tag tag-source tag-jira"><svg class="icon"><use href="#i-kanban"/></svg>jira</span>
+          </div>
+          <div>
+            <div class="finding-head"><span class="finding-title">MER-101 marked Resolved</span></div>
+            <div class="finding-text">A later QA record on the same build still fails — the closure is contradicted (see Failures).</div>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding-side">
+            <span class="mono meta muted">communication · Sep 27</span>
+            <span class="pill pill-verified"><svg class="icon"><use href="#i-check"/></svg>verified</span>
+            <span class="tag tag-source tag-email"><svg class="icon"><use href="#i-mail"/></svg>email</span>
+          </div>
+          <div>
+            <div class="finding-head"><span class="finding-title">The client chased four times with no reply</span></div>
+            <div class="finding-text">“Third message with no reply. We need a date for the fix.” — unanswered in the records searched.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- timeline -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <h2>Timeline detail</h2>
+      <div class="panel timeline">
+        <div class="tl-axis"><span></span><div class="ticks"><span>Sep 5</span><span>Sep 13</span><span>Sep 21</span><span>Sep 29</span><span>Oct 1</span></div></div>
+        <div class="tl-row">
+          <span class="tl-lane">Client</span>
+          <div class="tl-track"><div class="tl-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="marker green" style="left:20%"></span>
+            <span class="marker amber" style="left:64%"></span>
+            <span class="marker cluster" style="left:72%" title="3 clustered events">3</span>
+            <span class="marker red" style="left:88%"></span>
+          </div>
+        </div>
+        <div class="tl-row">
+          <span class="tl-lane">Promises</span>
+          <div class="tl-track"><div class="tl-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="marker amber" style="left:44%"></span>
+          </div>
+        </div>
+        <div class="tl-row">
+          <span class="tl-lane">Owner</span>
+          <div class="tl-track"><div class="tl-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="marker" style="left:30%"></span>
+            <span class="marker" style="left:52%"></span>
+          </div>
+        </div>
+        <div class="tl-row">
+          <span class="tl-lane">Ticket</span>
+          <div class="tl-track"><div class="tl-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="silence-band" style="left:28%;width:18%"></span>
+            <span class="silence-label" style="left:28%">4 days, no incident activity</span>
+            <span class="marker green" style="left:6%"></span>
+            <span class="marker red" style="left:56%"></span>
+            <span class="marker amber" style="left:84%"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- open questions -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <div class="spread">
+        <h2>What could not be determined? <span class="count-chip">2 themes · 6 questions</span></h2>
+      </div>
+      <div class="panel">
+        <div class="q-group">
+          <div class="finding-head"><strong>Technical cause</strong></div>
+          <p class="small muted" style="margin-top:6px">Which change actually fixed the problem? The records show a promised fix and a QA failure but no deployment proof after the closure.</p>
+          <p class="q-next"><strong>Next step:</strong> ask the release manager for the deploy log, or the engineer for the failing reproduction.</p>
+        </div>
+        <div class="q-group">
+          <div class="finding-head"><strong>Ownership</strong></div>
+          <p class="small muted" style="margin-top:6px">Who owned MER-101 between the Sep 20 leave and the Sep 26 closure?</p>
+          <p class="q-next"><strong>Next step:</strong> ask the delivery lead who owned the ticket after the handoff and when it was reassigned.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- reply composer -->
+    <section class="stack" style="margin-top:var(--sp-section)">
+      <h2>Draft reply</h2>
+      <div class="composer">
+        <div class="composer-meta">
+          <span><strong>To:</strong> Priya Nair · Northwind Logistics</span>
+          <span><strong>Subject:</strong> Your escalation — invoice totals after 4.12</span>
+        </div>
+        <div class="composer-body">
+          <p class="composer-greeting">Hi Priya,</p>
+          <div class="reply-line">
+            <span class="reply-sentence">We traced the invoice-total errors to the timezone change merged in release 4.12 and the Sep 24 fix that followed it.</span>
+            <span class="pill pill-verified"><svg class="icon"><use href="#i-check"/></svg>safe</span>
+          </div>
+          <div class="reply-line">
+            <span class="reply-sentence">We are confirming which build resolved the totals before we commit to a date.</span>
+            <span class="pill pill-check"><svg class="icon"><use href="#i-alert"/></svg>needs check</span>
+          </div>
+          <p class="composer-greeting">Best regards,<br />Meridian Support</p>
+        </div>
+        <div class="reply-composer-foot">
+          <label class="approve"><input type="checkbox" /> Approve for client use</label>
+          <div style="text-align:right">
+            <div class="row" style="justify-content:flex-end">
+              <button class="btn">Redraft</button>
+              <button class="btn btn-primary" disabled>Copy reply</button>
+            </div>
+            <p class="copy-reason">Approve the draft before copying.</p>
+          </div>
+        </div>
+      </div>
+      <p class="meta muted">Built only from verified, unflagged findings; nothing is sent from this app.</p>
+    </section>
+  </div>
+</section>
+
+<!-- ============================= COMPONENTS ================================= -->
+<section class="demo-view" id="view-components" hidden>
+  <div class="wrap stack-lg">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h1>Components</h1>
+      <p class="muted">The shared layer from Step&nbsp;2 — tokens, buttons, inputs, chips, pills and status pairs.</p>
+    </div>
+
+    <section class="panel stack">
+      <h2>Buttons</h2>
+      <div class="row">
+        <button class="btn btn-primary">Investigate</button>
+        <button class="btn">Secondary</button>
+        <a href="#" class="btn btn-text">Text action</a>
+        <button class="btn btn-primary" disabled>Disabled primary</button>
+      </div>
+      <div class="row">
+        <button class="btn btn-primary btn-sm">Small primary</button>
+        <button class="btn btn-sm">Small secondary</button>
+      </div>
+    </section>
+
+    <section class="panel stack">
+      <h2>Inputs</h2>
+      <div class="row" style="align-items:flex-start">
+        <label class="field" style="flex:1;min-width:240px">
+          <span class="field-label">Resting</span>
+          <input class="input" placeholder="Paste the escalation message here." />
+        </label>
+        <label class="field" style="flex:1;min-width:240px">
+          <span class="field-label">Focused</span>
+          <input class="input" value="label:meridian newer_than:90d" style="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none" />
+        </label>
+      </div>
+    </section>
+
+    <section class="panel stack">
+      <h2>Selectable chips</h2>
+      <div class="row">
+        <button class="pick" aria-pressed="true"><span class="pick-key">MER</span> Meridian Billing</button>
+        <button class="pick" aria-pressed="false"><span class="pick-key">SUP</span> Support Desk</button>
+        <button class="pick" aria-pressed="true">#meridian-billing</button>
+        <button class="pick" aria-pressed="false">#general</button>
+      </div>
+    </section>
+
+    <section class="panel stack">
+      <h2>Status &amp; tags — color is never alone</h2>
+      <div class="row">
+        <span class="pill pill-verified"><svg class="icon"><use href="#i-check"/></svg>verified</span>
+        <span class="pill pill-check"><svg class="icon"><use href="#i-alert"/></svg>needs check</span>
+        <span class="pill pill-conflict"><svg class="icon"><use href="#i-xcircle"/></svg>conflict</span>
+        <span class="pill pill-neutral">synthetic data</span>
+        <span class="pill pill-outline">in progress</span>
+        <span class="count-chip">2 themes · 6 questions</span>
+      </div>
+      <div class="row">
+        <span class="tag tag-source tag-jira"><svg class="icon"><use href="#i-kanban"/></svg>jira</span>
+        <span class="tag tag-source tag-slack"><svg class="icon"><use href="#i-hash"/></svg>slack</span>
+        <span class="tag tag-source tag-email"><svg class="icon"><use href="#i-mail"/></svg>email</span>
+      </div>
+    </section>
+
+    <section class="panel stack">
+      <h2>Loading skeleton</h2>
+      <div class="stack-sm" style="display:flex;flex-direction:column;gap:12px">
+        <div class="skeleton sk-line" style="width:38%"></div>
+        <div class="skeleton sk-line" style="width:72%"></div>
+        <div class="skeleton sk-card"></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<script>
+  const tabs = document.querySelectorAll(".demo-tab");
+  const views = {
+    begin: document.getElementById("view-begin"),
+    progress: document.getElementById("view-progress"),
+    report: document.getElementById("view-report"),
+    components: document.getElementById("view-components"),
+  };
+  document.body.dataset.view = "begin";
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      tabs.forEach((t) => t.classList.toggle("is-active", t === tab));
+      document.body.dataset.view = tab.dataset.view;
+      for (const [name, view] of Object.entries(views)) {
+        view.hidden = name !== tab.dataset.view;
+      }
+      window.scrollTo({ top: 0 });
+    });
+  });
+</script>
+</body>
+</html>

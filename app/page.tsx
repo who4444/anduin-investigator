@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { SourceIcon } from "@/app/_components/icons";
 import { cleanReportTitle } from "@/lib/report/model";
 
 interface SourceInfo {
@@ -35,6 +36,9 @@ interface RecentInvestigation {
   origin: string;
   complete: boolean;
 }
+
+/* The three source panels render in a stable order. */
+const SOURCE_ORDER = ["jira", "slack", "gmail"] as const;
 
 export default function StartPage() {
   const router = useRouter();
@@ -171,10 +175,38 @@ export default function StartPage() {
   }
 
   const hasSources = connected.length > 0;
+  const loadingSources = sources.length === 0;
+
+  /* One status line under Investigate (merges the former two helper lines). */
+  const selectionParts = connected
+    .map((source) => {
+      const count = scopes[source.id]?.targets.length ?? 0;
+      if (source.id === "gmail") {
+        return (scopes.gmail?.query ?? "").trim() ? "Gmail: mailbox filter" : null;
+      }
+      if (count === 0) return null;
+      return `${source.label}: ${count} ${source.id === "slack" ? (count === 1 ? "channel" : "channels") : count === 1 ? "project" : "projects"}`;
+    })
+    .filter(Boolean) as string[];
+  const statusLine = busy
+    ? "Starting the investigation…"
+    : synthetic
+      ? "Sample scenario loaded — the investigation runs on the built-in synthetic export."
+      : canInvestigate
+        ? `Ready — ${selectionParts.join(" · ")}.`
+        : !hasSources
+          ? "Paste the client's escalation and choose sources to begin, or load the synthetic scenario."
+          : "Paste the client's escalation and choose sources to begin, or load the synthetic scenario.";
+
+  const jiraTargets = (targets.jira ?? []).slice(0, 24);
+  const slackTargets = (targets.slack ?? []).slice(0, 24);
 
   return (
-    <div className="shell shell-sm stack">
-      <h1>Begin an investigation</h1>
+    <div className="shell shell-sm stack start-shell">
+      <div className="stack-sm">
+        <h1>Begin an investigation</h1>
+        <p className="muted">Paste the client&apos;s escalation, pick the sources, and get a sourced account of what happened.</p>
+      </div>
 
       <section className="panel stack">
         <label className="field">
@@ -202,115 +234,136 @@ export default function StartPage() {
             confirmed from the records after the plan.
           </span>
         </label>
-        <div className="row">
-          <button type="button" className="btn" onClick={loadScenario} disabled={busy}>
-            Load Northwind scenario
-          </button>
-          <button type="button" className="btn" onClick={loadMultiScenario} disabled={busy}>
-            Load multi-issue scenario
-          </button>
-          <span className="chip chip-broken">synthetic data</span>
-        </div>
       </section>
 
-      <section className="panel">
-        <h2>Sources</h2>
-        {sources.length === 0 && (
-          <p className="small muted">Checking source connections…</p>
-        )}
-        {sources.map((source) => {
+      <div className="sources-grid">
+        {SOURCE_ORDER.map((sourceId) => {
+          const source = sources.find((entry) => entry.id === sourceId);
+          if (loadingSources || (!source && hasSources)) {
+            return (
+              <section className="panel source-card" key={sourceId} aria-label="Loading source">
+                <div className="skeleton skeleton-line" style={{ width: "40%" }} />
+                <div className="skeleton skeleton-line" style={{ width: "72%" }} />
+                <div className="skeleton skeleton-line" style={{ width: "58%" }} />
+              </section>
+            );
+          }
+          if (!source) return null;
           const scope = scopes[source.id] ?? { targets: [], query: "" };
-          const sourceTargets = targets[source.id] ?? [];
           return (
-            <div className="source-row" key={source.id}>
-              <span className="strong">{source.label}</span>
-              <span>
-                {source.configured ? (
-                  <span className="chip chip-verified">connected</span>
-                ) : (
-                  <span className="chip">not connected</span>
-                )}
-              </span>
-              <span className="scope-inputs">
-                {source.configured && source.id === "jira" && (
-                  <>
-                    {sourceTargets.length === 0 && <span className="small muted">Loading projects…</span>}
-                    {sourceTargets.map((target) => (
-                      <label key={target.id} className="small row row-tight">
-                        <input
-                          type="checkbox"
-                          checked={scope.targets.includes(target.id)}
-                          onChange={() => toggleTarget(source.id, target.id)}
-                        />
-                        {target.label}
-                      </label>
-                    ))}
-                  </>
-                )}
-                {source.configured && source.id === "slack" && (
-                  <>
-                    {sourceTargets.length === 0 && <span className="small muted">Loading channels…</span>}
-                    {sourceTargets.slice(0, 24).map((target) => (
-                      <label key={target.id} className="small row row-tight">
-                        <input
-                          type="checkbox"
-                          checked={scope.targets.includes(target.id)}
-                          onChange={() => toggleTarget(source.id, target.id)}
-                        />
-                        {target.label}
-                      </label>
-                    ))}
-                  </>
-                )}
-                {source.configured && source.id === "gmail" && (
-                  <input
-                    className="input"
-                    placeholder="Mailbox filter, e.g. label:meridian newer_than:90d"
-                    value={scope.query}
-                    onChange={(event) => setScope(source.id, { query: event.target.value })}
-                  />
-                )}
-                {!source.configured && (
-                  <span className="small muted">
-                    Read-only credentials are held by the server. Ask the admin to connect this source.
-                  </span>
-                )}
-              </span>
-            </div>
+            <section className="panel source-card" key={source.id}>
+              <div className="source-card-head">
+                <span className={`source-icon source-${source.id}`}>
+                  <SourceIcon source={source.id} />
+                </span>
+                <span className="source-card-title">{source.label}</span>
+                <span className={`conn${source.configured ? " is-on" : ""}`}>
+                  <span className="dot" />
+                  {source.configured ? "Connected" : "Not connected"}
+                </span>
+              </div>
+
+              {source.id === "jira" && source.configured && (
+                <div className="pick-list">
+                  {jiraTargets.length === 0 && <span className="small muted">Loading projects…</span>}
+                  {jiraTargets.map((target) => {
+                    const [key, ...rest] = target.label.split(" · ");
+                    const name = rest.join(" · ");
+                    return (
+                      <button
+                        key={target.id}
+                        type="button"
+                        className="pick"
+                        aria-pressed={scope.targets.includes(target.id)}
+                        title={name || key}
+                        onClick={() => toggleTarget(source.id, target.id)}
+                      >
+                        <span className="pick-key">{key}</span>
+                        <span className="pick-name">{name || key}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {source.id === "slack" && source.configured && (
+                <div className="pick-list">
+                  {slackTargets.length === 0 && <span className="small muted">Loading channels…</span>}
+                  {slackTargets.map((target) => (
+                    <button
+                      key={target.id}
+                      type="button"
+                      className="pick"
+                      aria-pressed={scope.targets.includes(target.id)}
+                      onClick={() => toggleTarget(source.id, target.id)}
+                    >
+                      <span className="pick-name">{target.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {source.id === "gmail" && source.configured && (
+                <input
+                  className="input"
+                  placeholder="Mailbox filter, e.g. label:meridian newer_than:90d"
+                  value={scope.query}
+                  onChange={(event) => setScope(source.id, { query: event.target.value })}
+                />
+              )}
+
+              {!source.configured && (
+                <span className="small muted">
+                  Read-only credentials are held by the server. Ask the admin to connect this source.
+                </span>
+              )}
+            </section>
           );
         })}
-      </section>
+      </div>
 
-      <div className="stack">
+      <div className="sample-strip">
+        <span className="small muted">Try a sample:</span>
+        <button type="button" className="btn btn-sm" onClick={loadScenario} disabled={busy}>
+          Load Northwind scenario
+        </button>
+        <button type="button" className="btn btn-sm" onClick={loadMultiScenario} disabled={busy}>
+          Load multi-issue scenario
+        </button>
+        {(synthetic || scenario === "northwind") && synthetic && (
+          <span className="chip" style={{ marginLeft: "auto" }}>
+            synthetic data
+          </span>
+        )}
+      </div>
+
+      <div className="stack-sm">
         <div className="row">
           <button type="button" className="btn btn-primary" onClick={investigate} disabled={!canInvestigate}>
             {busy ? "Starting…" : "Investigate"}
           </button>
           <a href="/upload">Use uploaded exports instead</a>
         </div>
-        {!canInvestigate && !busy && (
-          <p className="small muted">
-            Paste the client&apos;s escalation and choose sources to begin, or load the synthetic scenario.
-          </p>
-        )}
-        {hasSources && !anyScope && !synthetic && (
-          <p className="small muted">Select at least one project, channel or mailbox filter to investigate live.</p>
-        )}
+        <p className="small muted">{statusLine}</p>
         {error && <p className="alert alert-error">{error}</p>}
       </div>
 
       {recent.length > 0 && (
-        <section className="panel stack">
+        <section className="panel">
           <h2>Recent investigations</h2>
-          <ul className="stack stack-sm">
+          <ul>
             {recent.map((entry) => (
-              <li key={entry.id} className="row small">
+              <li key={entry.id} className="recent-row">
                 <a href={`/investigations/${entry.id}`}>
                   {entry.title.trim() ? cleanReportTitle(entry.title) : entry.id.slice(0, 8)}
                 </a>
-                <span className="muted tabular">{entry.createdAt.slice(0, 10)}</span>
-                {entry.origin === "demo" && <span className="chip chip-broken">synthetic</span>}
-                {!entry.complete && <span className="chip">in progress</span>}
+                <span className="muted tabular small">{entry.createdAt.slice(0, 10)}</span>
+                <span className="row row-tight" style={{ justifyContent: "flex-end" }}>
+                  {entry.origin === "demo" && <span className="chip">synthetic</span>}
+                  <span className="chip">
+                    {entry.complete ? "complete" : "in progress"}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>

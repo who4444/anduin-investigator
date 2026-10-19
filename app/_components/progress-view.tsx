@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { ActionIcon, SourceIcon, StatusIcon } from "@/app/_components/icons";
 import {
   investigatorResumePass,
   missingInvestigatorKinds,
@@ -114,6 +115,16 @@ function formatElapsed(stage: Stage | undefined): string {
   return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
 }
 
+function groupActivity<T extends { agent: string }>(entries: T[]): { agent: string; entries: T[] }[] {
+  const groups: { agent: string; entries: T[] }[] = [];
+  for (const entry of entries) {
+    const last = groups[groups.length - 1];
+    if (last && last.agent === entry.agent) last.entries.push(entry);
+    else groups.push({ agent: entry.agent, entries: [entry] });
+  }
+  return groups;
+}
+
 function stageStatus(stages: Stage[], key: string): "pending" | "running" | "done" | "error" {
   if (key === "retrieve") {
     const relevant = stages.filter((stage) => ["root_cause", "commitments", "ownership"].includes(stage.stage));
@@ -128,13 +139,6 @@ function stageStatus(stages: Stage[], key: string): "pending" | "running" | "don
   if (stage.status === "done") return "done";
   return "running";
 }
-
-const MARK: Record<string, { glyph: string; className: string }> = {
-  done: { glyph: "✓", className: "stage-mark stage-mark-done" },
-  running: { glyph: "◌", className: "stage-mark stage-mark-running" },
-  error: { glyph: "✗", className: "stage-mark stage-mark-error" },
-  pending: { glyph: "·", className: "stage-mark stage-mark-pending" },
-};
 
 export function ProgressView({ investigationId, flags, reviewOnly, rerun }: ProgressViewProps) {
   const router = useRouter();
@@ -527,7 +531,7 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
   const failed = error !== null;
 
   return (
-    <div className="shell stack">
+    <div className="shell shell-sm stack start-shell">
       <div className="spread">
         <span className="row">
           <h1>Investigation in progress</h1>
@@ -541,42 +545,59 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         Stages are stored server-side: closing this tab pauses the run, and reopening this page
         resumes it at the first unfinished stage — finished work is never redone.
       </p>
-      {notice && <p className="alert alert-warn">{notice}</p>}
+      {notice && (
+        <section className="callout" role="status">
+          <ActionIcon kind="alert" size={20} />
+          <div className="callout-body">{notice}</div>
+        </section>
+      )}
       {reviewIncomplete && (
-        <p className="alert alert-warn">
-          This run has not finished — the stored stages are shown read-only.{" "}
-          <a href={drivingProgressHref(investigationId, flags)}>Continue the investigation</a> to
-          resume it at the first unfinished stage.
-        </p>
+        <section className="callout" role="status">
+          <ActionIcon kind="alert" size={20} />
+          <div className="callout-body">
+            <span>
+              This run has not finished — the stored stages are shown read-only.
+            </span>
+            <div className="row">
+              <a className="btn btn-sm" href={drivingProgressHref(investigationId, flags)}>
+                Continue the investigation
+              </a>
+            </div>
+          </div>
+        </section>
       )}
 
       <section className="panel">
-        <ol className="stage-list">
+        <ol className="steps">
           {STAGE_ROWS.map((row) => {
             const status = stageStatus(stages, row.key);
-            const mark = MARK[status];
             const relevant =
               row.key === "retrieve"
                 ? stages.filter((stage) => row.internal?.includes(stage.stage))
                 : stages.filter((stage) => stage.stage === row.key);
             const elapsed = relevant.map(formatElapsed).filter(Boolean);
+            const subStatus = row.internal
+              ? row.internal
+                  .map((kind) => {
+                    const stage = stages.find((entry) => entry.stage === kind);
+                    return `${AGENT_LABEL[kind].replace(" agent", "")} ${stage ? stage.status : "pending"}`;
+                  })
+                  .join(" · ")
+              : null;
             return (
-              <li className="stage" key={row.key}>
-                <span className={mark.className} aria-hidden>
-                  {mark.glyph}
+              <li className={`step is-${status}`} key={row.key}>
+                <span className="step-icon" aria-hidden>
+                  <StatusIcon
+                    status={status === "done" ? "verified" : status === "running" ? "running" : status === "error" ? "error" : "pending"}
+                    size={16}
+                    className={status === "running" ? "spin" : undefined}
+                  />
                 </span>
-                <span className="stage-name">{row.label}</span>
-                {row.internal && (
-                  <span className="small muted">
-                    {row.internal
-                      .map((kind) => {
-                        const stage = stages.find((entry) => entry.stage === kind);
-                        return `${AGENT_LABEL[kind].replace(" agent", "")} ${stage ? stage.status : "pending"}`;
-                      })
-                      .join(" · ")}
-                  </span>
-                )}
-                <span className="small muted tabular">{elapsed[elapsed.length - 1] ?? ""}</span>
+                <div className="step-head">
+                  <span className="step-name">{row.label}</span>
+                  <span className="step-dur">{elapsed[elapsed.length - 1] ?? "—"}</span>
+                </div>
+                {subStatus && <div className="step-sub">{subStatus}</div>}
               </li>
             );
           })}
@@ -781,11 +802,32 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         </section>
       )}
 
-      <section className="panel">
-        <h2>Summary</h2>
+      <section className="stack">
+        <h2>Sources</h2>
         {summary ? (
           <div className="stack stack-sm">
-            <p className="row small">
+            <div className="tiles">
+              {(["jira", "email", "slack"] as const).map((sourceId) => {
+                const entry = coverage?.sources.find((candidate) => candidate.source === sourceId);
+                return (
+                  <div className="panel tile" key={sourceId}>
+                    <span className={`source-icon source-${sourceId}`}>
+                      <SourceIcon source={sourceId} />
+                    </span>
+                    <span>
+                      <span className="tile-value">
+                        {entry && entry.state !== "not-in-export" ? entry.available : "—"}
+                      </span>
+                      <br />
+                      <span className="tile-label">
+                        {sourceId === "jira" ? "Jira" : sourceId === "email" ? "Email" : "Slack"} items
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="row small muted">
               <span className="tabular">{summary.events} items stored</span>
               {summary.channels > 0 && <span className="tabular">{summary.channels} Slack channels searched</span>}
             </p>
@@ -848,23 +890,30 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
           (activity.length === 0 ? (
             <p className="empty">Agent tool calls will appear here as they happen, with the records they stored.</p>
           ) : (
-            <ol className="activity-log">
-              {activity.map((entry, index) => (
-                <li className="activity-entry" key={`${entry.agent}-${entry.name}-${index}`}>
-                  <span className="activity-agent">{entry.agent.split(" ")[0]}</span>
-                  <span>
-                    <span className="activity-tool">{entry.name}</span>
-                    {entry.detail && <span className="activity-result"> {entry.detail}</span>}
-                    {typeof entry.count === "number" && (
-                      <span className="activity-result">
-                        {" "}
-                        — {entry.count} record{entry.count === 1 ? "" : "s"} returned
+            <div className="stack-sm">
+              {groupActivity(activity).map((group) => (
+                <div className="log-group" key={group.agent}>
+                  <div className="log-group-title">
+                    <ActionIcon kind="chevron" size={14} /> {group.agent}
+                  </div>
+                  {group.entries.map((entry, index) => (
+                    <div className="log-row" key={`${group.agent}-${entry.name}-${index}`}>
+                      <span className="tool">{entry.name}</span>
+                      <span>
+                        {entry.detail}
+                        {typeof entry.count === "number" && (
+                          <>
+                            {entry.detail ? " · " : ""}
+                            {entry.count} record{entry.count === 1 ? "" : "s"} returned
+                          </>
+                        )}
                       </span>
-                    )}
-                  </span>
-                </li>
+                      <span className="time" aria-hidden />
+                    </div>
+                  ))}
+                </div>
               ))}
-            </ol>
+            </div>
           ))}
       </section>
     </div>

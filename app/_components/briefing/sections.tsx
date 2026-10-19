@@ -575,32 +575,34 @@ export function ReplySection({
             {state === "error" && <p className="alert alert-error">{error}</p>}
           </div>
         ) : (
-          <div className="panel stack">
-            {reply.greeting && <p className="reply-greeting">{reply.greeting}</p>}
-            <div className="evidence">
-              {reply.sentences.map((sentence) => (
-                <div key={sentence.text} className="reply-line">
-                  <button
-                    type="button"
-                    className="reply-sentence"
-                    onClick={() => onClaim(sentence.claimIds[0])}
-                    title="Open the supporting evidence"
-                  >
-                    {sentence.text}
-                  </button>
-                  <span className={`reply-label reply-label-${sentence.label ?? "safe"}`}>
-                    {sentence.label === "needs-check"
-                      ? "needs check"
-                      : sentence.label === "do-not-send"
-                        ? "do not send"
-                        : "safe"}
-                  </span>
-                </div>
-              ))}
+          <div className="composer">
+            <div className="composer-body">
+              {reply.greeting && <p className="reply-greeting">{reply.greeting}</p>}
+              <div className="evidence">
+                {reply.sentences.map((sentence) => (
+                  <div key={sentence.text} className="reply-line">
+                    <button
+                      type="button"
+                      className="reply-sentence"
+                      onClick={() => onClaim(sentence.claimIds[0])}
+                      title="Open the supporting evidence"
+                    >
+                      {sentence.text}
+                    </button>
+                    <span className={`reply-label reply-label-${sentence.label ?? "safe"}`}>
+                      {sentence.label === "needs-check"
+                        ? "needs check"
+                        : sentence.label === "do-not-send"
+                          ? "do not send"
+                          : "safe"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {reply.signOff && <p className="reply-signoff">{reply.signOff}</p>}
             </div>
-            {reply.signOff && <p className="reply-signoff">{reply.signOff}</p>}
-            <div className="row">
-              <label className="check">
+            <div className="reply-composer-foot">
+              <label className="approve">
                 <input
                   type="checkbox"
                   checked={reply.approved === true}
@@ -608,22 +610,29 @@ export function ReplySection({
                 />
                 Approve for client use
               </label>
+              <div style={{ textAlign: "right" }}>
+                <div className="row" style={{ justifyContent: "flex-end" }}>
+                  <button type="button" className="btn" onClick={onDraft} disabled={state === "loading"}>
+                    Redraft
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={copyAll}
+                    disabled={reply.approved !== true}
+                    title={reply.approved ? "Copy the approved client reply" : "Approve the draft before copying"}
+                  >
+                    {copied ? "Copied" : "Copy reply"}
+                  </button>
+                </div>
+                {reply.approved !== true && (
+                  <p className="copy-reason">Approve the draft before copying.</p>
+                )}
+              </div>
             </div>
-            <div className="row">
-              <button
-                type="button"
-                className="btn"
-                onClick={copyAll}
-                disabled={reply.approved !== true}
-                title={reply.approved ? "Copy the approved client reply" : "Approve the draft before copying"}
-              >
-                {copied ? "Copied" : "Copy reply"}
-              </button>
-              <button type="button" className="btn" onClick={onDraft} disabled={state === "loading"}>
-                Redraft
-              </button>
-            </div>
-            <p className="small muted">Each sentence opens the verified finding behind it.</p>
+            <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
+              Each sentence opens the verified finding behind it.
+            </p>
             {state === "error" && <p className="alert alert-error">{error}</p>}
           </div>
         )}

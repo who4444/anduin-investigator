@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Avatar, PERSON_COLORS } from "@/app/_components/briefing/people";
 import { ExcludedRecordsPanel } from "@/app/_components/briefing/sections";
+import { ActionIcon, StatusIcon } from "@/app/_components/icons";
 import { SOURCE_LABELS } from "@/lib/pipeline/coverage";
 import type { ReportPayload } from "@/lib/report/build";
 import type {
@@ -376,46 +377,28 @@ export function ModelAnswer({
         </button>
       ));
 
-  const countCell = (
-    id: string,
-    label: string,
-    value: number,
-    detail: string,
-    findings: ReportFindingModel[],
-    fallbackScroll?: string,
-  ) => (
-    <button
-      key={id}
-      type="button"
-      className={`scoreboard-cell ${value === 0 ? "is-empty" : ""}`}
-      aria-label={`${label}: ${value}`}
-      onClick={() => {
-        if (findings[0]) onFinding(findings[0]);
-        else if (fallbackScroll) document.getElementById(fallbackScroll)?.scrollIntoView({ behavior: "smooth" });
-      }}
-      disabled={findings.length === 0 && !fallbackScroll}
-    >
-      <span className="scoreboard-label">{label}</span>
-      <span className="scoreboard-value">{value}</span>
-      <span className="small muted">{detail}</span>
-    </button>
-  );
+  const conflicts = model.findings.filter((finding) => finding.pill === "conflict");
+  const needsCheckOnly = model.findings.filter((finding) => finding.pill === "needs_check");
+  const barTotal = Math.max(1, model.counts.verified + needsCheckOnly.length + conflicts.length);
+  const openFirst = (findings: ReportFindingModel[]) => {
+    if (findings[0]) onFinding(findings[0]);
+  };
 
   const action = model.actions[0];
   return (
     <section className="briefing-section answer" id="answer" aria-labelledby="answer-title">
       <h2 id="answer-title" className="visually-hidden">The answer</h2>
       <ClientSays text={report.investigation.escalationText} />
-      <div className="verdict headline">
+      <div className="hero">
         {model.headline.sentences.map((sentence, index) => (
-          <p key={index} className={index === 0 ? "headline-lead" : "headline-line"}>
+          <p key={index} className={index === 0 ? "hero-answer" : "hero-line"}>
             {sentence.text} {citations(sentence.findingIds)}
           </p>
         ))}
         {model.headline.nextStep && (
-          <p className="headline-next">Next step: {model.headline.nextStep}</p>
+          <p className="hero-line headline-next">Next step: {model.headline.nextStep}</p>
         )}
-        <p className="headline-stats small muted">{model.headline.statsLine}</p>
+        <p className="hero-status">{model.headline.statsLine}</p>
       </div>
 
       <div className="say-block">
@@ -461,49 +444,45 @@ export function ModelAnswer({
         </div>
       </div>
 
-      <div className="scoreboard" role="list" aria-label="Report counts">
-        {countCell(
-          "findings",
-          "Findings",
-          model.counts.findings,
-          "every finding appears once",
-          model.findings.filter((finding) => finding.claimIds.length > 0),
-          "story",
-        )}
-        {countCell(
-          "verified",
-          "Verified",
-          model.counts.verified,
-          "safe to repeat",
-          model.verifiedFindings,
-        )}
-        {countCell(
-          "needs-check",
-          "Needs check",
-          model.counts.needsCheck,
-          "one exception vocabulary",
-          model.findings.filter((finding) => finding.pill),
-        )}
-        {countCell(
-          "open-questions",
-          "Open questions",
-          model.counts.openQuestions,
-          "grouped, with next steps",
-          [],
-          "gaps",
-        )}
-        <button
-          type="button"
-          className="scoreboard-cell action-cell"
-          aria-label={`Next action: ${action?.text ?? "No urgent action found"}`}
-          onClick={() => document.getElementById("actions")?.scrollIntoView({ behavior: "smooth" })}
+      <div className="panel">
+        <div
+          className="stats-bar"
+          role="img"
+          aria-label={`${model.counts.verified} verified, ${needsCheckOnly.length} needs check, ${conflicts.length} conflict`}
         >
-          <span className="scoreboard-label">Next action</span>
-          <span className="scoreboard-value action-value">
-            {action && action.id !== "act_none" ? compactAction(action.text) : "No urgent action"}
+          <span className="seg-verified" style={{ flex: model.counts.verified / barTotal }} />
+          <span className="seg-check" style={{ flex: needsCheckOnly.length / barTotal }} />
+          <span className="seg-conflict" style={{ flex: conflicts.length / barTotal }} />
+        </div>
+        <div className="stats-legend">
+          <button type="button" className="legend-item" onClick={() => openFirst(model.verifiedFindings)} disabled={model.verifiedFindings.length === 0}>
+            <span className="swatch" style={{ background: "var(--verified)" }} />
+            <StatusIcon status="verified" className="status-verified" />
+            <span className="count">{model.counts.verified}</span> verified
+          </button>
+          <button type="button" className="legend-item" onClick={() => openFirst(needsCheckOnly)} disabled={needsCheckOnly.length === 0}>
+            <span className="swatch" style={{ background: "#D9A21B" }} />
+            <StatusIcon status="needs_check" className="status-check" />
+            <span className="count">{needsCheckOnly.length}</span> needs check
+          </button>
+          <button type="button" className="legend-item" onClick={() => openFirst(conflicts)} disabled={conflicts.length === 0}>
+            <span className="swatch" style={{ background: "var(--broken)" }} />
+            <StatusIcon status="conflict" className="status-conflict" />
+            <span className="count">{conflicts.length}</span> conflict
+          </button>
+        </div>
+        <div className="stats-meta">
+          <span>
+            <a href="#story">{model.counts.findings} findings</a> in all
           </span>
-          <span className="small muted">see Do now</span>
-        </button>
+          <span>
+            <a href="#gaps">{model.counts.openQuestions} open questions</a>
+          </span>
+          <span>
+            Next action:{" "}
+            <a href="#actions">{action && action.id !== "act_none" ? compactAction(action.text) : "no urgent action"}</a>
+          </span>
+        </div>
       </div>
 
       <div className="now-block" role="group" aria-label="Current state">
@@ -549,40 +528,44 @@ export function ModelAnswer({
         </div>
       </div>
 
-      <div className="do-now" id="actions">
+      <div className="stack" id="actions">
         <h3>Do now</h3>
         {model.actions.length === 0 || (model.actions.length === 1 && model.actions[0].id === "act_none") ? (
           <p className="empty">No urgent action found.</p>
         ) : (
-          <ul className="action-list">
+          <div className="panel do-now">
             {model.actions.map((item) => {
               const trigger = item.findingIds
                 .map((id) => findingById.get(id))
                 .find((entry): entry is ReportFindingModel => Boolean(entry));
+              const iconKind = item.tone === "danger" ? "conflict" : item.tone === "warn" ? "alert" : "next";
+              const iconClass = item.tone === "danger" ? "do-bad" : item.tone === "warn" ? "do-warn" : "do-info";
               return (
-              <li key={item.id} className={`action-card action-${item.tone}`}>
-                {trigger ? (
-                  <button type="button" className="action-text" onClick={() => onFinding(trigger)}>
-                    {item.text}
-                    {item.text.includes("…") && <span className="see-more">see more</span>}
-                  </button>
-                ) : (
-                  <span className="action-text">{item.text}</span>
-                )}
-                <span className="row">
-                  {item.findingIds.map((findingId) => {
-                    const finding = findingById.get(findingId);
-                    return finding ? (
-                      <button key={findingId} type="button" className="btn btn-quiet btn-claim" onClick={() => onFinding(finding)}>
-                        trigger {finding.id}
+                <div className="do-row" key={item.id}>
+                  <ActionIcon kind={iconKind} className={iconClass} />
+                  <div>
+                    {trigger ? (
+                      <button type="button" className="btn-claim" onClick={() => onFinding(trigger)}>
+                        <strong>{item.text}</strong>
                       </button>
-                    ) : null;
-                  })}
-                </span>
-              </li>
+                    ) : (
+                      <strong>{item.text}</strong>
+                    )}
+                    <div className="do-trigger">
+                      {item.findingIds.map((findingId) => {
+                        const finding = findingById.get(findingId);
+                        return finding ? (
+                          <button key={findingId} type="button" className="btn btn-quiet btn-claim" onClick={() => onFinding(finding)}>
+                            trigger {finding.id}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </section>
@@ -868,92 +851,3 @@ export function ModelOpenQuestions({
   );
 }
 
-const LANES: { id: string; label: string }[] = [
-  { id: "client", label: "Client" },
-  { id: "promises", label: "Promises" },
-  { id: "owner", label: "Owner" },
-  { id: "ticket", label: "Ticket" },
-  { id: "engineering", label: "Engineering" },
-];
-
-function laneFor(finding: ReportFindingModel, model: ReportModel): string {
-  if (finding.kind === "promise") return "promises";
-  if (finding.kind === "status_change") return "owner";
-  if (finding.failureTag === "technical" || finding.failureTag === "process") return "engineering";
-  const actor = actorFor(model, finding.eventActorId);
-  if (actor?.role === "client") return "client";
-  if (finding.source === "jira") return "ticket";
-  return "engineering";
-}
-
-export function ModelSwimlane({ report, onFinding }: { report: ReportPayload; onFinding: (finding: ReportFindingModel) => void }) {
-  const model = report.model;
-  const times = model.findings.map((finding) => Date.parse(finding.ts)).filter(Number.isFinite);
-  if (times.length === 0) return <p className="empty">No dated findings to place on the board.</p>;
-  const min = Math.min(...times);
-  const max = Math.max(...times);
-  const span = Math.max(1, max - min);
-  const percent = (ts: string) => 4 + Math.min(92, Math.max(0, ((Date.parse(ts) - min) / span) * 92));
-  const silence = model.silence;
-  const byLane = new Map(LANES.map((lane) => [lane.id, model.findings.filter((finding) => laneFor(finding, model) === lane.id)]));
-  return (
-    <div className="swimlane-wrap">
-      <div className="swimlane">
-        <div className="swimlane-axis" aria-hidden>
-          <span className="swimlane-axis-spacer" />
-          <div className="swimlane-axis-track">
-            <span className="tabular">{new Date(min).toISOString().slice(0, 10)}</span>
-            <span className="tabular">{new Date(max).toISOString().slice(0, 10)}</span>
-          </div>
-        </div>
-        <div className="swimlane-body">
-          {LANES.map((lane) => (
-            <div className="swimlane-row" key={lane.id}>
-              <span className="swimlane-label">{lane.label}</span>
-              <div className="swimlane-track">
-                {silence && (byLane.get(lane.id)?.length ?? 0) > 0 && (
-                  <span
-                    className="silence-band"
-                    style={{ left: `${percent(silence.from)}%`, width: `${percent(silence.to) - percent(silence.from)}%` }}
-                    title={silence.label}
-                  />
-                )}
-                {(byLane.get(lane.id) ?? []).map((finding) => {
-                  const actor = actorFor(model, finding.eventActorId);
-                  return (
-                    <button
-                      key={finding.id}
-                      type="button"
-                      className="marker"
-                      style={{
-                        left: `${percent(finding.ts)}%`,
-                        color: PERSON_COLORS[actorColor(model, finding.eventActorId)],
-                      }}
-                      data-importance={finding.importance}
-                      data-pill={finding.pill ?? "none"}
-                      title={`${actor?.name ?? "Unknown"} · ${finding.headline} · ${finding.ts}`}
-                      aria-label={`${finding.headline} (${finding.ts})`}
-                      onClick={() => onFinding(finding)}
-                    >
-                      <span className="marker-dot" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          {silence && (
-            <p className="silence-label small muted">
-              {silence.label} · {silence.from.slice(0, 10)} → {silence.to.slice(0, 10)}
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="swimlane-legend small muted">
-        <span className="legend-item"><span className="legend-swatch legend-needs-check" /> needs check</span>
-        <span className="legend-item"><span className="legend-swatch legend-conflict" /> conflict</span>
-        <span className="legend-item"><span className="legend-swatch legend-silence" /> silent period</span>
-      </div>
-    </div>
-  );
-}

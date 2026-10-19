@@ -55,10 +55,10 @@ test.beforeAll(async ({ request }) => {
   reportUrl = `/investigations/${investigationId}?synthetic=1`;
 });
 
-test("scoreboard cells open the evidence drawer with the quoted record", async ({ page }) => {
+test("the verification legend opens the evidence drawer with the quoted record", async ({ page }) => {
   await page.goto(reportUrl);
 
-  await page.locator(".scoreboard-cell:not([disabled])").first().click();
+  await page.locator(".stats-legend .legend-item:not([disabled])").first().click();
   const drawer = page.getByRole("dialog", { name: "Stored original message" });
   await expect(drawer).toBeVisible();
   await expect(drawer.locator("mark").first()).toBeVisible();
@@ -71,8 +71,8 @@ test("the timeline board sits after the story and shows the axis", async ({ page
 
   const board = page.locator("#timeline-detail");
   await expect(board).toBeVisible();
-  await expect(page.locator(".swimlane")).toBeVisible();
-  await expect(page.locator(".swimlane-axis-track")).toBeVisible();
+  await expect(page.locator(".tl")).toBeVisible();
+  await expect(page.locator(".tl-axis-track")).toBeVisible();
   expect(await page.locator(".legend-item").count()).toBeGreaterThanOrEqual(3);
 
   const story = await page.locator("#story").boundingBox();
@@ -84,7 +84,7 @@ test("draft reply cites verified findings and the draft survives reload", async 
   page,
 }) => {
   await page.goto(reportUrl);
-  const verdictBefore = await page.locator(".verdict").innerText();
+  const verdictBefore = await page.locator(".hero").innerText();
 
   // A cached seed may already carry a stored draft — only click when it does not.
   if ((await page.locator(".reply-sentence").count()) === 0) {
@@ -96,6 +96,6 @@ test("draft reply cites verified findings and the draft survives reload", async 
   // G-08: the stored draft survives, but the top answer is the frozen assembled
   // version and must be byte-for-byte unchanged after drafting.
   await expect(page.locator(".reply-sentence").first()).toBeVisible();
-  const verdictAfter = await page.locator(".verdict").innerText();
+  const verdictAfter = await page.locator(".hero").innerText();
   expect(verdictAfter.replace(/\s+/g, " ")).toBe(verdictBefore.replace(/\s+/g, " "));
 });

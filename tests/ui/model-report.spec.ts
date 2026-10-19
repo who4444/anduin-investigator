@@ -172,8 +172,8 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   );
 
   // Counts equal the lists they summarize.
-  await expect(page.locator(".scoreboard-cell")).toHaveCount(5);
-  await expect(page.locator(".scoreboard-cell").filter({ hasText: "Findings" })).toContainText("3");
+  await expect(page.locator(".stats-legend .legend-item")).toHaveCount(3);
+  await expect(page.locator(".stats-meta")).toContainText("3 findings");
   await expect(page.locator(".event-row")).toHaveCount(3);
   await expect(page.locator(".question-group:visible")).toHaveCount(5);
   await expect(page.locator(".question-group").first()).toContainText("Next step:");
@@ -201,8 +201,8 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   const repeated = new Map<string, number>();
   for (const sentence of sentences(text)) repeated.set(sentence, (repeated.get(sentence) ?? 0) + 1);
   expect([...repeated.values()].filter((count) => count > 1)).toEqual([]);
-  expect(await page.locator(".verdict .citation").count()).toBeGreaterThanOrEqual(2);
-  expect(await page.locator(".verdict").innerText()).toContain("Only 3 stored records");
+  expect(await page.locator(".hero .citation").count()).toBeGreaterThanOrEqual(2);
+  expect(await page.locator(".hero").innerText()).toContain("Only 3 stored records");
 
   // The action is named after its triggering finding, not the draft reply.
   await expect(page.locator("#actions")).toContainText("trigger f2");
@@ -229,7 +229,7 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   await page.getByLabel("Close evidence").click();
 
   // The Do-now action label opens the drawer of the finding it names.
-  const actionLink = page.locator("#actions button.action-text").first();
+  const actionLink = page.locator("#actions .do-row .btn-claim").first();
   await expect(actionLink).toBeVisible();
   await actionLink.click();
   await expect(page.locator("aside.drawer .drawer-heading")).toBeVisible();
