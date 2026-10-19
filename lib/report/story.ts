@@ -84,6 +84,17 @@ function firstSentence(text: string): string {
   return (match ? match[1] : flat).replace(/[.]+$/, "");
 }
 
+/* A quoted fragment is embedded inside curly quotes: drop the agent's meta
+   prefix ("The record states: …") and flatten inner quotes so the sentence
+   never reads “The record states: "…"”. */
+function quotedFragment(text: string): string {
+  return firstSentence(text)
+    .replace(/^(?:the record|the item|the source)\s+(?:states|says|shows|notes|records)[:,]?\s*/i, "")
+    .replace(/[\u201c\u201d"]/g, (quote) => (quote === "\u201c" ? "'" : quote === "\u201d" ? "'" : "'"))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function causeSentence(
   cause: StoryCauseInput | null,
   scopeConfirmed: boolean,
@@ -92,7 +103,7 @@ function causeSentence(
   if (!cause) {
     return { text: "The records do not establish a technical cause.", findingIds: [] };
   }
-  const statement = firstSentence(cause.statement);
+  const statement = quotedFragment(cause.statement);
   // Without a confirmed engagement a technical record is a lead, not the
   // case's cause — never assert an incident the escalation did not establish.
   if (!scopeConfirmed) {
