@@ -283,6 +283,41 @@ describe("flag precision (P0-1)", () => {
   });
 });
 
+describe("representative by state (review I1)", () => {
+  it("the verified cause claim represents the record even when a supported process claim exists", () => {
+    const events = [event({ id: "e-mix", ts: "2024-09-10T03:00:00.000Z", text: "Root cause looks like the timezone merge." })];
+    const claims = [
+      claim({ id: "c-verified-cause", eventId: "e-mix", type: "root_cause", text: "Release 4.12 merged the timezone change.", verifyStatus: "verified", confidence: 0.9 }),
+      claim({ id: "c-supported-process", eventId: "e-mix", type: "process_failure", text: "No reply to the chase in the records searched.", verifyStatus: "supported", confidence: 0.8 }),
+    ];
+    const model = buildReportModel(input({ events, claims }));
+    const finding = model.findings[0];
+    expect(finding.verification).toBe("verified");
+    expect(finding.text).toContain("timezone change");
+    expect(finding.kind).toBe("technical_finding");
+    // The story's cause is the verified cause, not "no cause".
+    expect(model.headline.sentences[0].text).not.toContain("do not establish");
+  });
+});
+
+describe("reviewed promises leave the ledger (review I2)", () => {
+  it("a manager-reviewed promise vanishes from promises and actions", () => {
+    const events = [event({ id: "e-p", ts: "2024-09-10T03:00:00.000Z", text: "We will ship the fix in the Sep 24 release." })];
+    const claims = [claim({ id: "c-p", eventId: "e-p", type: "commitment", text: "We will ship the fix in the Sep 24 release.", verifyStatus: "verified", confidence: 0.9 })];
+    const commitments = [{
+      id: "p1", investigationId: "inv", claimId: "c-p", issueId: null, promisor: "Lin Chen",
+      promisee: "Northwind", object: "invoice totals corrected", conditions: null,
+      deadlinePhrase: "Sep 24", deadlineIso: "2024-09-24T00:00:00.000Z", rationale: null,
+      status: "broken" as const, contested: false, fulfilmentEventIds: [], sourceEventIds: ["e-p"],
+      dedupeKey: "k", createdAt: "2024-09-20T00:00:00.000Z",
+    }];
+    const reviewed = claims.map((c) => ({ ...c, review: { claimId: c.id, verdict: "wrong" as const, reason: null, createdAt: "2024-10-01T00:00:00.000Z" } }));
+    const model = buildReportModel(input({ events, claims: reviewed, commitments }));
+    expect(model.promises).toEqual([]);
+    expect(model.actions.some((a) => /new date/i.test(a.text))).toBe(false);
+  });
+});
+
 describe("ReportModel revision brief", () => {
   it("deduplicates claims per record and keeps every claim id", () => {
     const model = buildReportModel(input());

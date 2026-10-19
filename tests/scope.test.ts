@@ -733,6 +733,41 @@ describe("client domains exclude the vendor's correspondence domain (B1)", () =>
     ];
     expect(clientDomainsFor(events, scope)).toEqual(["brightmarket.example"]);
   });
+
+  it("an escalation-quoted vendor address is not client identity (review I3)", async () => {
+    const { clientEvidenceFor } = await import("../lib/pipeline/scope");
+    const scope: InvestigationScope = {
+      client: "Alpha Corp",
+      project: null,
+      ticketPrefixes: [],
+      channels: [],
+      senderDomains: ["vendor.example"],
+      confidence: "partial",
+      anchors: [{ kind: "sender-domain", value: "vendor.example", source: "escalation" }],
+    };
+    const events = [
+      event({
+        id: "e-client-mail",
+        source: "email",
+        channel: "email",
+        actor: "Ann Lee <ann@alpha.example>",
+        text: "I emailed support@vendor.example about the outage.",
+        meta: { from: "ann@alpha.example", to: ["support@vendor.example"] },
+      }),
+      event({
+        id: "e-vendor-reply",
+        source: "email",
+        channel: "email",
+        actor: "Vera Stone <vera@vendor.example>",
+        text: "We are looking into it.",
+        meta: { from: "vera@vendor.example", to: ["ann@alpha.example"] },
+      }),
+    ];
+    const evidence = clientEvidenceFor(events, scope);
+    // The client's own address is evidence; the vendor's support roster is not.
+    expect(evidence.domains).toEqual(["alpha.example"]);
+    expect(evidence.actors).toEqual(["ann lee"]);
+  });
 });
 
 describe("plan-assisted scope refinement (B3)", () => {  it("confirms plan-named identifiers that are already selected and skips distractors with a reason", async () => {

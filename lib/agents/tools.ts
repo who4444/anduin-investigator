@@ -79,7 +79,7 @@ function toolSpecs(): ToolSpec[] {
       "get_slack_thread",
       "Read a Slack thread: the opening message and its replies, by channel and the thread's opening ts.",
       {
-        channel: { type: "string", description: "Channel name, e.g. meridian-billing." },
+        channel: { type: "string", description: "Channel name, e.g. project-billing." },
         ts: { type: "string", description: "The thread's opening timestamp." },
       },
       ["channel", "ts"],
@@ -146,7 +146,7 @@ function toolSpecs(): ToolSpec[] {
         conditions: { type: "string", description: "Any condition attached to the promise." },
         deadline: {
           type: "string",
-          description: "The deadline exactly as stated in the record, e.g. 'Sep 24'. Omit when none was stated.",
+          description: "The deadline exactly as stated in the record, e.g. a date or release name. Omit when none was stated.",
         },
         quote: { type: "string" },
         item_id: { type: "string" },
@@ -230,6 +230,12 @@ function searchStatus(split: Split, matches: Event[]): ToolStatus {
   if (split.all.length === 0) return "not_in_export";
   if (split.inScope.length === 0) return "excluded_by_scope";
   return matches.length === 0 ? "empty" : "ok";
+}
+
+/** Review I6: a search PINNED to a target (channel/sender) that exists in the
+    registry but sits outside the scope is an exclusion, not an empty result. */
+function pinnedFilterExcluded(split: Split, matchesFilter: (event: Event) => boolean): boolean {
+  return split.all.some(matchesFilter) && !split.inScope.some(matchesFilter);
 }
 
 function searchResult(
@@ -432,6 +438,14 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const from = asString(args.from);
         const to = asString(args.to);
         const split = await sourceSplit("slack");
+        if (channel && pinnedFilterExcluded(split, (event) => event.channel.toLowerCase() === channel.toLowerCase())) {
+          return JSON.stringify({
+            status: "excluded_by_scope",
+            count: 0,
+            items: [],
+            error: `Channel ${channel} exists in the registry but is excluded by this investigation's scope — the manager can add it back in the scope review.`,
+          });
+        }
         const matches = split.inScope.filter((event) => {
           if (channel && event.channel.toLowerCase() !== channel.toLowerCase()) return false;
           return matchesQuery(event, query) && matchesWindow(event, from, to);
@@ -516,6 +530,14 @@ export function buildAgentTools(investigationId: string, agentName: string): Age
         const from = asString(args.from);
         const to = asString(args.to);
         const split = await sourceSplit("email");
+        if (sender && pinnedFilterExcluded(split, (event) => `${event.actor} ${event.actorResolved ?? ""}`.toLowerCase().includes(sender.toLowerCase()))) {
+          return JSON.stringify({
+            status: "excluded_by_scope",
+            count: 0,
+            items: [],
+            error: `Messages from ${sender} exist in the registry but are excluded by this investigation's scope — the manager can add them back in the scope review.`,
+          });
+        }
         const matches = split.inScope.filter((event) => {
           if (sender) {
             const haystack = `${event.actor} ${event.actorResolved ?? ""}`.toLowerCase();

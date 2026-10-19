@@ -14,7 +14,7 @@ import {
 import type { SkepticNoteInput, SkepticNoteKind, GapInput } from "../types";
 import { buildCoverage } from "../pipeline/coverage";
 import { latestEventTs } from "../pipeline/plan";
-import { scopePromptLine, splitEventsByScope } from "../pipeline/scope";
+import { scopePromptLine, splitEventsByScope, clientDomainsFor } from "../pipeline/scope";
 import { detectContradictions } from "../report/contradictions";
 import { compactEvent, summarizeEvents } from "./summary";
 
@@ -108,8 +108,10 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
   // I4: deterministic detectors are the source of truth for contradictions. The
   // checklist goes into the prompt so a single pass cannot return a false clean
   // bill of health, and a detector firing gates one focused second pass.
+  // Review I5: client evidence is the VERIFIED list — the scope's raw sender
+  // domains include the vendor's correspondence domain.
   const detectorAsOf = latestEventTs(inScope) ?? investigation?.createdAt ?? "";
-  const detectorDomains = investigation?.scope?.senderDomains ?? [];
+  const detectorDomains = clientDomainsFor(inScope, investigation?.scope ?? null);
   const detectors = detectContradictions({
     events: inScope,
     claims,
@@ -118,7 +120,7 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
     clientEvidence:
       detectorDomains.length > 0
         ? {
-            domains: detectorDomains.map((domain) => domain.toLowerCase()),
+            domains: detectorDomains,
             actors: [],
             channels: [],
             threads: [],

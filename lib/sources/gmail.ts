@@ -113,7 +113,7 @@ export function createGmailSource(options: GmailSourceOptions = {}): SourceDefin
       const effective = query?.trim() || env.GMAIL_QUERY?.trim();
       if (!effective) {
         throw new Error(
-          "Provide a Gmail search query (for example: label:meridian newer_than:90d).",
+          "Provide a Gmail search query (for example: label:support newer_than:90d).",
         );
       }
 

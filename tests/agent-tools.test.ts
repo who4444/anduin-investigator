@@ -333,6 +333,54 @@ describeDb("agent tools", () => {
     expect(texts).not.toContain("Relative ts promise.");
   });
 
+  it("a search pinned to an excluded target answers excluded, not empty (review I6)", async () => {
+    const { createInvestigation, insertEvents, setScope } = await import("../lib/store");
+    const id = await createInvestigation({
+      title: `Tools excluded-filter ${randomUUID()}`,
+      escalationText: "",
+      contentHash: `hash-${randomUUID()}`,
+    });
+    created.push(id);
+    await insertEvents(id, [
+      {
+        id: "e_test_vertex",
+        source: "slack",
+        ts: "2024-09-10T03:00:00.000Z",
+        actor: "Ravi Patel",
+        channel: "vertex-billing",
+        text: "Vertex rate limits were raised.",
+      },
+      // A mixed source: another channel IS in scope.
+      {
+        id: "e_test_scoped_slack",
+        source: "slack",
+        ts: "2024-09-11T03:00:00.000Z",
+        actor: "Dana Okoro",
+        channel: "general",
+        text: "General room chatter about the fix.",
+      },
+    ]);
+    await setScope(id, {
+      client: "Other Client",
+      project: "Other",
+      ticketPrefixes: ["OTH"],
+      channels: ["general"],
+      senderDomains: [],
+      confidence: "scoped",
+      anchors: [],
+    });
+    try {
+      const tools = buildAgentTools(id, "root_cause");
+      const pinned = JSON.parse(
+        await tools.exec("search_slack", { query: "rate limits", channel: "vertex-billing" }),
+      ) as { status?: string; count?: number };
+      expect(pinned.status).toBe("excluded_by_scope");
+      expect(pinned.count).toBe(0);
+    } finally {
+      await setScope(id, null);
+    }
+  });
+
   it("rejects a claim that asserts more than its quote states (I1)", async () => {
     const tools = buildAgentTools(investigationId, "root_cause");
     const base = {

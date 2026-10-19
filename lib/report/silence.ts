@@ -162,16 +162,25 @@ export function computeSilences(input: {
 
   let clientWait: Silences["clientWait"] = null;
   if (input.clientEvidence) {
-    const lastClient = [...ordered].reverse().find((event) => isClientEvidenceEvent(event, input.clientEvidence));
-    if (lastClient) {
-      const replyAfter = ordered.find((event) => event.ts > lastClient.ts && !isClientEvidenceEvent(event, input.clientEvidence));
-      const end = replyAfter?.ts ?? ordered[ordered.length - 1]?.ts ?? lastClient.ts;
-      const days = Math.max(0, Math.floor((Date.parse(end) - Date.parse(lastClient.ts)) / DAY_MS));
+    // Review I4: the wait is the client's UNANSWERED SPAN — from the last
+    // vendor-authored record to the horizon. A client whose message IS the
+    // last record still waited since the vendor's last reply; never 0 days
+    // when messages went unanswered.
+    const lastVendor = [...ordered].reverse().find((event) => !isClientEvidenceEvent(event, input.clientEvidence));
+    const clientMessages = ordered.filter((event) => isClientEvidenceEvent(event, input.clientEvidence));
+    if (clientMessages.length > 0) {
+      const start = lastVendor ? lastVendor.ts : clientMessages[0].ts;
+      const end = ordered[ordered.length - 1]?.ts ?? start;
+      const days = Math.max(0, Math.floor((Date.parse(end) - Date.parse(start)) / DAY_MS));
+      const lastClient = clientMessages[clientMessages.length - 1];
       clientWait = {
-        from: lastClient.ts,
+        from: start,
         to: end,
         days,
-        label: `${days} day${days === 1 ? "" : "s"} since the client's last message without a vendor reply`,
+        label:
+          days === 0
+            ? "the vendor's latest record is the horizon — no unanswered span"
+            : `${days} day${days === 1 ? "" : "s"} since the last vendor reply, with client message${clientMessages.length === 1 ? "" : "s"} awaiting a response`,
         clientActor: normalizedActorName(lastClient.actorResolved ?? lastClient.actor),
         kind: "clientWait",
       };

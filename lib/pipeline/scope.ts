@@ -65,7 +65,28 @@ export function deriveScopeUniverse(events: Event[]): ScopeUniverse {
   };
 }
 
-export function matchScope(scope: InvestigationScope | null, event: Event): boolean {
+/** C1: is this email addressed to (or from) a verified client domain? The
+    correspondence rule — a message the client sent or received — joins the
+    engagement without making the correspondent's domain client identity. */
+function addressedToClient(event: Event, clientDomains: Set<string>): boolean {
+  if (clientDomains.size === 0) return false;
+  const meta = (event.meta ?? {}) as { to?: unknown; cc?: unknown; from?: unknown };
+  for (const list of [meta.to, meta.cc]) {
+    if (!Array.isArray(list)) continue;
+    for (const entry of list) {
+      if (typeof entry !== "string") continue;
+      const domain = [...entry.matchAll(EMAIL_ADDRESS)][0]?.[1]?.toLowerCase();
+      if (domain && clientDomains.has(domain)) return true;
+    }
+  }
+  return false;
+}
+
+export function matchScope(
+  scope: InvestigationScope | null,
+  event: Event,
+  clientDomains?: Set<string>,
+): boolean {
   // An unconfirmed scope applies no filtering: every stored record is in play.
   if (!scope || scope.confidence === "none") return true;
   if (event.source === "jira") {
@@ -78,6 +99,9 @@ export function matchScope(scope: InvestigationScope | null, event: Event): bool
   }
   const domain = event.actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
   if (domain && scope.senderDomains.includes(domain)) return true;
+  // Client correspondence survives scope by construction: a message the
+  // client addressed (to: / cc:) belongs to the engagement.
+  if (clientDomains && addressedToClient(event, clientDomains)) return true;
   return scope.ticketPrefixes.some(
     (prefix) =>
       new RegExp(`\\b${prefix}-\\d+`, "i").test(event.text) ||
@@ -154,7 +178,42 @@ function computeClientDomains(events: Event[], scope: InvestigationScope): Set<s
     const domain = actorEmailDomain(event);
     if (domain && tokens.some((token) => domain.startsWith(token))) domains.add(domain);
   }
-  return domains;
+  // Review I3: an escalation-quoted address can be the VENDOR's support desk
+  // ("I emailed support@vendor.example"). A domain the client's own verified
+  // mail only ever ADDRESSES (never sends from a verified-client author) is
+  // the vendor's side, not client identity.
+  const clientSenders = [...domains];
+  const recipients = new Set<string>();
+  for (const event of events) {
+    if (event.source !== "email") continue;
+    const senderDomain = actorEmailDomain(event);
+    if (!senderDomain || !clientSenders.includes(senderDomain)) continue;
+    const meta = (event.meta ?? {}) as { to?: unknown; cc?: unknown };
+    for (const list of [meta.to, meta.cc]) {
+      if (!Array.isArray(list)) continue;
+      for (const entry of list) {
+        if (typeof entry !== "string") continue;
+        const domain = [...entry.matchAll(EMAIL_ADDRESS)][0]?.[1]?.toLowerCase();
+        if (domain) recipients.add(domain);
+      }
+    }
+  }
+  // Candidate non-token domains (escalation-quoted, no client name) that only
+  // ever received client mail drop out.
+  const verified = new Set<string>();
+  for (const domain of domains) {
+    if (tokens.some((token) => domain.startsWith(token))) {
+      verified.add(domain);
+      continue;
+    }
+    const anchor = scope.anchors.find(
+      (entry) => entry.kind === "sender-domain" && entry.value.toLowerCase() === domain,
+    );
+    const managerBacked = anchor && anchor.source !== "escalation";
+    const mailRecipient = recipients.has(domain);
+    if (managerBacked || (!mailRecipient && anchor)) verified.add(domain);
+  }
+  return verified;
 }
 
 /* G-01: a client is not only an email domain. Slack users carry no address in
@@ -259,13 +318,14 @@ export function splitEventsByScope(
 
   const client = clientEvidenceFor(events, scope);
   const forced = new Set(includeEventIds);
+  const verifiedClientDomains = new Set(client.domains);
 
   // An email thread is one unit: a reply that cites no ticket of its own still
   // belongs to the escalation when its thread root does. The client's own
   // threads are always units, even when no anchor matched the root.
   const scopedThreads = new Set<string>(client.threads);
   for (const event of events) {
-    if (event.source === "email" && event.threadId && matchScope(scope, event)) {
+    if (event.source === "email" && event.threadId && matchScope(scope, event, verifiedClientDomains)) {
       scopedThreads.add(event.threadId);
     }
   }
@@ -284,7 +344,7 @@ export function splitEventsByScope(
       event.source === "email" && event.threadId !== undefined && scopedThreads.has(event.threadId);
     const clientChannel =
       event.source === "slack" && clientChannels.has(event.channel.toLowerCase());
-    (matchScope(scope, event) || inThread || clientEventIds.has(event.id) || clientChannel || forced.has(event.id)
+    (matchScope(scope, event, verifiedClientDomains) || inThread || clientEventIds.has(event.id) || clientChannel || forced.has(event.id)
       ? inScope
       : outOfScope
     ).push(event);
@@ -621,34 +681,9 @@ function recordGraphNodes(event: Event): ScopeNode[] {
   });
 }
 
-/** Node-key adjacency: two nodes are joined when a record touches both.
-    When client evidence is known, records authored by the client also add
-    their RECIPIENT domains as nodes — the escalation's correspondence edge:
-    the client's emails address the vendor's mailbox, so the vendor's own
-    domain joins the engagement (B1). */
-function buildScopeGraph(events: Event[], clientEvidence?: ClientEvidence): Map<string, Set<string>> {
-  const recordNodesList = events.map((event) => {
-    const nodes = recordGraphNodes(event);
-    if (clientEvidence) {
-      const actor = event.actorResolved ?? event.actor;
-      const domain = actor.match(EMAIL_DOMAIN)?.[1]?.toLowerCase();
-      const isClientAuthored =
-        (domain && clientEvidence.domains.includes(domain)) ||
-        actorNames(event).some((name) => clientEvidence.actors.includes(name));
-      if (event.source === "email" && isClientAuthored) {
-        const meta = (event.meta ?? {}) as { to?: unknown; cc?: unknown };
-        for (const list of [meta.to, meta.cc]) {
-          if (!Array.isArray(list)) continue;
-          for (const entry of list) {
-            if (typeof entry !== "string") continue;
-            const domain = [...entry.matchAll(EMAIL_ADDRESS)][0]?.[1]?.toLowerCase();
-            if (domain) nodes.push({ kind: "domain", value: domain });
-          }
-        }
-      }
-    }
-    return nodes;
-  });
+/** Node-key adjacency: two nodes are joined when a record touches both. */
+function buildScopeGraph(events: Event[]): Map<string, Set<string>> {
+  const recordNodesList = events.map(recordGraphNodes);
   const nodeRecords = new Map<string, Set<number>>();
   recordNodesList.forEach((nodes, index) => {
     for (const node of nodes) {
@@ -859,9 +894,8 @@ export function detectTenantClusters(events: Event[]): TenantCluster[] {
 function selectScopeNodes(
   events: Event[],
   seeds: ScopeNode[],
-  clientEvidence?: ClientEvidence,
 ): { selected: Map<ScopeNodeKind, Set<string>>; seedComponents: number } {
-  const neighbors = buildScopeGraph(events, clientEvidence);
+  const neighbors = buildScopeGraph(events);
   const seedKeys = new Set(seeds.map(scopeNodeKey));
   const visited = new Set<string>();
   const selected = new Map<ScopeNodeKind, Set<string>>([
@@ -994,7 +1028,7 @@ export async function resolveScope(  escalation: string,
     };
   }
 
-  const { selected, seedComponents } = selectScopeNodes(events, seedNodes, clientEvidence);
+  const { selected, seedComponents } = selectScopeNodes(events, seedNodes);
   // Disjoint seed components union here (everything selected) — they cap the
   // confidence instead of voting each other out.
   const contradiction = seedComponents > 1;

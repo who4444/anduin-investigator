@@ -717,11 +717,19 @@ function buildActors(input: ReportModelInput): {
 }
 
 function chooseRepresentative(claims: Claim[], event: Event): Claim | undefined {
-  // A2: a claim whose quote was judged not to support it (entailment_refutes)
-  // never represents the finding while a cleaner claim exists.
+  // A1/review-I1: the representative comes from the best-state assertion
+  // cluster — a weaker process claim never represents a record whose verified
+  // cause claim exists. A2: a claim whose quote was judged not to support it
+  // (entailment_refutes) never represents while a cleaner claim exists.
   const refuted = (claim: Claim | undefined): number =>
     claim && NEGATIVE_REFUTE_ERRORS.has(claim.verifyError ?? "") ? 1 : 0;
-  return [...claims].sort((a, b) => {
+  const bestState = claims.reduce(
+    (best, claim) => (CLAIM_STATE_RANK[claim.verifyStatus] > CLAIM_STATE_RANK[best] ? claim.verifyStatus : best),
+    "unverified" as FindingVerification,
+  );
+  const topState = claims.filter((claim) => claim.verifyStatus === bestState);
+  const pool = topState.length > 0 ? topState : claims;
+  return [...pool].sort((a, b) => {
     const refuteRank = refuted(a) - refuted(b);
     if (refuteRank !== 0) return refuteRank;
     const priority = claimTypePriority(a) - claimTypePriority(b);
@@ -1392,8 +1400,16 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     claimsByEvent.set(claim.eventId, list);
   }
   const commitmentByClaim = new Map((input.commitments ?? []).map((commitment) => [commitment.claimId, commitment]));
+  // Review I2: a commitment whose backing claim was manager-reviewed away (or
+  // rejected) is not a promise anymore — it must not found rows or actions.
+  const deadClaimIds = new Set(
+    input.claims.filter((claim) => claim.review || claim.verifyStatus === "rejected").map((claim) => claim.id),
+  );
+  const liveCommitments = (input.commitments ?? []).filter(
+    (commitment) => !deadClaimIds.has(commitment.claimId),
+  );
   const commitmentByEvent = new Map<string, Commitment>();
-  for (const commitment of input.commitments ?? []) {
+  for (const commitment of liveCommitments) {
     for (const eventId of commitment.sourceEventIds) commitmentByEvent.set(eventId, commitment);
   }
 
@@ -1630,9 +1646,16 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   };
   // F5: a combined ledger across tenants would attribute one engagement's
   // promise to another. Until the engagement is confirmed there is no ledger.
+  // Review I2: a promise whose backing claim was reviewed away or rejected is
+  // not a promise — the ledger never outlives its claim.
   const promises = crossTenant
     ? []
-    : sorted.filter((finding) => finding.kind === "promise" || finding.promiseStatus !== null);
+    : sorted.filter(
+        (finding) =>
+          (finding.kind === "promise" || finding.promiseStatus !== null) &&
+          finding.claimIds.length > 0 &&
+          finding.claimIds.every((claimId) => !deadClaimIds.has(claimId)),
+      );
   const failures = sorted.filter((finding) => finding.failureTag !== null);
   // A2: "You can say" = verified AND client-safe AND unflagged. The count
   // and the list are one value.

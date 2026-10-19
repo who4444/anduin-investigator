@@ -88,9 +88,10 @@ describe("one silence computation (C5)", () => {
       claims,
       clientEvidence: { domains: ["northwind.example"], actors: ["priya nair"], channels: [], threads: [], eventIds: [] },
     });
-    // Client wait: the client's last message (day 30) has no vendor reply → ends at the horizon.
+    // Client wait: the client's unanswered span — from the vendor's last
+    // reply (day 25) to the horizon (the client's chase on day 30).
     expect(silences.clientWait).not.toBeNull();
-    expect(silences.clientWait!.from.startsWith(iso(30).slice(0, 10))).toBe(true);
+    expect(silences.clientWait!.from.startsWith(iso(25).slice(0, 10))).toBe(true);
     // Project silence: the longest incident-relevant gap = the 13-day Jira quiet
     // (day 3 → day 16); the coffee machine on day 15 must not break it.
     expect(silences.project).not.toBeNull();
@@ -99,6 +100,23 @@ describe("one silence computation (C5)", () => {
     expect(silences.bySource.jira).not.toBeNull();
     expect(silences.bySource.jira!.days).toBe(13);
     // The headline prefers the client wait when a client is waiting.
+    expect(silences.headline?.kind).toBe("clientWait");
+  });
+
+  it("the client wait is the unanswered span since the last vendor reply (review I4)", async () => {
+    const { computeSilences } = await import("../lib/report/silence");
+    const { events, claims } = scenario();
+    // The client's last message (day 30) is the horizon's own record: the old
+    // definition collapsed to 0 days. The wait must span the unanswered gap.
+    const silences = computeSilences({
+      events,
+      claims,
+      clientEvidence: { domains: ["northwind.example"], actors: ["priya nair"], channels: [], threads: [], eventIds: [] },
+    });
+    expect(silences.clientWait).not.toBeNull();
+    // From the vendor's last reply (day 25) to the client's unanswered chase (day 30): 5 days.
+    expect(silences.clientWait!.days).toBe(5);
+    expect(silences.clientWait!.label).toMatch(/since the last vendor reply/i);
     expect(silences.headline?.kind).toBe("clientWait");
   });
 
