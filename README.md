@@ -291,7 +291,9 @@ The demo is built for the Vercel Hobby plan (≤60s per function, small uploads)
 ## Demo scenario (synthetic) — answer key
 
 **Do not put this in application code.** It is the reference a judge can check
-against, and it is deliberately kept out of the app bundle.
+against, and it is deliberately kept out of the app bundle. See
+[`scenario.md`](scenario.md) for the seed files, planted traps and copy-paste
+escalation examples behind every scenario.
 
 Northwind Logistics (client) reports that invoice totals are wrong after
 Meridian's release 4.12. The synthetic exports live in `public/demo/` and are
