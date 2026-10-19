@@ -90,7 +90,8 @@ function firstSentence(text: string): string {
 function quotedFragment(text: string): string {
   return firstSentence(text)
     .replace(/^(?:the record|the item|the source)\s+(?:states|says|shows|notes|records)[:,]?\s*/i, "")
-    .replace(/[\u201c\u201d"]/g, (quote) => (quote === "\u201c" ? "'" : quote === "\u201d" ? "'" : "'"))
+    .replace(/[\u201c\u201d"]/g, "'")
+    .replace(/^'+|'+$/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
