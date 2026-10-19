@@ -69,9 +69,12 @@ describe("jira source", () => {
     const source = createJiraSource({ env: jiraEnv, fetchImpl });
     const targets = await source.listTargets();
     expect(targets).toEqual([
-      { id: "MER", label: "MER · Meridian" },
-      { id: "SUP", label: "SUP · Support" },
+      { id: "MER", label: "MER · Meridian", meta: { hidden: false } },
+      { id: "SUP", label: "SUP · Support", meta: { hidden: false } },
     ]);
+    // Only live, browsable projects are requested.
+    const projectCall = calls.find((call) => call.url.includes("project/search"));
+    expect(projectCall?.url).toContain("status=live");
 
     const { files, warnings } = await source.pull(["MER"]);
 
@@ -84,6 +87,39 @@ describe("jira source", () => {
     expect(searchCall?.url).toContain("expand=changelog");
     const headers = searchCall?.init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe(`Basic ${Buffer.from("you@northwind.example:token-123").toString("base64")}`);
+  });
+
+  it("hides configured projects by default and expands an empty selection (landing-page flow)", async () => {
+    const { fetchImpl } = router([
+      [
+        /project\/search/,
+        () =>
+          json({
+            values: [
+              { key: "MER", name: "Meridian", archived: false },
+              { key: "SUP", name: "Support", archived: false },
+              { key: "OLD", name: "Archived", archived: true },
+            ],
+            isLast: true,
+          }),
+      ],
+      [
+        /rest\/api\/3\/search\/jql/,
+        (url) => (url.searchParams.get("jql")?.includes("SUP") ? json({ issues: [{ key: "SUP-1" }], isLast: true }) : json({ issues: [], isLast: true })),
+      ],
+    ]);
+    const source = createJiraSource({ env: { ...jiraEnv, JIRA_HIDDEN_PROJECTS: "mer" }, fetchImpl });
+
+    const targets = await source.listTargets();
+    expect(targets).toEqual([
+      { id: "MER", label: "MER · Meridian", meta: { hidden: true } },
+      { id: "SUP", label: "SUP · Support", meta: { hidden: false } },
+    ]);
+    // Archived projects never show at all.
+
+    const pulled = await source.pull([]);
+    expect(pulled.targets).toEqual([{ id: "SUP", label: "SUP · Support", meta: { hidden: false } }]);
+    expect(pulled.files.map((file) => file.name)).toEqual(["jira/SUP-page-1.json"]);
   });
 
   it("warns when the page budget is hit", async () => {
@@ -120,7 +156,15 @@ function slackHandlers(channelName = "meridian-billing") {
   return router([
     [
       /conversations\.list/,
-      () => json({ ok: true, channels: [{ id: "C1", name: "general" }, { id: "C2", name: channelName }] }),
+      () =>
+        json({
+          ok: true,
+          channels: [
+            { id: "C1", name: "general", is_member: true },
+            { id: "C2", name: channelName, is_member: true },
+            { id: "C3", name: "social", is_member: false },
+          ],
+        }),
     ],
     [
       /conversations\.info/,
@@ -174,14 +218,50 @@ function slackHandlers(channelName = "meridian-billing") {
 }
 
 describe("slack source", () => {
+  it("hides configured channels by default and expands an empty selection to member channels", async () => {
+    const { fetchImpl } = router([
+      [
+        /users\.list/,
+        () => json({ ok: true, members: [] }),
+      ],
+      [
+        /conversations\.list/,
+        () =>
+          json({
+            ok: true,
+            channels: [
+              { id: "C1", name: "general", is_member: true },
+              { id: "C2", name: "meridian-billing", is_member: true },
+              { id: "C3", name: "social", is_member: true },
+              { id: "C4", name: "other", is_member: false },
+            ],
+          }),
+      ],
+      [/conversations\.info/, () => json({ ok: true, channel: { id: "C1", name: "general" } })],
+      [/conversations\.history/, () => json({ ok: true, messages: [{ ts: "1.0", text: "hello" }] })],
+    ]);
+    const source = createSlackSource({ env: { ...slackEnv, SLACK_HIDDEN_CHANNELS: "social" }, fetchImpl });
+
+    const targets = await source.listTargets();
+    expect(targets.map((target) => [target.id, target.meta?.hidden])).toEqual([
+      ["C1", false],
+      ["C2", false],
+      ["C3", true],
+    ]);
+
+    const pulled = await source.pull([]);
+    expect(pulled.targets?.map((target) => target.id)).toEqual(["C1", "C2"]);
+  });
+
   it("lists channels and pulls users, channels, messages and thread replies that round-trip through the parser", async () => {
     const { fetchImpl, calls } = slackHandlers();
     const source = createSlackSource({ env: slackEnv, fetchImpl });
 
     const targets = await source.listTargets();
+    // Only channels the bot is a member of can be read.
     expect(targets).toEqual([
-      { id: "C1", label: "#general" },
-      { id: "C2", label: "#meridian-billing" },
+      { id: "C1", label: "#general", meta: { hidden: false, isMember: true } },
+      { id: "C2", label: "#meridian-billing", meta: { hidden: false, isMember: true } },
     ]);
 
     const { files, warnings } = await source.pull(["C2"]);
@@ -286,6 +366,25 @@ describe("gmail source", () => {
     expect(parsed.events[0].actor).toBe("Priya Nair <priya.nair@northwind.example>");
     expect(parsed.events[0].ts).toBe("2024-09-24T01:30:00.000Z");
     expect(parsed.events[0].text).toContain("From the desk of Priya");
+  });
+
+  it("strips an inline comment from the configured default query", async () => {
+    const { fetchImpl, calls } = router([
+      [/oauth2\.googleapis\.com\/token/, () => json({ access_token: "access-1", expires_in: 3600 })],
+      [/users\/me\/messages\?/, () => json({ messages: [] })],
+    ]);
+    const source = createGmailSource({
+      env: { ...gmailEnv, GMAIL_QUERY: "label:inbox newer_than:90d   # optional default" },
+      fetchImpl,
+    });
+
+    const targets = await source.listTargets();
+    expect(targets[0].label).toBe("Gmail search: label:inbox newer_than:90d");
+
+    const pulled = await source.pull(["search"]);
+    expect(pulled.targets).toEqual([{ id: "search", label: "mail: label:inbox newer_than:90d" }]);
+    const listCall = calls.find((call) => call.url.includes("/messages?"));
+    expect(new URL(listCall!.url).searchParams.get("q")).toBe("label:inbox newer_than:90d");
   });
 
   it("requires a search query", async () => {

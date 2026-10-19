@@ -45,6 +45,11 @@ export async function POST(
   }
   const reason =
     typeof body.reason === "string" ? body.reason.replace(/\s+/g, " ").trim().slice(0, 500) : "";
+  // A correction removes evidence from the client pack: the manager must say
+  // why, so the audit trail is never a bare verdict.
+  if (!reason) {
+    return errorResponse("A reason is required when overriding or rejecting a finding.", 400);
+  }
 
   try {
     const review = await upsertClaimReview(id, claimId, verdict as ClaimReviewVerdict, reason || null);

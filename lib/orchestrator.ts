@@ -249,10 +249,11 @@ export async function runPipeline(
         ? (planPayload.issues as Issue[])
         : [];
       const scope = planPayload.scope as { confidence?: string } | null | undefined;
-      // G-12: a partially-confirmed scope is shown for confirmation before
-      // any investigator spends tokens on it. Confirming resumes at "plan",
-      // whose reuse branch is cheap, so the issue review still runs after.
-      if (options.stopForScopeReview && scope && scope.confidence === "partial") {
+      // G-12: the proposed scope is always shown for confirmation before any
+      // investigator spends tokens ("I'll search: …" with Edit). Confirming
+      // resumes at "plan", whose reuse branch is cheap, so the issue review
+      // still runs after.
+      if (options.stopForScopeReview && scope) {
         return { ok: true, paused: true, scopeReview: true, retries: 0 };
       }
       if (

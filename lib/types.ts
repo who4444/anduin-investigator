@@ -108,6 +108,14 @@ export interface ClaimReview {
   createdAt: string;
 }
 
+/** What a live pull actually searched: the expanded targets with labels, for
+    the "I'll search: …" scope review. Null for upload/demo runs. */
+export interface SourceSelectionEntry {
+  source: string;
+  targets: { id: string; label: string }[];
+  query: string | null;
+}
+
 export interface Investigation {
   id: string;
   title: string;
@@ -118,6 +126,7 @@ export interface Investigation {
   createdAt: string;
   scope: InvestigationScope | null;
   declaredClient: string | null;
+  sourceSelection: SourceSelectionEntry[] | null;
   /** Registry record ids the manager added back from the excluded list (G-01). */
   scopeOverrides: string[];
   /** When the pre-run scope review was confirmed (G-12). */

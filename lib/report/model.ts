@@ -192,6 +192,8 @@ export interface ReportAuditRow {
   nextStep: string;
   /** True when the client is unresolved and the row is for internal use only. */
   internalOnly: boolean;
+  /** How many near-identical checks collapsed into this row. */
+  repeats?: number;
 }
 
 export interface ReportTenantCard {
@@ -220,6 +222,8 @@ export interface ReportModel {
   state: ReportStateModel;
   counts: ReportCounts;
   questionCounts: QuestionCounts;
+  /** Verifier-level truth: statements (claims) verified, independent of pills. */
+  statementCounts: { total: number; verified: number };
   /** C3: deterministic contradiction detectors (the audit's first rows). */
   contradictions: Contradiction[];
   /** C5: all three silence windows from the one computation. */
@@ -396,8 +400,8 @@ function labelFor(finding: ReportFindingModel, actors: ReportActorModel[], full:
   if (finding.kind === "status_change") {
     const assignee = finding.eventText.match(ASSIGNEE_TRANSITION);
     if (assignee) return `${assignee[2].trim()} took ownership`;
-    const status = finding.eventText.match(STATUS_TRANSITION);
-    if (status) return `Status became ${status[2].trim()}`;
+    const status = lastStatusTransition(finding.eventText);
+    if (status) return `Status became ${status.to}`;
   }
   if (finding.kind === "promise") {
     const actorName = actor ?? "Someone";
@@ -407,9 +411,8 @@ function labelFor(finding: ReportFindingModel, actors: ReportActorModel[], full:
     return `${actorName}: ${full ? rest : words(rest, 5)}`;
   }
   const base = labelSource(finding, actor ?? null);
-  if (finding.failureTag) {
-    return `${finding.failureTag} failure: ${full ? base : words(base, 4)}`;
-  }
+  // The failure chip already says "process"/"technical"; the label is the
+  // statement, not a genre prefix.
   return full ? base : words(base, 5);
 }
 
@@ -522,6 +525,24 @@ function dateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
 
+function statusTransitions(text: string): { from: string; to: string }[] {
+  return [...text.matchAll(/Status:\s*(.+?)\s*→\s*(.+?)\s*(?:\n|$)/g)].map((match) => ({
+    from: match[1].trim(),
+    to: match[2].trim(),
+  }));
+}
+
+function lastStatusTransition(text: string): { from: string; to: string } | null {
+  const all = statusTransitions(text);
+  return all.length > 0 ? all[all.length - 1] : null;
+}
+
+function humanDay(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
 function headlineFor(
   kind: FindingKind,
   event: Event,
@@ -532,7 +553,7 @@ function headlineFor(
 ): string {
   if (kind === "status_change") {
     if (assignee) return `${assignee} took ownership of ${event.channel}`;
-    if (statusValue) return `${event.channel} marked ${statusValue} on ${dateOnly(event.ts)}`;
+    if (statusValue) return `${event.channel} marked ${statusValue} on ${humanDay(event.ts)}`;
   }
   const human = cleanHumanText(text);
   const base = words(human, wordCount(human) < 6 ? 6 : 9);
@@ -821,6 +842,17 @@ function buildAuditNoteRows(
     const key = cleaned.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     if (seen.has(key)) continue;
     seen.add(key);
+    // Near-identical rewordings of the same check collapse into one row: the
+    // manager sees the mismatch once, with how often it was raised.
+    const duplicate = rows.find(
+      (row) =>
+        row.findingId === finding.id &&
+        (row.note === cleaned || similarity(row.note, cleaned) >= 0.6),
+    );
+    if (duplicate) {
+      duplicate.repeats = (duplicate.repeats ?? 1) + 1;
+      continue;
+    }
     rows.push({
       id: `note_${note.id}`,
       origin: "note",
@@ -833,6 +865,7 @@ function buildAuditNoteRows(
       note: cleaned,
       nextStep: "Check the cited finding before repeating it.",
       internalOnly: false,
+      repeats: 1,
     });
   }
   return rows.slice(0, MAX_AUDIT_NOTES);
@@ -1273,8 +1306,10 @@ function buildHeadline(
   state: ReportStateModel,
   openQuestions: OpenQuestionGroup[],
   counts: ReportCounts,
-  actions: ReportActionModel[],
   chases: number | null,
+  statementCounts: { total: number; verified: number } | undefined,
+  scopeConfirmed: boolean,
+  actors: ReportActorModel[],
 ): ReportHeadline {
   const visibleClaimIds = new Set(
     input.claims
@@ -1285,8 +1320,8 @@ function buildHeadline(
   for (const commitment of input.commitments ?? []) {
     if (!visibleClaimIds.has(commitment.claimId)) continue;
     promises.push({
-      promisor: commitment.promisor,
-      promisee: commitment.promisee,
+      promisor: commitment.promisor ? displayName(commitment.promisor) || commitment.promisor : null,
+      promisee: commitment.promisee ? displayName(commitment.promisee) || commitment.promisee : null,
       object: commitment.object,
       deadlinePhrase: commitment.deadlinePhrase,
       status: commitment.status,
@@ -1304,7 +1339,30 @@ function buildHeadline(
     });
   }
 
-  const causeFinding = findings.find((finding) => finding.kind === "technical_finding") ?? null;
+  // The cause sentence must prefer an actual causal statement over a symptom
+  // record. Agents sometimes type the client's report as a "technical
+  // finding"; a record that says what changed ("refactor", "introduced",
+  // "root cause", "regression") is the better cause, verified state first.
+  const CAUSE_CUE = /\b(?:root cause|caused by|caused the|introduced|regression|refactor|change(?:d)? .{0,40}(?:rounding|date|timezone|migration)|merged .{0,40}(?:release|branch))\b/i;
+  const causeCandidates = findings
+    .filter((finding) => finding.verification !== "rejected")
+    .map((finding) => {
+      const cue = CAUSE_CUE.test(`${finding.text} ${finding.headline}`) ? 1 : 0;
+      const technical = finding.kind === "technical_finding" ? 1 : 0;
+      const authorName = actorNameForFinding(finding, actors);
+      const clientAuthored = authorName
+        ? (input.clientActors ?? []).some(
+            (actor) => normalizeName(actor) === normalizeName(authorName),
+          )
+          ? 1
+          : 0
+        : 0;
+      const verified = finding.verification === "verified" ? 1 : 0;
+      return { finding, score: cue * 4 + technical * 2 + verified - clientAuthored * 3 };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
+  const causeFinding = causeCandidates[0]?.finding ?? null;
   const cause: StoryInput["cause"] = causeFinding
     ? {
         statement: causeFinding.text,
@@ -1316,9 +1374,14 @@ function buildHeadline(
     : null;
 
   // D1: the story's open question is a well-formed system question when one
-  // exists (the deterministic unknowns), else the top grouped question.
+  // exists (the deterministic unknowns), else the top grouped question that
+  // actually asks something. Skeptic observations are not headline questions.
+  const QUESTION_SHAPE =
+    /\?\s*$|^(?:which|who|what|when|where|why|how|whether|did|does|is|are|was|were|has|have|can|could|should|will|would)\b/i;
   const open =
-    openQuestions.find((group) => group.gapIds.length === 0) ?? openQuestions[0] ?? null;
+    openQuestions.find((group) => group.gapIds.length === 0 && QUESTION_SHAPE.test(group.question)) ??
+    openQuestions.find((group) => QUESTION_SHAPE.test(group.question)) ??
+    null;
   const story = buildStory({
     cause,
     promises,
@@ -1327,26 +1390,34 @@ function buildHeadline(
     lastClientContact: { known: state.lastClientContact.known, chases, findingIds: state.lastClientContact.basis },
     latestFix: { known: state.latestFix.known, text: state.latestFix.value?.text ?? null, findingIds: state.latestFix.basis },
     // D1: the story's action is the decision model's top action, not the
-    // category's next-step copy (which the gaps section renders).
+    // category's next-step copy (which the gaps section renders). The headline
+    // keeps the open question and the action separate so they are not read as
+    // cause and effect.
     openQuestion: open
       ? {
           question: open.question,
-          nextStep: (actions.length > 0 && actions[0].id !== "act_none" ? actions[0].text : open.nextStep),
+          nextStep: open.nextStep,
           findingIds: open.findingIds,
         }
       : null,
     recordCount: input.events.length,
     counts,
     sources: [...new Set(input.events.map((event) => event.source))],
+    scopeConfirmed,
+    incidentChannel:
+      findings.find((finding) => state.currentStatus.basis.includes(finding.id))?.channel ?? null,
   });
 
   const fallbackIds = findings.slice(0, 2).map((finding) => finding.id);
+  const statsLine = statementCounts
+    ? `${story.statsLine} · ${statementCounts.verified} of ${statementCounts.total} statements verified`
+    : story.statsLine;
   return {
     sentences: story.sentences.map((sentence) => ({
       text: sentence.text,
       findingIds: sentence.findingIds.length > 0 ? sentence.findingIds : fallbackIds,
     })),
-    statsLine: story.statsLine,
+    statsLine,
     nextStep: story.nextStep,
     tooThin: story.tooThin,
   };
@@ -1435,7 +1506,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
         isPromiseLike(representative.text, representative.text));
     let kind = kindFor(event, representative);
     if (kind === "promise" && !isPromiseFinding) kind = "communication";
-    const status = event.text.match(STATUS_TRANSITION);
+    const status = lastStatusTransition(event.text);
     const assignee = event.text.match(ASSIGNEE_TRANSITION);
     const actorName = actorIds.length > 0 ? actorsById.get(actorIds[0])?.name ?? null : null;
     const { state: verification, incompatible } = representativeVerification(claims);
@@ -1443,23 +1514,28 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     // only the claims that define the representative state can flag it.
     const bestRank = CLAIM_STATE_RANK[verification];
     const bestClaims = claims.filter((claim) => CLAIM_STATE_RANK[claim.verifyStatus] === bestRank);
+    // A skeptic flag is a doubt, not proof of contradiction: it downgrades a
+    // finding to "needs check". Conflict is reserved for incompatible
+    // assertions, a contested commitment, or a contradiction aimed at this
+    // finding's own representative claim.
+    const claimFlagged = bestClaims.some((claim) => claim.skepticFlag);
     const conflict =
       incompatible ||
-      bestClaims.some((claim) => claim.skepticFlag) ||
       Boolean(commitment?.contested) ||
       input.notes.some(
         (note) =>
           note.kind === "contradiction" &&
-          (note.eventIds.includes(event.id) || (representative && note.claimId === representative.id)),
+          representative !== undefined &&
+          note.claimId === representative.id,
       );
     const flags: FindingFlag[] = [];
     if (conflict) flags.push("conflict");
-    if (verification !== "verified" && !conflict) flags.push("needs_check");
+    if ((verification !== "verified" || claimFlagged) && !conflict) flags.push("needs_check");
     // A2: a refuted representative is never a verified fact — label it.
     const representativeRefuted =
       Boolean(representative && NEGATIVE_REFUTE_ERRORS.has(representative.verifyError ?? ""));
-    if (representativeRefuted) flags.push("needs_check");
-    const pill = conflict ? "conflict" : verification === "verified" ? null : "needs_check";
+    if (representativeRefuted && !conflict && !flags.includes("needs_check")) flags.push("needs_check");
+    const pill = conflict ? "conflict" : verification === "verified" && !claimFlagged ? null : "needs_check";
     const importance: FindingImportance =
       kind === "process_failure" || kind === "technical_finding" || conflict || (kind === "promise" && commitment?.status === "broken")
         ? "key"
@@ -1467,12 +1543,12 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
           ? "normal"
           : "routine";
     const statusText = status
-      ? `The ${event.channel} ticket moved from ${status[1].trim()} to ${status[2].trim()}.`
+      ? `The ${event.channel} ticket moved from ${status.from} to ${status.to}.`
       : assignee
         ? `${assignee[2].trim()} took ownership of ${event.channel}.`
         : rawText;
     const text = stripEmailText(cleanHumanText(kind === "status_change" ? statusText : rawText), actorInfo.actors);
-    const headline = headlineFor(kind, event, text, actorName, status?.[2], assignee?.[2]);
+    const headline = headlineFor(kind, event, text, actorName, status?.to, assignee?.[2]);
     drafts.push({
       id: "",
       slug: "",
@@ -1664,11 +1740,20 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   );
   const withheldVerified = sorted.filter((finding) => finding.verification === "verified" && finding.pill !== null);
   const flagged = sorted.filter((finding) => finding.pill !== null);
+  // Claim-level truth for the stats line: the verifier's own numbers, so a
+  // conflict pill on a finding cannot hide that most statements verified.
+  const visibleClaims = input.claims.filter((claim) => claim.verifyStatus !== "rejected" && !claim.review);
+  const statementCounts = {
+    total: visibleClaims.length,
+    verified: visibleClaims.filter((claim) => claim.verifyStatus === "verified").length,
+  };
   const counts: ReportCounts = {
     findings: sorted.length,
     verified: verifiedFindings.length,
     needsCheck: flagged.length,
-    openQuestions: openQuestions.length,
+    // The section header reports "themes · questions"; the stats line reports
+    // the same raw question count so the two never disagree.
+    openQuestions: questionCounts.raw,
   };
 
   // Server-side assertions: a header number that does not equal the list it
@@ -1680,7 +1765,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
   if (counts.needsCheck !== sorted.filter((finding) => finding.pill !== null).length) {
     throw new Error("Report model count mismatch: needs check");
   }
-  if (counts.openQuestions !== openQuestions.length) {
+  if (counts.openQuestions !== questionCounts.raw) {
     throw new Error("Report model count mismatch: open questions");
   }
 
@@ -1721,7 +1806,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
       });
   const headline = crossTenant
     ? crossTenantHeadline(tenantCards)
-    : buildHeadline(input, sorted, state, openQuestions, counts, actions, chases);
+    : buildHeadline(input, sorted, state, openQuestions, counts, chases, statementCounts, client.clientKnown, actorInfo.actors);
   const audit = buildAudit(contradictions, sorted, input.notes, findingByEvent, client);
   const suppressPills = sorted.length > 0 && flagged.length / sorted.length > 0.6;
   const pillSummary = suppressPills
@@ -1748,6 +1833,7 @@ export function buildReportModel(input: ReportModelInput): ReportModel {
     state,
     counts,
     questionCounts,
+    statementCounts,
     contradictions,
     headline,
     verifiedFindings,

@@ -31,15 +31,15 @@ function header(title: string): void {
 }
 
 async function readStageRows(page: import("@playwright/test").Page): Promise<string[]> {
-  return (await page.locator(".stage").allInnerTexts()).map((text) => text.replace(/\n/g, " | "));
+  return (await page.locator(".step").allInnerTexts()).map((text) => text.replace(/\n/g, " | "));
 }
 
 async function assertReport(page: import("@playwright/test").Page, label: string): Promise<void> {
   await page.locator("#answer").waitFor({ state: "visible", timeout: waits.pipeline });
   const scope = (await page.locator(".scope-line").first().innerText()).replace(/\s+/g, " ");
-  const cells = await page.locator(".scoreboard-cell").count();
+  const stats = (await page.locator(".hero-status").first().innerText().catch(() => "")).replace(/\s+/g, " ");
   const errors = await page.locator(".alert-error").count();
-  console.log(`${label}: report OK — scope: "${scope}" · ${cells} scoreboard cells · errors: ${errors}`);
+  console.log(`${label}: report OK — scope: "${scope}" · ${stats} · errors: ${errors}`);
   if (errors > 0) {
     console.log("ERROR ALERTS:", await page.locator(".alert-error").allInnerTexts());
     throw new Error(`${label}: report carries error alerts`);
@@ -96,7 +96,7 @@ async function demoScenario(): Promise<void> {
   // Real timings from the review screen.
   const url = new URL(page.url());
   await page.goto(`${BASE}${url.pathname}/progress?review=1`);
-  await page.locator(".stage-mark-done").first().waitFor({ timeout: 30_000 });
+  await page.locator(".step.is-done").first().waitFor({ timeout: 30_000 });
   await page.waitForTimeout(500);
   console.log("stage timings:", await readStageRows(page));
   console.log(`demo scenario total wall time: ${Math.round((Date.now() - startedAt) / 1000)}s`);
@@ -136,7 +136,7 @@ async function realisticScenario(): Promise<void> {
 
   const url = new URL(page.url());
   await page.goto(`${BASE}${url.pathname}/progress?review=1`);
-  await page.locator(".stage-mark-done").first().waitFor({ timeout: 30_000 });
+  await page.locator(".step.is-done").first().waitFor({ timeout: 30_000 });
   await page.waitForTimeout(500);
   console.log("stage timings:", await readStageRows(page));
   console.log(`realistic scenario total wall time: ${Math.round((Date.now() - startedAt) / 1000)}s`);

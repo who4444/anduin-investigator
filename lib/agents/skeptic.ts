@@ -248,6 +248,25 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
     return true;
   });
 
+  /* A skeptic note's category follows its subject, not its detector: a silent
+     ticket is state/technical, a handoff thread is ownership, a client chase
+     is communication. Keeps the gaps section's themes honest. */
+  function gapCategoryFor(text: string): GapInput["category"] {
+    if (/\b(?:handoff|hand over|handed|on leave|assignee|owner|ownership|reassign)\b/i.test(text)) {
+      return "ownership";
+    }
+    if (/\b(?:root cause|refactor|regression|rounding|migration|deploy|release|build|code|ticket)\b/i.test(text)) {
+      return "technical";
+    }
+    if (/\b(?:client|email|reply|respond|chase|follow(?:ed)? up|silent|silence|no response)\b/i.test(text)) {
+      return "communication";
+    }
+    if (/\b(?:status|resolved|closed|reopened)\b/i.test(text)) {
+      return "state";
+    }
+    return "other";
+  }
+
   const notes: SkepticNoteInput[] = [];
   const gaps: GapInput[] = [];
   const flaggedClaimIds = new Set<string>();
@@ -261,12 +280,14 @@ export async function runSkeptic(investigationId: string, pass = 1): Promise<Ske
       eventIds: issue.eventIds,
     });
     if (issue.kind === "silence" || issue.kind === "unanswered") {
-      // C6: skeptic gaps carry a structured category (communication).
+      // C6: skeptic gaps carry a structured category. An unanswered client
+      // chase is communication; a silent record or an open technical thread
+      // is not — derive it from what the note is about.
       gaps.push({
         question: issue.text,
         note: issue.text,
         eventIds: issue.eventIds,
-        category: "communication",
+        category: issue.kind === "unanswered" ? "communication" : gapCategoryFor(issue.text),
       });
     }
   }

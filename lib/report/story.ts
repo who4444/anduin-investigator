@@ -48,6 +48,10 @@ export interface StoryInput {
   recordCount: number;
   counts: { findings: number; verified: number; needsCheck: number; openQuestions: number };
   sources: string[];
+  /** False when no client/project is confirmed: a cause is a lead, not the case's cause. */
+  scopeConfirmed?: boolean;
+  /** The case's own ticket (from its latest status change), when one exists. */
+  incidentChannel?: string | null;
 }
 
 function ids(...groups: (string[] | undefined)[]): string[] {
@@ -74,18 +78,43 @@ function promiseOutcome(status: StoryPromiseInput["status"]): "kept" | "broken" 
   return status === "withdrawn" ? "unclear" : status;
 }
 
-function causeSentence(cause: StoryCauseInput | null): StorySentence {
+function firstSentence(text: string): string {
+  const flat = one(text);
+  const match = flat.match(/^(.+?[.!?])(?:\s|$)/);
+  return (match ? match[1] : flat).replace(/[.]+$/, "");
+}
+
+function causeSentence(
+  cause: StoryCauseInput | null,
+  scopeConfirmed: boolean,
+  incidentChannel: string | null | undefined,
+): StorySentence {
   if (!cause) {
     return { text: "The records do not establish a technical cause.", findingIds: [] };
   }
+  const statement = firstSentence(cause.statement);
+  // Without a confirmed engagement a technical record is a lead, not the
+  // case's cause — never assert an incident the escalation did not establish.
+  if (!scopeConfirmed) {
+    return {
+      text: `The records contain a possible cause (“${statement}”, ${cause.channel}, ${day(cause.ts)}), but no client or project is confirmed, so this may not concern the escalation.`,
+      findingIds: ids(cause.findingIds),
+    };
+  }
+  // Name the incident only when the cause record is on the case's own ticket.
+  // A sibling ticket (the hidden-cause case) must not become "the incident".
+  const incident =
+    incidentChannel && cause.channel.toUpperCase() === incidentChannel.toUpperCase()
+      ? `The ${cause.channel} incident`
+      : "The incident";
   if (cause.state === "verified") {
     return {
-      text: `The ${cause.channel} incident traces to ${one(cause.statement)} (on ${day(cause.ts)}).`,
+      text: `${incident} traces to a cause recorded on ${day(cause.ts)}: “${statement}”.`,
       findingIds: ids(cause.findingIds),
     };
   }
   return {
-    text: `The evidence points to ${one(cause.statement)}, but that finding still needs a check.`,
+    text: `The evidence points to a cause recorded on ${day(cause.ts)}: “${statement}” — that finding still needs a check.`,
     findingIds: ids(cause.findingIds),
   };
 }
@@ -95,11 +124,11 @@ function promiseSentence(promise: StoryPromiseInput | undefined): StorySentence 
     return { text: "No client-facing promise was recorded.", findingIds: [] };
   }
   const promisor = one(promise.promisor ?? "Someone") || "Someone";
-  const promisee = promise.promisee ? `${one(promise.promisee)} ` : "";
+  const promisee = promise.promisee ? ` to ${one(promise.promisee)}` : "";
   const deadline = promise.deadlinePhrase ? ` by ${one(promise.deadlinePhrase)}` : "";
   const object = one(promise.object);
   return {
-    text: `${promisor} promised ${promisee}${object}${deadline}; it was ${promiseOutcome(promise.status)}.`,
+    text: `${promisor} promised${promisee}: “${object}”${deadline}; it was ${promiseOutcome(promise.status)}.`,
     findingIds: ids(promise.findingIds),
   };
 }
@@ -135,18 +164,36 @@ function nowSentence(input: StoryInput): StorySentence {
   };
 }
 
+function looksLikeQuestion(text: string): boolean {
+  return (
+    /\?\s*$/.test(text) ||
+    /^(?:which|who|what|when|where|why|how|whether|did|does|is|are|was|were|has|have|can|could|should|will|would)\b/i.test(
+      text.trim(),
+    )
+  );
+}
+
 function openSentence(open: StoryInput["openQuestion"]): StorySentence | null {
   if (!open) return null;
   const question = one(open.question);
-  const next = one(open.nextStep);
+  // The headline slot is for an actual open question. A skeptic observation
+  // ("X says Y, which is unexamined") belongs in the gaps section, not here.
+  if (!looksLikeQuestion(question)) return null;
+  const first = firstSentence(question);
+  const capped =
+    first.split(/\s+/).length > 24 ? `${first.split(/\s+/).slice(0, 24).join(" ")}…` : first;
+  // Never leave a dangling quote when a note is cut mid-citation.
+  const balanced = capped.replace(/\s(['"])([^'"]*)$/, " $2");
   return {
-    text: `Still unknown: ${question}${/[?!]$/.test(question) ? "" : "."} Next: ${next}.`,
+    text: `Still unknown: ${balanced}${/[?!…]$/.test(balanced) ? "" : "."}`,
     findingIds: ids(open.findingIds),
   };
 }
 
 export function buildStory(input: StoryInput): Story {
-  const tooThin = input.recordCount < 4 || input.cause === null;
+  // A thin record set is its own warning; a missing cause already gets its own
+  // honest sentence — it must not masquerade as "only N records".
+  const tooThin = input.recordCount < 4;
   const sentences: StorySentence[] = [];
 
   if (tooThin) {
@@ -155,7 +202,7 @@ export function buildStory(input: StoryInput): Story {
       findingIds: [],
     });
   }
-  sentences.push(causeSentence(input.cause));
+  sentences.push(causeSentence(input.cause, input.scopeConfirmed !== false, input.incidentChannel));
   sentences.push(promiseSentence(input.promises[0]));
   sentences.push(nowSentence(input));
   const open = openSentence(input.openQuestion);

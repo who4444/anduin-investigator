@@ -68,6 +68,7 @@ describeDb("source routes", () => {
         envKeys: ["FAKE_JIRA_TOKEN"],
         configured: true,
         missingEnv: [],
+        detail: "searching everything you have access to",
       },
     ]);
   });
@@ -143,6 +144,50 @@ describeDb("source routes", () => {
 
     const stages = await getStages(body.investigationId);
     expect(stages.find((stage) => stage.stage === "ingest")?.status).toBe("done");
+  });
+
+  it("pulls everything accessible when no targets are chosen and records the selection", async () => {
+    const { setSourcesForTests } = await import("../lib/sources");
+    const { POST } = await import("../app/api/sources/pull/route");
+    const { getInvestigation } = await import("../lib/store");
+
+    setSourcesForTests([
+      {
+        ...fakeSource(),
+        listTargets: async () => [
+          { id: "FAKE", label: "FAKE · Fake project", meta: { hidden: false } },
+        ],
+        pull: async (targetIds: string[]) => {
+          // Real sources expand an empty selection; the fake mirrors that.
+          const ids = targetIds.length > 0 ? targetIds : ["FAKE"];
+          return {
+            files: [{ name: "jira/fake.json", content: fakeJira }],
+            warnings: [],
+            targets: ids.map((id) => ({ id, label: "FAKE · Fake project" })),
+          };
+        },
+      },
+    ]);
+
+    const response = await POST(
+      new NextRequest("http://localhost/api/sources/pull", {
+        method: "POST",
+        body: JSON.stringify({ source: "jira", targets: [], escalation: "Search everything." }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    created.push(body.investigationId);
+
+    const investigation = await getInvestigation(body.investigationId);
+    expect(investigation?.sourceSelection).toEqual([
+      { source: "jira", targets: [{ id: "FAKE", label: "FAKE · Fake project" }], query: null },
+    ]);
+    // The cache key reflects the expanded selection, not the empty request.
+    expect(investigation?.contentHash).toContain("jira:FAKE");
+
+    setSourcesForTests([fakeSource()]);
   });
 
   it("400s when a pull returns no data", async () => {

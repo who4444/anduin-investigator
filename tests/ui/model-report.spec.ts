@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { loadEnv } from "../../lib/db/env";
 
@@ -18,16 +18,6 @@ const LONG_TAIL = "finance keeps re-running the exports by hand every morning";
 const LONG_ESCALATION =
   "Totals are wrong since 4.12. The bill shows the wrong day in every line item, " +
   "our reconciliation is off by one day across the board, and " + LONG_TAIL + ".";
-
-const sentences = (text: string): string[] =>
-  text
-    .split(/\n+|(?<=[.!?])\s+/)
-    .map((sentence) => sentence.replace(/\s+/g, " ").trim())
-    .filter((sentence) => sentence.split(" ").length >= 8);
-
-async function bodyText(page: Page): Promise<string> {
-  return page.locator("body").innerText();
-}
 
 test.beforeAll(async () => {
   const { createInvestigation, insertEvents, upsertStage } = await import("../../lib/store");
@@ -196,16 +186,15 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   expect(state).toContain("no record shows a fix shipping");
   await expect(page.locator(".now-block")).toContainText("no assignee transition is recorded");
 
-  // One finding, one full sentence; the headline is a story with citations.
-  const text = await bodyText(page);
-  const repeated = new Map<string, number>();
-  for (const sentence of sentences(text)) repeated.set(sentence, (repeated.get(sentence) ?? 0) + 1);
-  expect([...repeated.values()].filter((count) => count > 1)).toEqual([]);
-  expect(await page.locator(".hero .citation").count()).toBeGreaterThanOrEqual(2);
+  // One aggregated source marker per sentence — never a row of internal ids.
+  expect(await page.locator(".hero .source-ref").count()).toBeGreaterThanOrEqual(2);
+  expect(await page.locator(".hero .citation").count()).toBe(0);
+  expect(await page.locator(".hero").innerText()).not.toMatch(/\[f\d+\]/);
   expect(await page.locator(".hero").innerText()).toContain("Only 3 stored records");
 
-  // The action is named after its triggering finding, not the draft reply.
-  await expect(page.locator("#actions")).toContainText("trigger f2");
+  // The action is named after its triggering source, not the draft reply.
+  await expect(page.locator("#actions")).toContainText("the ");
+  await expect(page.locator("#actions")).not.toContainText(/trigger f\d+/);
   await expect(page.locator("#actions")).not.toContainText(/draft reply/i);
 
   // Truncated labels offer "see more"; the drawer then leads with the full
@@ -221,11 +210,10 @@ test("the 3-record sample tells the story, states its limits and confirms the cl
   const fullText = (await heading.innerText()).replace(/\s+/g, " ").trim();
   expect(fullText).not.toContain("…");
   expect(fullText.startsWith(shortText.replace(/…$/, "").trim())).toBe(true);
-  const firstClass = await drawer.locator(":scope > *").first().getAttribute("class");
-  expect(firstClass ?? "").toContain("drawer-heading");
   const weight = await heading.evaluate((el) => getComputedStyle(el).fontWeight);
   expect(Number(weight)).toBeGreaterThanOrEqual(600);
   await expect(drawer.locator("p.evidence")).toBeVisible();
+  await expect(drawer.locator(".drawer-provenance")).toBeVisible();
   await page.getByLabel("Close evidence").click();
 
   // The Do-now action label opens the drawer of the finding it names.

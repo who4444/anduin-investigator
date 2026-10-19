@@ -34,6 +34,7 @@ import type {
   SkepticNoteInput,
   SkepticNoteKind,
   SourceKind,
+  SourceSelectionEntry,
   Stage,
   StageName,
   StageStatus,
@@ -64,6 +65,7 @@ interface InvestigationRow {
   origin: string | null;
   scope_overrides: unknown;
   scope_reviewed_at: Date | string | null;
+  source_selection: unknown;
 }
 
 function mapScope(value: unknown): InvestigationScope | null {
@@ -121,7 +123,33 @@ function mapInvestigation(row: InvestigationRow): Investigation {
       ? (row.scope_overrides as unknown[]).filter((entry): entry is string => typeof entry === "string")
       : [],
     scopeReviewedAt: row.scope_reviewed_at ? (toIso(row.scope_reviewed_at) as string) : null,
+    sourceSelection: mapSourceSelection(row.source_selection),
   };
+}
+
+function mapSourceSelection(value: unknown): SourceSelectionEntry[] | null {
+  if (!Array.isArray(value)) return null;
+  const entries: SourceSelectionEntry[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const record = entry as { source?: unknown; targets?: unknown; query?: unknown };
+    if (typeof record.source !== "string") continue;
+    const targets = Array.isArray(record.targets)
+      ? record.targets.filter(
+          (target): target is { id: string; label: string } =>
+            typeof target === "object" &&
+            target !== null &&
+            typeof (target as { id?: unknown }).id === "string" &&
+            typeof (target as { label?: unknown }).label === "string",
+        )
+      : [];
+    entries.push({
+      source: record.source,
+      targets,
+      query: typeof record.query === "string" ? record.query : null,
+    });
+  }
+  return entries.length > 0 ? entries : null;
 }
 
 interface IssueRow {
@@ -375,7 +403,7 @@ export async function createInvestigation(input: NewInvestigation): Promise<stri
 export async function getInvestigation(id: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at, source_selection
     from investigations
     where id = ${id}
     limit 1
@@ -400,6 +428,12 @@ export async function setDeclaredClient(id: string, client: string): Promise<voi
 export async function setScopeOverrides(id: string, eventIds: string[]): Promise<void> {
   const sql = getPool();
   await sql`update investigations set scope_overrides = ${sql.json(eventIds as unknown as JSONValue)}, scope_reviewed_at = now() where id = ${id}`;
+}
+
+/** The pull's expanded selection, with labels, for the scope review. */
+export async function setSourceSelection(id: string, selection: SourceSelectionEntry[]): Promise<void> {
+  const sql = getPool();
+  await sql`update investigations set source_selection = ${sql.json(selection as unknown as JSONValue)} where id = ${id}`;
 }
 
 /* G-05: commitments keyed by promisor+promisee+object+deadline. A restatement
@@ -755,7 +789,7 @@ export async function listInvestigations(limit = 20): Promise<InvestigationSumma
 export async function findInvestigationByHash(hash: string): Promise<Investigation | null> {
   const sql = getPool();
   const rows = await sql<InvestigationRow[]>`
-    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at
+    select id, title, escalation_text, status, content_hash, plan, created_at, scope, declared_client, plan_data, ingest_warnings, origin, scope_overrides, scope_reviewed_at, source_selection
     from investigations
     where content_hash = ${hash}
     order by created_at desc
@@ -1005,7 +1039,7 @@ export async function sweepStaleStages(investigationId: string): Promise<void> {
 export async function getGaps(investigationId: string): Promise<Gap[]> {
   const sql = getPool();
   const rows = await sql<GapRow[]>`
-    select id, investigation_id, question, note, event_ids, issue_id
+    select id, investigation_id, question, note, event_ids, issue_id, category
     from gaps
     where investigation_id = ${investigationId}
     order by seq asc

@@ -1,4 +1,5 @@
 import {
+  cleanQuery,
   missingEnvKeys,
   type SourceDefinition,
   type SourceEnv,
@@ -100,7 +101,7 @@ export function createGmailSource(options: GmailSourceOptions = {}): SourceDefin
     },
 
     async listTargets(query?: string): Promise<SourceTarget[]> {
-      const effective = query?.trim() || env.GMAIL_QUERY?.trim();
+      const effective = cleanQuery(query) ?? cleanQuery(env.GMAIL_QUERY);
       return [
         {
           id: "search",
@@ -110,7 +111,7 @@ export function createGmailSource(options: GmailSourceOptions = {}): SourceDefin
     },
 
     async pull(_targetIds: string[], query?: string): Promise<SourcePullResult> {
-      const effective = query?.trim() || env.GMAIL_QUERY?.trim();
+      const effective = cleanQuery(query) ?? cleanQuery(env.GMAIL_QUERY);
       if (!effective) {
         throw new Error(
           "Provide a Gmail search query (for example: label:support newer_than:90d).",
@@ -146,7 +147,11 @@ export function createGmailSource(options: GmailSourceOptions = {}): SourceDefin
       }
 
       if (ids.length === 0) {
-        return { files: [], warnings: [`Gmail: no messages matched "${effective}".`] };
+        return {
+          files: [],
+          warnings: [`Gmail: no messages matched "${effective}".`],
+          targets: [{ id: "search", label: `mail: ${effective}` }],
+        };
       }
 
       const rawMessages: string[] = [];
@@ -195,7 +200,7 @@ export function createGmailSource(options: GmailSourceOptions = {}): SourceDefin
         });
       }
 
-      return { files, warnings };
+      return { files, warnings, targets: [{ id: "search", label: `mail: ${effective}` }] };
     },
   };
 }

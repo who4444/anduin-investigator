@@ -481,6 +481,7 @@ mark {
   align-items: center;
   gap: var(--sp-2);
   min-height: 34px;
+  white-space: nowrap;
   padding: 0 var(--sp-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-pill);
@@ -1577,6 +1578,120 @@ table.data td {
   gap: 14px;
 }
 
+/* Sticky header/footer keep Close and the record actions reachable while the
+   evidence itself scrolls. */
+.drawer-head {
+  position: sticky;
+  top: -20px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-close {
+  flex: none;
+}
+
+.drawer-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.drawer-body {
+  display: grid;
+  gap: 14px;
+}
+
+.drawer-evidence {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+}
+
+.drawer-provenance {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--page);
+  border-left: 3px solid var(--border-strong);
+}
+
+.drawer-actions {
+  position: sticky;
+  bottom: -20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+.drawer-source-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.drawer-source-row {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--page);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  display: grid;
+  gap: 5px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.drawer-source-row:hover {
+  border-color: var(--border-strong);
+}
+
+.drawer-source-label {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* One aggregated citation marker per sentence: "[source]" / "[3 sources]". */
+.source-ref {
+  border: 0;
+  background: none;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 0.82em;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.source-ref:hover {
+  color: var(--accent-strong, var(--accent));
+}
+
+.say-help {
+  display: block;
+  margin-top: 2px;
+}
+
+.trust-legend {
+  margin: 8px 0 0;
+}
+
 @media (max-width: 640px) {
   .drawer-backdrop {
     align-items: flex-end;
@@ -1591,7 +1706,7 @@ table.data td {
 }
 
 .drawer-close {
-  align-self: flex-end;
+  flex: none;
 }
 
 .drawer-heading {
@@ -3800,4 +3915,108 @@ button.promise-card {
 
 .tl-overlay {
   right: 24px;
+}
+
+/* ---------- landing page: connection status + advanced source limits ---------- */
+
+.source-status {
+  padding: var(--sp-5) var(--sp-6);
+}
+
+.conn-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  flex-wrap: wrap;
+}
+
+.conn-row + .conn-row {
+  border-top: 1px solid var(--border);
+}
+
+.conn-name {
+  font-weight: 500;
+}
+
+.conn-row .conn {
+  margin-left: auto;
+}
+
+@media (max-width: 560px) {
+  .conn-row .conn {
+    flex-basis: 100%;
+    margin-left: calc(28px + var(--sp-3));
+  }
+}
+
+.source-advanced {
+  padding: 0;
+}
+
+.source-advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-6);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.source-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.source-advanced > summary::before {
+  content: "▸";
+  color: var(--faint);
+  transition: transform var(--dur-1) var(--ease);
+}
+
+.source-advanced[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.source-advanced > summary:hover {
+  color: var(--text);
+}
+
+.source-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: 0 var(--sp-6) var(--sp-6);
+}
+
+.pick-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.pick-group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-meta);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* The review's answer-first line: "I'll search: <units>" */
+.search-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.scope-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: 0;
 }

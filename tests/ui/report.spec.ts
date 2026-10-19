@@ -55,10 +55,16 @@ test.beforeAll(async ({ request }) => {
   reportUrl = `/investigations/${investigationId}?synthetic=1`;
 });
 
-test("the verification legend opens the evidence drawer with the quoted record", async ({ page }) => {
+test("the verification legend opens every source behind that state", async ({ page }) => {
   await page.goto(reportUrl);
 
   await page.locator(".stats-legend .legend-item:not([disabled])").first().click();
+  // Several records behind one state open as a list; one opens directly.
+  const list = page.getByRole("dialog", { name: "Sources for this statement" });
+  if (await list.isVisible()) {
+    await expect(list.locator(".drawer-source-row").first()).toBeVisible();
+    await list.locator(".drawer-source-row").first().click();
+  }
   const drawer = page.getByRole("dialog", { name: "Stored original message" });
   await expect(drawer).toBeVisible();
   await expect(drawer.locator("mark").first()).toBeVisible();

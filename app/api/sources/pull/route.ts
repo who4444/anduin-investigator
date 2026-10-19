@@ -3,7 +3,10 @@ import type { NextRequest } from "next/server";
 import type { IngestFile } from "@/lib/ingest/detect";
 import { ingestFiles } from "@/lib/ingest/run";
 import { getSource } from "@/lib/sources";
+import type { SourceTarget } from "@/lib/sources/types";
 import { runVersionKey } from "@/lib/pipeline/version";
+import { setSourceSelection } from "@/lib/store";
+import type { SourceSelectionEntry } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest): Promise<Response> {
   const files: IngestFile[] = [];
   const warnings: string[] = [];
   const hashParts: string[] = [];
+  const selections: SourceSelectionEntry[] = [];
 
   for (const pullRequest of requests) {
     const source = getSource(pullRequest.source);
@@ -86,23 +90,39 @@ export async function POST(request: NextRequest): Promise<Response> {
         409,
       );
     }
-    if (pullRequest.targets.length === 0 && source.id !== "gmail") {
-      return json({ error: `Select at least one ${source.label} scope to pull.` }, 400);
-    }
+    // Empty targets mean "everything you have access to"; the source expands
+    // its own accessible, non-hidden set.
 
-    let pulled: { files: { name: string; content: string }[]; warnings: string[] };
+    let pulled: { files: { name: string; content: string }[]; warnings: string[]; targets?: SourceTarget[] };
     try {
       pulled = await source.pull(pullRequest.targets, pullRequest.query);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return json({ error: `${source.label} pull failed: ${message}` }, 502);
+      return json({ error: `${source.label} pull failed: ${message}`, warnings }, 502);
     }
 
     for (const file of pulled.files) {
       files.push({ name: file.name, bytes: new TextEncoder().encode(file.content) });
     }
     warnings.push(...pulled.warnings);
-    hashParts.push(`${source.id}:${pullRequest.targets.join(",")}:${pullRequest.query ?? ""}`);
+
+    // Record what was actually searched (with labels) for the scope review.
+    const labelById = new Map((pulled.targets ?? []).map((target) => [target.id, target.label]));
+    if (pullRequest.targets.length > 0) {
+      const all = await source.listTargets(pullRequest.query).catch(() => []);
+      for (const target of all) labelById.set(target.id, target.label);
+    }
+    const resolved: SourceTarget[] =
+      pulled.targets && pulled.targets.length > 0
+        ? pulled.targets
+        : pullRequest.targets.map((id) => ({ id, label: labelById.get(id) ?? id }));
+    selections.push({
+      source: source.id,
+      targets: resolved.map((target) => ({ id: target.id, label: labelById.get(target.id) ?? target.label })),
+      query: pullRequest.query ?? null,
+    });
+    const ids = resolved.map((target) => target.id).sort();
+    hashParts.push(`${source.id}:${ids.join(",")}:${pullRequest.query ?? ""}`);
   }
 
   if (files.length === 0) {
@@ -124,6 +144,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   if (!result.ok) {
     return json({ error: result.error, warnings: result.warnings }, result.status);
+  }
+
+  if (selections.length > 0) {
+    await setSourceSelection(result.investigationId, selections);
   }
 
   return json(

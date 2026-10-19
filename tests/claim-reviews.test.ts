@@ -205,7 +205,10 @@ describeDb("claim reviews (G-14)", () => {
 
     expect((await POST(post({ verdict: "meh" }), context(investigationId, claimA))).status).toBe(400);
     expect(
-      (await POST(post({ verdict: "wrong" }), context(investigationId, randomUUID()))).status,
+      (await POST(post({ verdict: "wrong" }), context(investigationId, claimA))).status,
+    ).toBe(400);
+    expect(
+      (await POST(post({ verdict: "wrong", reason: "quote misreads the record" }), context(investigationId, randomUUID()))).status,
     ).toBe(404);
 
     const cleared = await DELETE(

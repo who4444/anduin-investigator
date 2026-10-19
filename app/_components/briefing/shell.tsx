@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { EvidenceDrawer } from "@/app/_components/evidence";
+import { EvidenceDrawer, type DrawerSource } from "@/app/_components/evidence";
 import {
   ClientResolutionNotice,
   ModelAnswer,
@@ -66,7 +66,7 @@ export function BriefingShell({
   cached: boolean;
   live: boolean;
 }) {
-  const [drawer, setDrawer] = useState<{ eventId: string; claimId?: string; heading?: string } | null>(null);
+  const [drawer, setDrawer] = useState<{ sources: DrawerSource[]; claimId?: string } | null>(null);
   const [reply, setReply] = useState(report.reply);
   const [replyState, setReplyState] = useState<"idle" | "loading" | "error">("idle");
   const [replyError, setReplyError] = useState<string | null>(null);
@@ -106,12 +106,66 @@ export function BriefingShell({
   const openClaim = (claimId: string | undefined, heading?: string) => {
     if (!claimId) return;
     const claim = report.claims.find((candidate) => candidate.id === claimId);
-    if (claim) setDrawer({ eventId: claim.eventId, claimId, heading });
+    if (!claim) return;
+    const finding = model.findings.find((entry) => entry.claimIds.includes(claimId));
+    setDrawer({
+      sources: [
+        {
+          eventId: claim.eventId,
+          claimId,
+          heading: heading ?? (finding ? fullFindingLabel(finding, model.actors) : claim.text),
+          verification: finding?.verification,
+          pill: finding?.pill ?? null,
+          usedIn: usedInFor(finding),
+        },
+      ],
+      claimId,
+    });
+  };
+  const usedInFor = (finding: ReportFindingModel | undefined): string[] => {
+    if (!finding) return [];
+    const sections: string[] = [];
+    if (model.headline.sentences.some((sentence) => sentence.findingIds.includes(finding.id))) {
+      sections.push("The answer");
+    }
+    sections.push("What happened");
+    if (model.promises.some((entry) => entry.id === finding.id)) sections.push("Promises");
+    if (model.failures.some((entry) => entry.id === finding.id)) sections.push("What went wrong");
+    if (model.actions.some((action) => action.findingIds.includes(finding.id))) sections.push("Do now");
+    return sections;
   };
   const openFinding = (finding: ReportFindingModel) => {
     const heading = fullFindingLabel(finding, report.model.actors);
     if (finding.claimIds[0]) openClaim(finding.claimIds[0], heading);
-    else if (finding.eventIds[0]) setDrawer({ eventId: finding.eventIds[0], heading });
+    else if (finding.eventIds[0]) {
+      setDrawer({
+        sources: [
+          {
+            eventId: finding.eventIds[0],
+            heading,
+            verification: finding.verification,
+            pill: finding.pill,
+            usedIn: usedInFor(finding),
+          },
+        ],
+      });
+    }
+  };
+  /* Several findings behind one sentence: the drawer opens as a list. */
+  const openSources = (findings: ReportFindingModel[]) => {
+    if (findings.length === 0) return;
+    setDrawer({
+      sources: findings.map((finding) => ({
+        eventId: finding.claimIds[0]
+          ? report.claims.find((claim) => claim.id === finding.claimIds[0])?.eventId ?? finding.eventIds[0] ?? ""
+          : finding.eventIds[0] ?? "",
+        claimId: finding.claimIds[0],
+        heading: fullFindingLabel(finding, model.actors),
+        verification: finding.verification,
+        pill: finding.pill,
+        usedIn: usedInFor(finding),
+      })),
+    });
   };
 
   /* Timeline clicks land on the finding in "What happened" and briefly
@@ -283,7 +337,7 @@ export function BriefingShell({
           </section>
         ) : (
           <>
-            <ModelAnswer report={report} onFinding={openFinding} />
+            <ModelAnswer report={report} onFinding={openFinding} onSources={openSources} />
             <ModelStory report={report} onFinding={openFinding} />
             <section className="briefing-section board-section" id="timeline-detail" aria-labelledby="board-title">
               <h2 id="board-title">Timeline detail</h2>
@@ -308,11 +362,21 @@ export function BriefingShell({
 
       {drawer && (
         <EvidenceDrawer
-          eventId={drawer.eventId}
-          claimId={drawer.claimId}
-          heading={drawer.heading}
+          sources={drawer.sources}
+          initialClaimId={drawer.claimId}
           events={report.events}
           claims={report.claims}
+          roleFor={(event) => {
+            const key = event.actorResolved ?? event.actor;
+            const actor = model.actors.find(
+              (entry) =>
+                entry.name === key ||
+                entry.aliases.some((alias) => alias.toLowerCase() === key.toLowerCase()),
+            );
+            if (!actor) return null;
+            return actor.role;
+          }}
+          kindFor={(event) => model.findings.find((finding) => finding.eventIds.includes(event.id))?.kind ?? null}
           onClose={() => setDrawer(null)}
         />
       )}

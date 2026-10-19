@@ -352,7 +352,10 @@ describe("ReportModel revision brief", () => {
     expect(model.counts.needsCheck).toBe(
       model.findings.filter((finding) => finding.pill !== null).length,
     );
-    expect(model.counts.openQuestions).toBe(model.openQuestions.length);
+    expect(model.counts.openQuestions).toBe(model.questionCounts.raw);
+    expect(model.questionCounts.raw).toBe(
+      model.openQuestions.reduce((total, group) => total + Math.max(group.questions.length, 1), 0),
+    );
 
     expect(model.state.owner).toMatchObject({ known: true, value: "Lin Chen" });
     expect(model.state.owner.basis).toHaveLength(1);

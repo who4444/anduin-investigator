@@ -26,8 +26,23 @@ function actorFor(model: ReportModel, id: string | null): ReportActorModel | und
 
 function actorRoleLabel(actor: ReportActorModel | undefined, clientResolved: boolean): string {
   if (!clientResolved) return "needs client confirmation";
-  if (!actor || actor.role === "unknown") return "role unknown";
+  if (!actor) return "role unknown";
+  if (/\b(?:bot|releasebot|scheduler|automation)\b/i.test(actor.name)) return "automation";
+  if (actor.role === "unknown") return "role unknown";
   return actor.role;
+}
+
+function humanDay(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/* Source-anchored wording instead of internal finding ids: "the Sep 20 email",
+   "the Sep 18 Slack post", "the Sep 21 Jira record". */
+function sourcePhrase(finding: ReportFindingModel): string {
+  const label = finding.source === "jira" ? "Jira record" : finding.source === "slack" ? "Slack post" : "email";
+  return `the ${humanDay(finding.ts)} ${label}`;
 }
 
 function actorColor(model: ReportModel, actorId: string | null): number {
@@ -355,34 +370,43 @@ function ClientSays({ text }: { text: string }) {
 export function ModelAnswer({
   report,
   onFinding,
+  onSources,
 }: {
   report: ReportPayload;
   onFinding: (finding: ReportFindingModel) => void;
+  onSources: (findings: ReportFindingModel[]) => void;
 }) {
   const model = report.model;
   const findingById = new Map(model.findings.map((finding) => [finding.id, finding]));
-  const citations = (ids: string[]) =>
-    ids
+  // One citation per sentence: "[source]" for one record, "[N sources]" for
+  // several. The record names live in the tooltip and aria-label; the visible
+  // marker stays a quiet convention, not prose. It opens the drawer.
+  const sourceMarker = (ids: string[]) => {
+    const findings = ids
       .map((id) => findingById.get(id))
-      .filter((finding): finding is ReportFindingModel => Boolean(finding))
-      .map((finding) => (
-        <button
-          key={finding.id}
-          type="button"
-          className="citation"
-          title={finding.headline}
-          onClick={() => onFinding(finding)}
-        >
-          [{finding.id}]
-        </button>
-      ));
+      .filter((finding): finding is ReportFindingModel => Boolean(finding));
+    if (findings.length === 0) return null;
+    const phrases = findings.map((finding) => sourcePhrase(finding));
+    return (
+      <button
+        type="button"
+        className="source-ref"
+        onClick={() => onSources(findings)}
+        aria-label={
+          findings.length === 1
+            ? `Open the source record: ${phrases[0]}`
+            : `Open all ${findings.length} source records: ${phrases.join(", ")}`
+        }
+        title={phrases.join(" · ")}
+      >
+        {findings.length === 1 ? "[source]" : `[${findings.length} sources]`}
+      </button>
+    );
+  };
 
   const conflicts = model.findings.filter((finding) => finding.pill === "conflict");
   const needsCheckOnly = model.findings.filter((finding) => finding.pill === "needs_check");
   const barTotal = Math.max(1, model.counts.verified + needsCheckOnly.length + conflicts.length);
-  const openFirst = (findings: ReportFindingModel[]) => {
-    if (findings[0]) onFinding(findings[0]);
-  };
 
   const action = model.actions[0];
   return (
@@ -392,7 +416,7 @@ export function ModelAnswer({
       <div className="hero">
         {model.headline.sentences.map((sentence, index) => (
           <p key={index} className={index === 0 ? "hero-answer" : "hero-line"}>
-            {sentence.text} {citations(sentence.findingIds)}
+            {sentence.text} {sourceMarker(sentence.findingIds)}
           </p>
         ))}
         {model.headline.nextStep && (
@@ -404,8 +428,13 @@ export function ModelAnswer({
       <div className="say-block">
         <div className="say-col">
           <span className="now-label">You can say · {model.counts.verified}</span>
+          <span className="small muted say-help">Safe to repeat to the client as-is.</span>
           {model.verifiedFindings.length === 0 ? (
-            <span className="now-unknown">Nothing is verified yet; use the story below and treat every finding as unsafe to repeat.</span>
+            <span className="now-unknown">
+              No finding is cleared for client use yet —{" "}
+              {model.statementCounts.verified} of {model.statementCounts.total} statements verified,
+              but none is both client-safe and unflagged. Check before repeating anything.
+            </span>
           ) : (
             <>
               <ul className="say-list">
@@ -417,7 +446,7 @@ export function ModelAnswer({
               </ul>
               {model.withheldVerified.length > 0 && (
                 <p className="small muted">
-                  {model.withheldVerified.length} verified finding{model.withheldVerified.length === 1 ? "" : "s"} withheld because they carry a conflict.
+                  {model.withheldVerified.length} verified finding{model.withheldVerified.length === 1 ? "" : "s"} withheld because they still need a check.
                 </p>
               )}
             </>
@@ -425,6 +454,7 @@ export function ModelAnswer({
         </div>
         <div className="say-col">
           <span className="now-label">Not yet · {model.counts.needsCheck}</span>
+          <span className="small muted say-help">Check with a human before repeating.</span>
           {model.counts.needsCheck === 0 ? (
             <span className="now-unknown">Nothing is waiting on a human check.</span>
           ) : (
@@ -455,22 +485,26 @@ export function ModelAnswer({
           <span className="seg-conflict" style={{ flex: conflicts.length / barTotal }} />
         </div>
         <div className="stats-legend">
-          <button type="button" className="legend-item" onClick={() => openFirst(model.verifiedFindings)} disabled={model.verifiedFindings.length === 0}>
+          <button type="button" className="legend-item" onClick={() => onSources(model.verifiedFindings)} disabled={model.verifiedFindings.length === 0}>
             <span className="swatch" style={{ background: "var(--verified)" }} />
             <StatusIcon status="verified" className="status-verified" />
             <span className="count">{model.counts.verified}</span> verified
           </button>
-          <button type="button" className="legend-item" onClick={() => openFirst(needsCheckOnly)} disabled={needsCheckOnly.length === 0}>
+          <button type="button" className="legend-item" onClick={() => onSources(needsCheckOnly)} disabled={needsCheckOnly.length === 0}>
             <span className="swatch" style={{ background: "#D9A21B" }} />
             <StatusIcon status="needs_check" className="status-check" />
             <span className="count">{needsCheckOnly.length}</span> needs check
           </button>
-          <button type="button" className="legend-item" onClick={() => openFirst(conflicts)} disabled={conflicts.length === 0}>
+          <button type="button" className="legend-item" onClick={() => onSources(conflicts)} disabled={conflicts.length === 0}>
             <span className="swatch" style={{ background: "var(--broken)" }} />
             <StatusIcon status="conflict" className="status-conflict" />
             <span className="count">{conflicts.length}</span> conflict
           </button>
         </div>
+        <p className="trust-legend small muted">
+          verified — safe to tell the client · needs check — confirm with a human first · conflict —
+          the records disagree
+        </p>
         <div className="stats-meta">
           <span>
             <a href="#story">{model.counts.findings} findings</a> in all
@@ -556,7 +590,7 @@ export function ModelAnswer({
                         const finding = findingById.get(findingId);
                         return finding ? (
                           <button key={findingId} type="button" className="btn btn-quiet btn-claim" onClick={() => onFinding(finding)}>
-                            trigger {finding.id}
+                            {sourcePhrase(finding)}
                           </button>
                         ) : null;
                       })}
@@ -607,7 +641,7 @@ export function ModelStory({ report, onFinding }: { report: ReportPayload; onFin
                       onClick={() => onFinding(finding)}
                       aria-label={`${finding.headline}. ${finding.text}`}
                     >
-                      <span className="event-day">{finding.id}</span>
+                      <span className="event-day">{humanDay(finding.ts)}</span>
                       <Avatar name={actor?.name ?? "Unknown"} colorIndex={actorColor(model, finding.eventActorId)} />
                       <span className="event-main">
                         <span className="event-headline">{finding.headline}</span>
@@ -663,7 +697,7 @@ export function ModelPromises({ report, onFinding }: { report: ReportPayload; on
               </span>
               {finding.deadline && <span className="small muted">deadline {finding.deadline}</span>}
               <button type="button" className="see-id small muted" onClick={() => onFinding(finding)}>
-                see {finding.id}
+                {sourcePhrase(finding)}
               </button>
             </li>
           ))}
@@ -677,8 +711,11 @@ export function ModelPromises({ report, onFinding }: { report: ReportPayload; on
 function ModelAudit({ report, onFinding }: { report: ReportPayload; onFinding: (finding: ReportFindingModel) => void }) {
   const model = report.model;
   return (
-    <div className="stack stack-xs audit">
-      <h3 className="section-title">What we told the client vs what the records show</h3>
+    <details className="stack stack-xs audit" open={model.audit.length > 0 && model.audit.length <= 3}>
+      <summary className="section-title">
+        What we told the client vs what the records show
+        {model.audit.length > 0 ? ` (${model.audit.length})` : ""}
+      </summary>
       {model.audit.length === 0 ? (
         <p className="empty">
           {model.client.clientKnown
@@ -699,6 +736,9 @@ function ModelAudit({ report, onFinding }: { report: ReportPayload; onFinding: (
                       <span className="strong">{row.headline}</span>
                     )}
                     {row.internalOnly && <span className="chip">internal only</span>}
+                    {row.repeats !== undefined && row.repeats > 1 && (
+                      <span className="chip">{row.repeats} checks agree</span>
+                    )}
                     {row.source && (
                       <span className="small muted">
                         {row.source}
@@ -718,7 +758,7 @@ function ModelAudit({ report, onFinding }: { report: ReportPayload; onFinding: (
           })}
         </ul>
       )}
-    </div>
+    </details>
   );
 }
 
@@ -737,7 +777,7 @@ export function ModelFailures({ report, onFinding }: { report: ReportPayload; on
               <FindingButton finding={finding} actors={model.actors} onFinding={onFinding} />
               <span className="chip">{finding.failureTag}</span>
               <button type="button" className="see-id small muted" onClick={() => onFinding(finding)}>
-                see {finding.id}
+                {sourcePhrase(finding)}
               </button>
             </li>
           ))}
@@ -769,16 +809,16 @@ export function ModelOpenQuestions({
       <span className="finding-text">{group.question}</span>
       <span className="small muted">Next step: {group.nextStep}</span>
       {group.findingIds.length > 0 && (
-        <span className="row">
-          {group.findingIds.slice(0, 2).map((findingId) => {
-            const finding = model.findings.find((entry) => entry.id === findingId);
-            return finding ? (
-              <button key={findingId} type="button" className="btn btn-quiet" onClick={() => onFinding(finding)}>
-                {findingId}
-              </button>
-            ) : null;
-          })}
-        </span>
+            <span className="row">
+              {group.findingIds.slice(0, 2).map((findingId) => {
+                const finding = model.findings.find((entry) => entry.id === findingId);
+                return finding ? (
+                  <button key={findingId} type="button" className="btn btn-quiet" onClick={() => onFinding(finding)}>
+                    {sourcePhrase(finding)}
+                  </button>
+                ) : null;
+              })}
+            </span>
       )}
     </li>
   );

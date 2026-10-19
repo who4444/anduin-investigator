@@ -37,6 +37,16 @@ interface ScopePreview {
   project: string | null;
   confidence: string | null;
   confirmed: boolean;
+  /** The proposed search units ("I'll search: …"). */
+  scope: {
+    client: string | null;
+    project: string | null;
+    ticketPrefixes: string[];
+    channels: string[];
+    senderDomains: string[];
+  } | null;
+  labels: Record<string, string>;
+  mailQuery: string | null;
   inScopeRecords: number;
   excludedRecords: number;
   estimatedMinutes: number;
@@ -154,6 +164,8 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [scopeReview, setScopeReview] = useState<ScopePreview | null>(null);
+  const [editingReview, setEditingReview] = useState(false);
+  const [removedItems, setRemovedItems] = useState<Set<string>>(new Set());
   const [scopeSelection, setScopeSelection] = useState<Set<string>>(new Set());
   const [scopeSaving, setScopeSaving] = useState(false);
   const [scopeError, setScopeError] = useState<string | null>(null);
@@ -288,6 +300,8 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
             const preview = await loadScopePreview();
             if (preview) {
               setScopeSelection(new Set());
+              setRemovedItems(new Set());
+              setEditingReview(false);
               setScopeReview(preview);
             } else {
               setError("The scope preview could not be loaded. Reload this page to try again.");
@@ -308,8 +322,10 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
         // A reload while the scope review is open must show the review again
         // (G-12): an unconfirmed partial scope never silently proceeds.
         const preview = await loadScopePreview();
-        if (preview && preview.confidence === "partial" && !preview.confirmed) {
+        if (preview && !preview.confirmed) {
           setScopeSelection(new Set());
+          setRemovedItems(new Set());
+          setEditingReview(false);
           setScopeReview(preview);
           return;
         }
@@ -448,14 +464,21 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
     setScopeSaving(true);
     setScopeError(null);
     try {
+      const scope = scopeReview?.scope ?? null;
+      const remove = {
+        ticketPrefixes: (scope?.ticketPrefixes ?? []).filter((value) => removedItems.has(`jira:${value}`)),
+        channels: (scope?.channels ?? []).filter((value) => removedItems.has(`slack:${value}`)),
+        senderDomains: (scope?.senderDomains ?? []).filter((value) => removedItems.has(`email:${value}`)),
+      };
       const response = await fetch(`/api/investigations/${investigationId}/scope`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ includeEventIds: [...scopeSelection] }),
+        body: JSON.stringify({ includeEventIds: [...scopeSelection], remove }),
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "Could not save the scope review.");
       setScopeReview(null);
+      setEditingReview(false);
       started.current = true;
       // Resuming at "plan" reuses the stored plan and keeps the issue review
       // in the flow (G-23) before any investigator runs.
@@ -489,6 +512,15 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
     } finally {
       setScopeSaving(false);
     }
+  };
+
+  const toggleRemovedItem = (key: string) => {
+    setRemovedItems((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   const toggleScopeSelection = (eventId: string) => {
@@ -529,6 +561,22 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
   }, [stages]);
 
   const failed = error !== null;
+
+  /* "I'll search" items: the proposed scope units with human labels. */
+  const searchItems: { key: string; kind: "jira" | "slack" | "email"; value: string; label: string }[] = [];
+  if (scopeReview?.scope) {
+    const { labels } = scopeReview;
+    for (const prefix of scopeReview.scope.ticketPrefixes) {
+      searchItems.push({ key: `jira:${prefix}`, kind: "jira", value: prefix, label: labels[prefix] ?? prefix });
+    }
+    for (const channel of scopeReview.scope.channels) {
+      searchItems.push({ key: `slack:${channel}`, kind: "slack", value: channel, label: labels[channel] ?? `#${channel}` });
+    }
+    for (const domain of scopeReview.scope.senderDomains) {
+      searchItems.push({ key: `email:${domain}`, kind: "email", value: domain, label: domain });
+    }
+  }
+  const KIND_LABEL = { jira: "Jira", slack: "Slack", email: "Email" } as const;
 
   return (
     <div className="shell shell-sm stack start-shell">
@@ -615,14 +663,30 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
           <div className="spread">
             <div>
               <h2 id="scope-review-title">Confirm the scope before I investigate</h2>
+              <p className="search-line">
+                <strong>I&apos;ll search:</strong>{" "}
+                {searchItems.length === 0 && !scopeReview.mailQuery ? (
+                  <span className="muted">
+                    every stored record — no scope identifiers resolved
+                  </span>
+                ) : (
+                  <>
+                    {searchItems.map((item) => (
+                      <span key={item.key} className={`tag tag-${item.kind}`}>
+                        {item.label} ({KIND_LABEL[item.kind]})
+                      </span>
+                    ))}
+                    {scopeReview.mailQuery && (
+                      <span className="tag tag-email">mail: {scopeReview.mailQuery}</span>
+                    )}
+                  </>
+                )}
+              </p>
               <p className="small muted">
-                {scopeReview.confidence === "partial" ? "Unconfirmed scope: " : ""}
                 {[scopeReview.client, scopeReview.project].filter(Boolean).join(" · ") ||
                   "no client identified"}{" "}
                 · {scopeReview.inScopeRecords} records will be searched
-                {scopeReview.excludedRecords > 0
-                  ? ` · ${scopeReview.excludedRecords} excluded`
-                  : ""}
+                {scopeReview.excludedRecords > 0 ? ` · ${scopeReview.excludedRecords} excluded` : ""}
               </p>
             </div>
             <span className="chip">~{scopeReview.estimatedMinutes} min</span>
@@ -638,37 +702,70 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
             ))}
           </p>
 
-          {scopeReview.excludedEvents.length > 0 && (
-            <>
-              <p className="small muted">
-                These records stay out. Add back any that belong to this engagement, then confirm —
-                the investigators will search them.
-              </p>
-              <ul className="excluded-list">
-                {scopeReview.excludedEvents.map((event) => (
-                  <li key={event.id}>
-                    <label className="excluded-row">
-                      <input
-                        type="checkbox"
-                        checked={scopeSelection.has(event.id)}
-                        onChange={() => toggleScopeSelection(event.id)}
-                      />
-                      <span className="stack stack-xs">
-                        <span className="row small muted">
-                          <span className={`source-label source-${event.source}`}>
-                            {event.source}
+          {editingReview && (
+            <div className="stack-sm" style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
+              {searchItems.length > 0 && (
+                <div>
+                  <p className="small muted">
+                    Uncheck anything that should not be searched. Client-authored evidence stays in
+                    scope — the client&apos;s own messages are never hidden.
+                  </p>
+                  <ul className="scope-item-list">
+                    {searchItems.map((item) => (
+                      <li key={item.key}>
+                        <label className="excluded-row">
+                          <input
+                            type="checkbox"
+                            checked={!removedItems.has(item.key)}
+                            onChange={() => toggleRemovedItem(item.key)}
+                          />
+                          <span className="stack stack-xs">
+                            <span className="row small">
+                              <span className="strong">{item.label}</span>
+                              <span className={`source-label source-${item.kind}`}>
+                                {KIND_LABEL[item.kind]}
+                              </span>
+                            </span>
                           </span>
-                          <span className="tabular">{event.ts.slice(0, 10)}</span>
-                          <span>{event.channel}</span>
-                          <span>{event.actor}</span>
-                        </span>
-                        <span className="excluded-text">{event.text}</span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {scopeReview.excludedEvents.length > 0 && (
+                <div>
+                  <p className="small muted">
+                    These records stay out. Add back any that belong to this engagement, then confirm —
+                    the investigators will search them.
+                  </p>
+                  <ul className="excluded-list">
+                    {scopeReview.excludedEvents.map((event) => (
+                      <li key={event.id}>
+                        <label className="excluded-row">
+                          <input
+                            type="checkbox"
+                            checked={scopeSelection.has(event.id)}
+                            onChange={() => toggleScopeSelection(event.id)}
+                          />
+                          <span className="stack stack-xs">
+                            <span className="row small muted">
+                              <span className={`source-label source-${event.source}`}>
+                                {event.source}
+                              </span>
+                              <span className="tabular">{event.ts.slice(0, 10)}</span>
+                              <span>{event.channel}</span>
+                              <span>{event.actor}</span>
+                            </span>
+                            <span className="excluded-text">{event.text}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
 
           {scopeError && <p className="alert alert-error">{scopeError}</p>}
@@ -680,6 +777,14 @@ export function ProgressView({ investigationId, flags, reviewOnly, rerun }: Prog
               onClick={confirmScopeReview}
             >
               {scopeSaving ? "Saving…" : "Confirm scope & investigate"}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setEditingReview((current) => !current)}
+              aria-expanded={editingReview}
+            >
+              {editingReview ? "Done editing" : "Edit"}
             </button>
           </div>
         </section>

@@ -1,11 +1,22 @@
 import type { NextRequest } from "next/server";
 
 import { getSource, getSources } from "@/lib/sources";
+import { cleanQuery } from "@/lib/sources/types";
 
 export const maxDuration = 60;
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status });
+}
+
+/** The landing page's connection line: what each source will search by default. */
+function sourceDetail(source: { id: string; isConfigured(): boolean }): string {
+  if (!source.isConfigured()) return "not connected";
+  if (source.id === "gmail") {
+    const query = cleanQuery(process.env.GMAIL_QUERY);
+    return query ? `mail: ${query}` : "connected — add a mailbox filter under Advanced";
+  }
+  return "searching everything you have access to";
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -19,6 +30,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         envKeys: source.envKeys,
         configured: source.isConfigured(),
         missingEnv: source.missingEnv(),
+        detail: sourceDetail(source),
       })),
     });
   }

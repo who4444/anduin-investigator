@@ -142,15 +142,19 @@ test("keyboard-only: the drawer opens from the verification legend and Esc resto
   await cell.focus();
   await page.keyboard.press("Enter");
 
-  const drawer = page.getByRole("dialog", { name: "Stored original message" });
-  await expect(drawer).toBeVisible();
+  // The legend opens the list of sources behind that state (or the single
+  // record directly); focus must land inside either dialog.
+  const list = page.getByRole("dialog", { name: "Sources for this statement" });
+  const record = page.getByRole("dialog", { name: "Stored original message" });
+  await expect(list.or(record).first()).toBeVisible();
   const focusInside = await page.evaluate(
     () => document.activeElement?.closest(".drawer") !== null,
   );
   expect(focusInside).toBe(true);
 
   await page.keyboard.press("Escape");
-  await expect(drawer).toHaveCount(0);
+  await expect(list).toHaveCount(0);
+  await expect(record).toHaveCount(0);
   const focusRestored = await page.evaluate(
     () => (document.activeElement as HTMLElement | null)?.classList.contains("legend-item") ?? false,
   );
@@ -291,7 +295,8 @@ test("the pre-run scope review pauses, survives reload, and confirms the report"
   await page.goto(`/investigations/${investigationId}/progress?synthetic=1`);
   const review = page.locator("section.panel", { hasText: "Confirm the scope before I investigate" });
   await expect(review).toBeVisible({ timeout: 60_000 });
-  await expect(review).toContainText("Unconfirmed scope");
+  // The review leads with what will be searched.
+  await expect(review).toContainText("I'll search:");
   await expect(review).toContainText("records will be searched");
   await expect(review).toContainText("min");
 
@@ -302,6 +307,8 @@ test("the pre-run scope review pauses, survives reload, and confirms the report"
   ).json()) as { confirmed: boolean; inScopeRecords: number };
   expect(before.confirmed).toBe(false);
 
+  // Edit reveals the excluded-records add-back list.
+  await review.getByRole("button", { name: "Edit" }).click();
   await review.locator(".excluded-list input[type=checkbox]").first().check();
   await review.getByRole("button", { name: "Confirm scope & investigate" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/progress"), { timeout: 180_000 });

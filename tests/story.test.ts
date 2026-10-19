@@ -51,11 +51,11 @@ describe("answer-first story (D1)", () => {
     const text = storyText(richStory);
 
     expect(text).toContain("the release 4.12 timezone change");
-    expect(text).toContain("Lin Chen promised Priya Nair the invoice totals fix by Sep 24; it was broken.");
+    expect(text).toContain("Lin Chen promised to Priya Nair: “the invoice totals fix” by Sep 24; it was broken.");
     expect(text).toContain("As of now: Resolved");
     expect(text).toContain("last status change by Marcus Webb");
     expect(text).toContain("the client has chased 3 times without a reply");
-    expect(text).toContain("Still unknown: Which change actually fixed the problem? Next: Ask the engineer for the deploy log.");
+    expect(text).toContain("Still unknown: Which change actually fixed the problem?");
     expect(story.nextStep).toBe("Ask the engineer for the deploy log.");
     expect(story.tooThin).toBe(false);
     expect(story.statsLine).toContain("8 findings");
@@ -269,7 +269,7 @@ describe("headline delegates to the story (D1-D3)", () => {
     const text = model.headline.sentences.map((sentence) => sentence.text).join(" ");
 
     expect(text).toContain("timezone change");
-    expect(text).toContain("Ravi Menon promised Priya Nair the invoice totals fix by Sep 24; it was broken.");
+    expect(text).toContain("Ravi Menon promised to Priya Nair: “the invoice totals fix” by Sep 24; it was broken.");
     expect(text).toContain("As of now: Resolved");
     expect(text).toContain("Still unknown:");
     expect(text).not.toContain("the first record is");

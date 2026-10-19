@@ -11,11 +11,15 @@ interface SourceInfo {
   label: string;
   configured: boolean;
   missingEnv: string[];
+  /** What the source will search by default ("searching everything …",
+      "mail: <query>", "not connected"). */
+  detail?: string;
 }
 
 interface SourceTargetInfo {
   id: string;
   label: string;
+  meta?: { hidden?: boolean; isMember?: boolean };
 }
 
 interface ScopeState {
@@ -37,7 +41,7 @@ interface RecentInvestigation {
   complete: boolean;
 }
 
-/* The three source panels render in a stable order. */
+/* The three source groups render in a stable order. */
 const SOURCE_ORDER = ["jira", "slack", "gmail"] as const;
 
 export default function StartPage() {
@@ -50,6 +54,7 @@ export default function StartPage() {
   const [sources, setSources] = useState<SourceInfo[]>([]);
   const [targets, setTargets] = useState<Record<string, SourceTargetInfo[]>>({});
   const [scopes, setScopes] = useState<Record<string, ScopeState>>({});
+  const [targetSearch, setTargetSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,13 +98,13 @@ export default function StartPage() {
   };
 
   const connected = sources.filter((source) => source.configured);
-  const anyScope = connected.some(
-    (source) =>
-      source.id === "gmail"
-        ? (scopes.gmail?.query ?? "").trim().length > 0
-        : (scopes[source.id]?.targets.length ?? 0) > 0,
-  );
-  const canInvestigate = !busy && (synthetic || anyScope);
+  const hasEscalation = escalation.trim().length > 0;
+  const canInvestigate = !busy && hasEscalation && (synthetic || connected.length > 0);
+
+  const gmail = connected.find((source) => source.id === "gmail");
+  const gmailQuery = (scopes.gmail?.query ?? "").trim();
+  const gmailReady = Boolean(gmail) && (gmailQuery.length > 0 || (gmail?.detail ?? "").startsWith("mail:"));
+  const searchable = connected.filter((source) => source.id !== "gmail" || gmailReady);
 
   function loadScenario() {
     setEscalation(SCENARIO_ESCALATION);
@@ -144,13 +149,13 @@ export default function StartPage() {
   }
 
   async function startLive() {
-    const entries = connected
-      .map((source) => ({
-        source: source.id,
-        targets: scopes[source.id]?.targets ?? [],
-        query: (scopes[source.id]?.query ?? "").trim() || undefined,
-      }))
-      .filter((entry) => (entry.source === "gmail" ? Boolean(entry.query) : entry.targets.length > 0));
+    // No selection = search everything these sources have access to; a
+    // selection in Advanced narrows the pull.
+    const entries = searchable.map((source) => ({
+      source: source.id,
+      targets: scopes[source.id]?.targets ?? [],
+      query: source.id === "gmail" ? gmailQuery || undefined : undefined,
+    }));
 
     const response = await fetch("/api/sources/pull", {
       method: "POST",
@@ -174,38 +179,40 @@ export default function StartPage() {
     }
   }
 
-  const hasSources = connected.length > 0;
   const loadingSources = sources.length === 0;
 
-  /* One status line under Investigate (merges the former two helper lines). */
-  const selectionParts = connected
-    .map((source) => {
-      const count = scopes[source.id]?.targets.length ?? 0;
-      if (source.id === "gmail") {
-        return (scopes.gmail?.query ?? "").trim() ? "Gmail: mailbox filter" : null;
-      }
-      if (count === 0) return null;
-      return `${source.label}: ${count} ${source.id === "slack" ? (count === 1 ? "channel" : "channels") : count === 1 ? "project" : "projects"}`;
-    })
-    .filter(Boolean) as string[];
+  /* Connection status: what will actually be searched, no choosing required. */
+  const connectedNames = searchable.map((source) => source.label).join(", ");
+  const skipped = connected.filter((source) => !searchable.includes(source));
   const statusLine = busy
     ? "Starting the investigation…"
     : synthetic
       ? "Sample scenario loaded — the investigation runs on the built-in synthetic export."
-      : canInvestigate
-        ? `Ready — ${selectionParts.join(" · ")}.`
-        : !hasSources
-          ? "Paste the client's escalation and choose sources to begin, or load the synthetic scenario."
-          : "Paste the client's escalation and choose sources to begin, or load the synthetic scenario.";
+      : !hasEscalation
+        ? "Paste the client's escalation to begin."
+        : connected.length === 0
+          ? "No live sources are connected — ask the admin, or use uploaded exports instead."
+          : `${connectedNames} connected — searching everything you have access to.${
+              skipped.length > 0
+                ? ` ${skipped.map((source) => source.label).join(", ")} not searched: add a mailbox filter under Advanced.`
+                : ""
+            }`;
 
-  const jiraTargets = (targets.jira ?? []).slice(0, 24);
-  const slackTargets = (targets.slack ?? []).slice(0, 24);
+  const filterTargets = (list: SourceTargetInfo[]): SourceTargetInfo[] => {
+    const query = targetSearch.trim().toLowerCase();
+    if (!query) return list.filter((target) => target.meta?.hidden !== true);
+    return list.filter((target) => `${target.id} ${target.label}`.toLowerCase().includes(query));
+  };
+
+  const jiraTargets = filterTargets(targets.jira ?? []).slice(0, 40);
+  const slackTargets = filterTargets(targets.slack ?? []).slice(0, 40);
+  const selectionCount = Object.values(scopes).reduce((total, scope) => total + scope.targets.length, 0);
 
   return (
     <div className="shell shell-sm stack start-shell">
       <div className="stack-sm">
         <h1>Begin an investigation</h1>
-        <p className="muted">Paste the client&apos;s escalation, pick the sources, and get a sourced account of what happened.</p>
+        <p className="muted">Paste the client&apos;s escalation and I search your connected sources — you confirm the scope before anything runs.</p>
       </div>
 
       <section className="panel stack">
@@ -236,91 +243,98 @@ export default function StartPage() {
         </label>
       </section>
 
-      <div className="sources-grid">
-        {SOURCE_ORDER.map((sourceId) => {
-          const source = sources.find((entry) => entry.id === sourceId);
-          if (loadingSources || (!source && hasSources)) {
+      <section className="panel stack-sm source-status" aria-label="Source connection status">
+        {loadingSources && <div className="skeleton skeleton-line" style={{ width: "46%" }} />}
+        {!loadingSources &&
+          SOURCE_ORDER.map((sourceId) => {
+            const source = sources.find((entry) => entry.id === sourceId);
+            if (!source) return null;
             return (
-              <section className="panel source-card" key={sourceId} aria-label="Loading source">
-                <div className="skeleton skeleton-line" style={{ width: "40%" }} />
-                <div className="skeleton skeleton-line" style={{ width: "72%" }} />
-                <div className="skeleton skeleton-line" style={{ width: "58%" }} />
-              </section>
-            );
-          }
-          if (!source) return null;
-          const scope = scopes[source.id] ?? { targets: [], query: "" };
-          return (
-            <section className="panel source-card" key={source.id}>
-              <div className="source-card-head">
+              <div className="conn-row" key={source.id}>
                 <span className={`source-icon source-${source.id}`}>
                   <SourceIcon source={source.id} />
                 </span>
-                <span className="source-card-title">{source.label}</span>
+                <span className="conn-name">{source.label}</span>
                 <span className={`conn${source.configured ? " is-on" : ""}`}>
                   <span className="dot" />
-                  {source.configured ? "Connected" : "Not connected"}
+                  {source.configured ? source.detail ?? "connected" : "not connected"}
                 </span>
               </div>
+            );
+          })}
+        {!loadingSources && connected.length === 0 && (
+          <p className="small muted">
+            No live sources are connected. Ask the admin to connect them, or{" "}
+            <a href="/upload">use uploaded exports instead</a>.
+          </p>
+        )}
+      </section>
 
-              {source.id === "jira" && source.configured && (
-                <div className="pick-list">
-                  {jiraTargets.length === 0 && <span className="small muted">Loading projects…</span>}
-                  {jiraTargets.map((target) => {
-                    const [key, ...rest] = target.label.split(" · ");
-                    const name = rest.join(" · ");
-                    return (
-                      <button
-                        key={target.id}
-                        type="button"
-                        className="pick"
-                        aria-pressed={scope.targets.includes(target.id)}
-                        title={name || key}
-                        onClick={() => toggleTarget(source.id, target.id)}
-                      >
-                        <span className="pick-key">{key}</span>
-                        <span className="pick-name">{name || key}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {source.id === "slack" && source.configured && (
-                <div className="pick-list">
-                  {slackTargets.length === 0 && <span className="small muted">Loading channels…</span>}
-                  {slackTargets.map((target) => (
-                    <button
-                      key={target.id}
-                      type="button"
-                      className="pick"
-                      aria-pressed={scope.targets.includes(target.id)}
-                      onClick={() => toggleTarget(source.id, target.id)}
-                    >
-                      <span className="pick-name">{target.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {source.id === "gmail" && source.configured && (
-                <input
-                  className="input"
-                  placeholder="Mailbox filter, e.g. label:meridian newer_than:90d"
-                  value={scope.query}
-                  onChange={(event) => setScope(source.id, { query: event.target.value })}
-                />
-              )}
-
-              {!source.configured && (
-                <span className="small muted">
-                  Read-only credentials are held by the server. Ask the admin to connect this source.
+      <details className="panel source-advanced">
+        <summary>
+          Advanced: limit sources
+          {selectionCount > 0 && <span className="chip" style={{ marginLeft: "var(--sp-2)" }}>{selectionCount} selected</span>}
+        </summary>
+        <div className="stack-sm source-advanced-body">
+          <p className="small muted">
+            Leave everything empty to search all you have access to. Selecting projects or channels
+            narrows the search; the system still proposes the final scope after the plan.
+          </p>
+          <input
+            className="input"
+            type="search"
+            value={targetSearch}
+            onChange={(event) => setTargetSearch(event.target.value)}
+            placeholder="Search projects, channels or mail…"
+            aria-label="Search source targets"
+          />
+          {(["jira", "slack", "gmail"] as const).map((sourceId) => {
+            const source = sources.find((entry) => entry.id === sourceId);
+            if (!source || !source.configured) return null;
+            const scope = scopes[source.id] ?? { targets: [], query: "" };
+            return (
+              <div className="pick-group" key={source.id}>
+                <span className="pick-group-title">
+                  <SourceIcon source={source.id} size={16} /> {source.label}
                 </span>
-              )}
-            </section>
-          );
-        })}
-      </div>
+                {source.id === "gmail" ? (
+                  <input
+                    className="input"
+                    placeholder="Mailbox filter, e.g. label:meridian newer_than:90d"
+                    value={scope.query}
+                    onChange={(event) => setScope(source.id, { query: event.target.value })}
+                  />
+                ) : (
+                  <div className="pick-list">
+                    {(source.id === "jira" ? jiraTargets : slackTargets).length === 0 && (
+                      <span className="small muted">
+                        {targetSearch.trim() ? "No matches." : source.id === "jira" ? "Loading projects…" : "Loading channels…"}
+                      </span>
+                    )}
+                    {(source.id === "jira" ? jiraTargets : slackTargets).map((target) => {
+                      const [key, ...rest] = target.label.split(" · ");
+                      const name = rest.join(" · ");
+                      return (
+                        <button
+                          key={target.id}
+                          type="button"
+                          className="pick"
+                          aria-pressed={scope.targets.includes(target.id)}
+                          title={name || key}
+                          onClick={() => toggleTarget(source.id, target.id)}
+                        >
+                          {source.id === "jira" && rest.length > 0 && <span className="pick-key">{key}</span>}
+                          <span className="pick-name">{source.id === "slack" ? target.label : name || key}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </details>
 
       <div className="sample-strip">
         <span className="small muted">Try a sample:</span>
@@ -330,7 +344,7 @@ export default function StartPage() {
         <button type="button" className="btn btn-sm" onClick={loadMultiScenario} disabled={busy}>
           Load multi-issue scenario
         </button>
-        {(synthetic || scenario === "northwind") && synthetic && (
+        {synthetic && (
           <span className="chip" style={{ marginLeft: "auto" }}>
             synthetic data
           </span>
@@ -360,9 +374,7 @@ export default function StartPage() {
                 <span className="muted tabular small">{entry.createdAt.slice(0, 10)}</span>
                 <span className="row row-tight" style={{ justifyContent: "flex-end" }}>
                   {entry.origin === "demo" && <span className="chip">synthetic</span>}
-                  <span className="chip">
-                    {entry.complete ? "complete" : "in progress"}
-                  </span>
+                  <span className="chip">{entry.complete ? "complete" : "in progress"}</span>
                 </span>
               </li>
             ))}

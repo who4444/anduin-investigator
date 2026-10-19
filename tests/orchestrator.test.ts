@@ -451,7 +451,7 @@ describe("runPipeline notifications", () => {
     expect(calls.map((call) => call.stage)).toEqual(["plan"]);
   });
 
-  it("does not pause for a scoped run", async () => {
+  it("pauses for the proposed scope even when it is confidently scoped", async () => {
     const { fetchImpl, calls } = fakeFetch((call) => {
       if (call.stage === "plan") {
         return jsonResponse({ plan: "p", scope: { confidence: "scoped" }, issues: [] });
@@ -462,8 +462,9 @@ describe("runPipeline notifications", () => {
 
     const outcome = await runPipeline("inv-1", { fetchImpl, stopForScopeReview: true });
 
-    expect(outcome).toEqual({ ok: true, retries: 0 });
-    expect(calls.some((call) => call.stage === "investigate")).toBe(true);
+    // "I'll search: …" is always confirmed before investigators spend tokens.
+    expect(outcome).toEqual({ ok: true, paused: true, scopeReview: true, retries: 0 });
+    expect(calls.some((call) => call.stage === "investigate")).toBe(false);
   });
 
   /* G-13: a resumed run waits out a lease the previous (dead) session still
