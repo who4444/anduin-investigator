@@ -124,9 +124,28 @@ function investigatorTurn(
   if (!pick || !pick.text) return content({ claims: [], notes: [] });
 
   const quote = pick.text.slice(0, Math.min(60, pick.text.length));
-  const type =
-    kind === "root_cause" ? "root_cause" : kind === "commitments" ? "commitment" : "process_failure";
   const status = kind === "commitments" ? "broken" : "n/a";
+
+  // The commitments kind records promises through the structured tool (C2):
+  // the ledger merges restatements and computes the outcome in code.
+  if (kind === "commitments") {
+    return toolCalls([
+      {
+        name: "submit_commitment",
+        args: {
+          text: quote,
+          quote,
+          item_id: pick.id,
+          actor: pick.actor,
+          to: "the client",
+          object: "fix the reported defect as promised",
+          status,
+          confidence: 0.9,
+        },
+      },
+    ]);
+  }
+  const type = kind === "root_cause" ? "root_cause" : "process_failure";
 
   // G-23 fixture: when the prompt names more than one issue, submit one finding
   // per issue so both report tabs have evidence.
@@ -137,7 +156,7 @@ function investigatorTurn(
       usable.find((item) => isInvoice(item.text ?? "")),
       usable.find((item) => isSso(item.text ?? "")),
     ];
-    const calls = picks.flatMap((item, index) => {
+    const calls: { name: string; args: Record<string, unknown> }[] = picks.flatMap((item, index) => {
       if (!item || !item.text || !issueIds[index]) return [];
       const quote = item.text.slice(0, Math.min(60, item.text.length));
       return [
